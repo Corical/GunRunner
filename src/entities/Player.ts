@@ -130,8 +130,8 @@ export class Player {
       this.gunMesh = null;
     }
     this.gunMesh = WeaponModelBuilder.create(this.scene, type);
-    this.gunMesh.scaling.setAll(0.8);
-    this.gunMesh.position.set(0.4, 0.8, 0.3);
+    this.gunMesh.scaling.setAll(2.5);
+    this.gunMesh.position.set(0.5, 0.9, 0.8);
     this.gunMesh.parent = this.mesh;
   }
 

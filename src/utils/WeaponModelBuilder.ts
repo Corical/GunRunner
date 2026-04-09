@@ -114,7 +114,7 @@ export class WeaponModelBuilder {
     return m;
   }
 
-  private static merge(scene: Scene, parts: Mesh[], mat: StandardMaterial, name: string): Mesh {
+  private static merge(_scene: Scene, parts: Mesh[], mat: StandardMaterial, name: string): Mesh {
     const merged = Mesh.MergeMeshes(parts, true, false);
     if (merged) {
       merged.name = name;

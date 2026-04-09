@@ -81,89 +81,88 @@ export class Enemy {
   }
 
   private buildBasic(): void {
-    // Humanoid — body cylinder + head sphere
-    const body = MeshBuilder.CreateCylinder('eb', { diameter: 0.5, height: 0.8, tessellation: 6 }, this.scene);
-    body.position.y = 0.4;
-    body.material = this.mat;
+    // Humanoid — body + head + arms. Scale ~1.2 so it's clearly visible
+    const body = MeshBuilder.CreateCylinder('eb', { diameter: 0.7, height: 1.0, tessellation: 6 }, this.scene);
+    body.position.y = 0.5; body.material = this.mat;
 
-    const head = MeshBuilder.CreateSphere('eh', { diameter: 0.35, segments: 6 }, this.scene);
-    head.position.y = 1.0;
-    head.material = this.mat;
+    const head = MeshBuilder.CreateSphere('eh', { diameter: 0.5, segments: 6 }, this.scene);
+    head.position.y = 1.3; head.material = this.mat;
 
-    const arms = MeshBuilder.CreateBox('ea', { width: 0.8, height: 0.12, depth: 0.12 }, this.scene);
-    arms.position.y = 0.55;
-    arms.material = this.mat;
+    const arms = MeshBuilder.CreateBox('ea', { width: 1.1, height: 0.15, depth: 0.15 }, this.scene);
+    arms.position.y = 0.7; arms.material = this.mat;
 
-    this.mesh = Mesh.MergeMeshes([body, head, arms], true, false) || body;
+    const lLeg = MeshBuilder.CreateCylinder('ell', { diameter: 0.2, height: 0.5, tessellation: 4 }, this.scene);
+    lLeg.position.set(-0.2, -0.2, 0); lLeg.material = this.mat;
+
+    const rLeg = MeshBuilder.CreateCylinder('erl', { diameter: 0.2, height: 0.5, tessellation: 4 }, this.scene);
+    rLeg.position.set(0.2, -0.2, 0); rLeg.material = this.mat;
+
+    this.mesh = Mesh.MergeMeshes([body, head, arms, lLeg, rLeg], true, false) || body;
     this.mesh.name = 'enemy_basic';
   }
 
   private buildArmored(): void {
-    // Chunky tank — wide box body + shoulder pads + small head
-    const body = MeshBuilder.CreateBox('eb', { width: 0.9, height: 1.0, depth: 0.6 }, this.scene);
-    body.position.y = 0.5;
-    body.material = this.mat;
+    // Chunky wide tank — much bigger than basic
+    const body = MeshBuilder.CreateBox('eb', { width: 1.4, height: 1.5, depth: 0.9 }, this.scene);
+    body.position.y = 0.75; body.material = this.mat;
 
-    const lShoulder = MeshBuilder.CreateBox('els', { width: 0.35, height: 0.2, depth: 0.35 }, this.scene);
-    lShoulder.position.set(-0.55, 0.9, 0);
-    lShoulder.material = this.mat;
+    const lShoulder = MeshBuilder.CreateBox('els', { width: 0.5, height: 0.3, depth: 0.5 }, this.scene);
+    lShoulder.position.set(-0.85, 1.3, 0); lShoulder.material = this.mat;
 
-    const rShoulder = MeshBuilder.CreateBox('ers', { width: 0.35, height: 0.2, depth: 0.35 }, this.scene);
-    rShoulder.position.set(0.55, 0.9, 0);
-    rShoulder.material = this.mat;
+    const rShoulder = MeshBuilder.CreateBox('ers', { width: 0.5, height: 0.3, depth: 0.5 }, this.scene);
+    rShoulder.position.set(0.85, 1.3, 0); rShoulder.material = this.mat;
 
-    const head = MeshBuilder.CreateSphere('eh', { diameter: 0.3, segments: 6 }, this.scene);
-    head.position.y = 1.2;
-    head.material = this.mat;
+    const head = MeshBuilder.CreateSphere('eh', { diameter: 0.45, segments: 6 }, this.scene);
+    head.position.y = 1.75; head.material = this.mat;
 
-    this.mesh = Mesh.MergeMeshes([body, lShoulder, rShoulder, head], true, false) || body;
+    // Chest plate
+    const plate = MeshBuilder.CreateBox('ep', { width: 1.0, height: 0.6, depth: 0.15 }, this.scene);
+    plate.position.set(0, 0.9, -0.45); plate.material = this.mat;
+
+    this.mesh = Mesh.MergeMeshes([body, lShoulder, rShoulder, head, plate], true, false) || body;
     this.mesh.name = 'enemy_armored';
   }
 
   private buildFast(): void {
-    // Sleek cone pointing at player + fins
+    // Sleek pointed cone + swept fins — clearly aerodynamic
     const cone = MeshBuilder.CreateCylinder('ec', {
-      diameterTop: 0, diameterBottom: 0.5, height: 0.9, tessellation: 6,
+      diameterTop: 0, diameterBottom: 0.7, height: 1.4, tessellation: 6,
     }, this.scene);
-    cone.rotation.x = -Math.PI / 2; // Point forward
-    cone.position.y = 0.3;
-    cone.material = this.mat;
+    cone.rotation.x = -Math.PI / 2;
+    cone.position.y = 0.4; cone.material = this.mat;
 
-    const lFin = MeshBuilder.CreateBox('elf', { width: 0.04, height: 0.3, depth: 0.3 }, this.scene);
-    lFin.position.set(-0.25, 0.3, 0.15);
-    lFin.rotation.z = -0.3;
-    lFin.material = this.mat;
+    const lFin = MeshBuilder.CreateBox('elf', { width: 0.06, height: 0.5, depth: 0.5 }, this.scene);
+    lFin.position.set(-0.35, 0.4, 0.3); lFin.rotation.z = -0.4; lFin.material = this.mat;
 
-    const rFin = MeshBuilder.CreateBox('erf', { width: 0.04, height: 0.3, depth: 0.3 }, this.scene);
-    rFin.position.set(0.25, 0.3, 0.15);
-    rFin.rotation.z = 0.3;
-    rFin.material = this.mat;
+    const rFin = MeshBuilder.CreateBox('erf', { width: 0.06, height: 0.5, depth: 0.5 }, this.scene);
+    rFin.position.set(0.35, 0.4, 0.3); rFin.rotation.z = 0.4; rFin.material = this.mat;
 
-    this.mesh = Mesh.MergeMeshes([cone, lFin, rFin], true, false) || cone;
+    const tail = MeshBuilder.CreateBox('et', { width: 0.06, height: 0.6, depth: 0.3 }, this.scene);
+    tail.position.set(0, 0.6, 0.4); tail.material = this.mat;
+
+    this.mesh = Mesh.MergeMeshes([cone, lFin, rFin, tail], true, false) || cone;
     this.mesh.name = 'enemy_fast';
   }
 
   private buildShielded(): void {
-    // Body + separate translucent shield in front
-    const body = MeshBuilder.CreateCylinder('eb', { diameter: 0.5, height: 0.7, tessellation: 6 }, this.scene);
-    body.position.y = 0.35;
-    body.material = this.mat;
+    // Body with visible translucent shield wall in front
+    const body = MeshBuilder.CreateCylinder('eb', { diameter: 0.7, height: 1.0, tessellation: 6 }, this.scene);
+    body.position.y = 0.5; body.material = this.mat;
 
-    const head = MeshBuilder.CreateSphere('eh', { diameter: 0.3, segments: 6 }, this.scene);
-    head.position.y = 0.85;
-    head.material = this.mat;
+    const head = MeshBuilder.CreateSphere('eh', { diameter: 0.4, segments: 6 }, this.scene);
+    head.position.y = 1.2; head.material = this.mat;
 
     this.mesh = Mesh.MergeMeshes([body, head], true, false) || body;
     this.mesh.name = 'enemy_shielded';
 
-    // Translucent shield — separate mesh (not merged, needs own material)
-    this.shieldMesh = MeshBuilder.CreateBox('eshield', { width: 0.9, height: 0.9, depth: 0.12 }, this.scene);
-    this.shieldMesh.position.z = -0.5; // In front of body
-    this.shieldMesh.position.y = 0.45;
+    // Large translucent cyan shield in front — separate mesh for transparency
+    this.shieldMesh = MeshBuilder.CreateBox('eshield', { width: 1.3, height: 1.3, depth: 0.12 }, this.scene);
+    this.shieldMesh.position.z = -0.7;
+    this.shieldMesh.position.y = 0.6;
     const shieldMat = new StandardMaterial('shieldMat', this.scene);
     shieldMat.diffuseColor = Color3.FromHexString('#67E8F9');
-    shieldMat.emissiveColor = Color3.FromHexString('#67E8F9').scale(0.4);
-    shieldMat.alpha = 0.45;
+    shieldMat.emissiveColor = Color3.FromHexString('#67E8F9').scale(0.5);
+    shieldMat.alpha = 0.5;
     shieldMat.backFaceCulling = false;
     this.shieldMesh.material = shieldMat;
     this.shieldMesh.isPickable = false;

@@ -1,16 +1,8 @@
 import { Scene, Vector3, MeshBuilder, StandardMaterial, Color3, Mesh } from '@babylonjs/core';
 import { Config, WeaponType } from '@/core/Config';
+import { WeaponModelBuilder } from '@/utils/WeaponModelBuilder';
 
 export type FrozenReward = WeaponType | 'heal';
-
-const REWARD_COLORS: Record<FrozenReward, string> = {
-  [WeaponType.SMG]:     '#FCD34D',
-  [WeaponType.SHOTGUN]: '#F97316',
-  [WeaponType.LASER]:   '#60A5FA',
-  [WeaponType.ROCKET]:  '#EF4444',
-  [WeaponType.PISTOL]:  '#FBBF24',
-  heal:                 '#22C55E',
-};
 
 const LANE_X: Record<number, number> = {
   [-1]: Config.LANES.LEFT,
@@ -29,19 +21,20 @@ export class FrozenUpgrade {
   private iceHp: number = Config.FROZEN_ICE_HP;
   private maxIceHp: number = Config.FROZEN_ICE_HP;
   private iceMesh: Mesh;
-  private rewardMesh: Mesh;
+  private rewardMesh!: Mesh;
   private hpBarBg: Mesh;
   private hpBarFill: Mesh;
+  private scene: Scene;
   private iceMat: StandardMaterial;
-  private rewardMat: StandardMaterial;
   private hpFillMat: StandardMaterial;
   private floatTime: number = 0;
 
   constructor(scene: Scene) {
+    this.scene = scene;
     this.position = Vector3.Zero();
 
     // Ice mesh — translucent cyan box
-    this.iceMesh = MeshBuilder.CreateBox('frozenIce', { size: 1.8 }, scene);
+    this.iceMesh = MeshBuilder.CreateBox('frozenIce', { size: 2.0 }, scene);
     this.iceMat = new StandardMaterial('frozenIceMat', scene);
     this.iceMat.diffuseColor = Color3.FromHexString(Config.COLORS.FROZEN_ICE);
     this.iceMat.emissiveColor = Color3.FromHexString(Config.COLORS.FROZEN_ICE).scale(0.3);
@@ -51,13 +44,8 @@ export class FrozenUpgrade {
     this.iceMesh.isPickable = false;
     this.iceMesh.setEnabled(false);
 
-    // Reward mesh — smaller sphere inside the ice
-    this.rewardMesh = MeshBuilder.CreateSphere('frozenReward', { diameter: 0.9, segments: 8 }, scene);
-    this.rewardMat = new StandardMaterial('frozenRewardMat', scene);
-    this.rewardMat.diffuseColor = Color3.White();
-    this.rewardMat.emissiveColor = Color3.White().scale(0.5);
-    this.rewardMesh.material = this.rewardMat;
-    this.rewardMesh.isPickable = false;
+    // Placeholder reward mesh — gets replaced on activate
+    this.rewardMesh = MeshBuilder.CreateBox('rewardPlaceholder', { size: 0.1 }, scene);
     this.rewardMesh.setEnabled(false);
 
     // HP bar background
@@ -98,11 +86,8 @@ export class FrozenUpgrade {
     const x = LANE_X[laneEnum] ?? Config.LANES.CENTER;
     this.position.set(x, 1.0, z);
 
-    // Apply reward color
-    const colorHex = REWARD_COLORS[reward] ?? '#FFFFFF';
-    const rewardColor = Color3.FromHexString(colorHex);
-    this.rewardMat.diffuseColor = rewardColor;
-    this.rewardMat.emissiveColor = rewardColor.scale(0.5);
+    // Build the actual reward model
+    this.buildRewardMesh();
 
     // Reset ice opacity
     this.iceMat.alpha = 0.6;
@@ -111,7 +96,8 @@ export class FrozenUpgrade {
     this.rewardMesh.position.copyFrom(this.position);
 
     this.iceMesh.setEnabled(true);
-    this.rewardMesh.setEnabled(false);
+    // Show reward inside ice (visible through translucent ice)
+    this.rewardMesh.setEnabled(true);
     this.hpBarBg.setEnabled(true);
     this.hpBarFill.setEnabled(true);
     this.hpBarFill.scaling.x = 1;
@@ -178,6 +164,31 @@ export class FrozenUpgrade {
     }
 
     return false;
+  }
+
+  private buildRewardMesh(): void {
+    // Dispose old reward mesh
+    if (this.rewardMesh) this.rewardMesh.dispose();
+
+    if (this.reward === 'heal') {
+      // Green cross for heal
+      const h = MeshBuilder.CreateBox('rh', { width: 1.0, height: 0.3, depth: 0.3 }, this.scene);
+      const v = MeshBuilder.CreateBox('rv', { width: 0.3, height: 1.0, depth: 0.3 }, this.scene);
+      const mat = new StandardMaterial('healMat', this.scene);
+      mat.diffuseColor = Color3.FromHexString('#22C55E');
+      mat.emissiveColor = Color3.FromHexString('#22C55E').scale(0.5);
+      h.material = mat;
+      v.material = mat;
+      this.rewardMesh = Mesh.MergeMeshes([h, v], true, false) || h;
+      this.rewardMesh.material = mat;
+    } else {
+      // Actual weapon model
+      this.rewardMesh = WeaponModelBuilder.create(this.scene, this.reward as WeaponType);
+      this.rewardMesh.scaling.setAll(2.0);
+    }
+
+    this.rewardMesh.isPickable = false;
+    this.rewardMesh.setEnabled(false);
   }
 
   public getCollisionInfo(): { x: number; z: number; radius: number; active: boolean } {
