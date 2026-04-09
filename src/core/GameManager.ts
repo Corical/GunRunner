@@ -200,8 +200,11 @@ export class GameManager {
       );
     }
 
-    // 7. Bullet → Boss collisions
+    // 7. Boss — charges at player, bullets damage it, contact = heavy damage
     if (this.bossActive && this.boss.active) {
+      this.boss.update(adjustedDt);
+
+      // Bullets hit boss
       for (const bullet of bullets) {
         if (!bullet.active) continue;
         const dx = bullet.position.x - this.boss.position.x;
@@ -209,29 +212,32 @@ export class GameManager {
         const dist = Math.sqrt(dx * dx + dz * dz);
         if (dist < Config.BULLET_HIT_RADIUS + this.boss.getCollisionRadius()) {
           const defeated = this.boss.takeDamage(bullet.damage);
-          bullet.deactivate();
+          const shouldDeactivate = bullet.onHit();
+          if (shouldDeactivate) bullet.deactivate();
 
           this.soundSystem.playSound(SoundType.ENEMY_HIT);
           this.particleSystem.createEnemyHitEffect(
             new BABYLON.Vector3(bullet.position.x, 2, bullet.position.z)
           );
-
           this.uiManager.updateBossHP(this.boss.hp, this.boss.maxHp);
 
           if (defeated) {
             this.onBossDefeated();
+            break;
           }
         }
       }
 
-      // Boss update + projectile → player
-      this.boss.update(adjustedDt);
-      const playerPos = this.player.getPosition();
-      const projHits = this.boss.checkProjectileHits(playerPos.x, playerPos.z, 1.0);
-      if (projHits > 0) {
-        this.player.takeDamage(2);
-        this.soundSystem.playSound(SoundType.PLAYER_HIT);
-        this.cameraEffects.shakeHeavy();
+      // Boss reaches player — heavy contact damage
+      if (this.boss.active) {
+        const playerPos = this.player.getPosition();
+        if (this.boss.checkPlayerContact(playerPos.x, playerPos.z, 1.0)) {
+          this.player.takeDamage(3);
+          this.soundSystem.playSound(SoundType.PLAYER_HIT);
+          this.cameraEffects.shakeHeavy();
+          // Push boss back slightly so it doesn't instakill
+          this.boss.position.z += 8;
+        }
       }
     }
 
