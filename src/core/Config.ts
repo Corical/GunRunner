@@ -99,7 +99,39 @@ export enum WeaponType {
   MINIGUN = 'minigun',
   RAILGUN = 'railgun',
   FLAMETHROWER = 'flamethrower',
+  GRENADE = 'grenade',
 }
+
+export enum TowerType {
+  FREEZE = 'freeze',
+  FIRE = 'fire',
+  POISON = 'poison',
+}
+
+export interface TowerConfig {
+  name: string;
+  color: string;
+  duration: number;
+  radius: number;
+  damagePerSec: number;
+  slowMultiplier: number; // 1.0 = no slow, 0.4 = 60% slower
+  poisonDuration: number; // 0 = no poison
+}
+
+export const TOWERS: Record<TowerType, TowerConfig> = {
+  [TowerType.FREEZE]: {
+    name: 'Freeze Tower', color: '#67E8F9',
+    duration: 15, radius: 6, damagePerSec: 0, slowMultiplier: 0.4, poisonDuration: 0,
+  },
+  [TowerType.FIRE]: {
+    name: 'Fire Tower', color: '#F97316',
+    duration: 15, radius: 5, damagePerSec: 1, slowMultiplier: 1.0, poisonDuration: 0,
+  },
+  [TowerType.POISON]: {
+    name: 'Poison Tower', color: '#22C55E',
+    duration: 15, radius: 7, damagePerSec: 0, slowMultiplier: 1.0, poisonDuration: 8,
+  },
+};
 
 export enum EnemyType {
   BASIC = 'basic',
@@ -171,7 +203,13 @@ export const WEAPONS: Record<WeaponType, WeaponConfig> = {
     name: 'Flamethrower',
     fireRate: 15, damage: 1, bulletCount: 3, bulletSpread: 1.5,
     bulletColor: '#FB923C', bulletSize: 0.2,
-    maxRange: 25, penetration: 1, splashRadius: 2.0, // Short range + ignites nearby
+    maxRange: 25, penetration: 1, splashRadius: 2.0,
+  },
+  [WeaponType.GRENADE]: {
+    name: 'Grenade',
+    fireRate: 1, damage: 5, bulletCount: 1, bulletSpread: 0,
+    bulletColor: '#84CC16', bulletSize: 0.4,
+    maxRange: 60, penetration: 1, splashRadius: 4.0, // Big explosion
   },
 };
 

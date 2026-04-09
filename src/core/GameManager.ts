@@ -1,5 +1,5 @@
 import * as BABYLON from '@babylonjs/core';
-import { Config, GameState, WeaponType } from './Config';
+import { Config, GameState, WeaponType, TowerType, TOWERS } from './Config';
 import { SceneManager } from './SceneManager';
 import { InputHandler } from '@/systems/InputHandler';
 import { UIManager } from '@/ui/UIManager';
@@ -8,6 +8,7 @@ import { BulletManager } from '@/systems/BulletManager';
 import { EnemyManager } from '@/systems/EnemyManager';
 import { CollisionSystem } from '@/systems/CollisionSystem';
 import { FrozenUpgradeManager } from '@/systems/FrozenUpgradeManager';
+import { TowerManager } from '@/systems/TowerManager';
 import { Boss } from '@/entities/Boss';
 import { SoundSystem, SoundType } from '@/systems/SoundSystem';
 import { ParticleSystem } from '@/systems/ParticleSystem';
@@ -40,6 +41,7 @@ export class GameManager {
   private enemyManager!: EnemyManager;
   private collisionSystem!: CollisionSystem;
   private frozenUpgradeManager!: FrozenUpgradeManager;
+  private towerManager!: TowerManager;
   private boss!: Boss;
 
   // Juice systems
@@ -71,6 +73,7 @@ export class GameManager {
     this.enemyManager = new EnemyManager(scene);
     this.collisionSystem = new CollisionSystem();
     this.frozenUpgradeManager = new FrozenUpgradeManager(scene);
+    this.towerManager = new TowerManager(scene);
     this.boss = new Boss(scene);
 
     // Juice
@@ -114,6 +117,7 @@ export class GameManager {
     this.bulletManager.clearAll();
     this.enemyManager.clearAll();
     this.frozenUpgradeManager.clearAll();
+    this.towerManager.clearAll();
     this.boss.deactivate();
     this.cameraEffects.reset();
 
@@ -176,9 +180,12 @@ export class GameManager {
     // 5. Enemies — always update (move + despawn), spawning paused during boss
     this.enemyManager.update(adjustedDt, this.distance);
 
+    // 5b. Tower effects — apply to all active enemies
+    const enemies = this.enemyManager.getActiveEnemies();
+    this.towerManager.update(adjustedDt, enemies);
+
     // 6. Bullet → Enemy collisions
     const bullets = this.bulletManager.getActiveBullets();
-    const enemies = this.enemyManager.getActiveEnemies();
     const { kills, hits } = this.collisionSystem.checkBulletEnemyCollisions(bullets, enemies);
 
     for (const hit of hits) {
@@ -303,12 +310,22 @@ export class GameManager {
               this.player.activateSpeedBoost(10);
               this.floatingText.showPowerUpActivated('FIRE RATE! 10s', pos);
               break;
-            default:
-              this.player.setWeapon(upgrade.reward as WeaponType);
-              this.uiManager.updateWeapon(this.player.getWeaponConfig().name);
-              this.floatingText.showPowerUpActivated(
-                this.player.getWeaponConfig().name.toUpperCase() + '!', pos
-              );
+            default: {
+              // Check if it's a tower type
+              const towerTypes = Object.values(TowerType) as string[];
+              if (towerTypes.includes(upgrade.reward)) {
+                const tType = upgrade.reward as TowerType;
+                this.towerManager.deploy(tType, this.player.getX());
+                this.floatingText.showPowerUpActivated(TOWERS[tType].name.toUpperCase() + '!', pos);
+              } else {
+                // Weapon
+                this.player.setWeapon(upgrade.reward as WeaponType);
+                this.uiManager.updateWeapon(this.player.getWeaponConfig().name);
+                this.floatingText.showPowerUpActivated(
+                  this.player.getWeaponConfig().name.toUpperCase() + '!', pos
+                );
+              }
+            }
           }
 
           this.cameraEffects.zoomIn(0.9);

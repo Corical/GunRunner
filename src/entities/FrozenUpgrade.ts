@@ -1,8 +1,8 @@
 import { Scene, Vector3, MeshBuilder, StandardMaterial, Color3, Mesh } from '@babylonjs/core';
-import { Config, WeaponType } from '@/core/Config';
+import { Config, WeaponType, TowerType } from '@/core/Config';
 import { WeaponModelBuilder } from '@/utils/WeaponModelBuilder';
 
-export type FrozenReward = WeaponType | 'heal' | 'armor' | 'maxhp' | 'frenzy' | 'speed';
+export type FrozenReward = WeaponType | TowerType | 'heal' | 'armor' | 'maxhp' | 'frenzy' | 'speed';
 
 export class FrozenUpgrade {
   public active: boolean = false;
@@ -160,12 +160,15 @@ export class FrozenUpgrade {
   private buildRewardMesh(): void {
     if (this.rewardMesh) this.rewardMesh.dispose();
 
-    const specialRewards: Record<string, { color: string; shape: 'cross' | 'shield' | 'star' | 'arrow' | 'diamond' }> = {
+    const specialRewards: Record<string, { color: string; shape: 'cross' | 'shield' | 'star' | 'arrow' | 'diamond' | 'tower' }> = {
       heal:   { color: '#22C55E', shape: 'cross' },
       armor:  { color: '#60A5FA', shape: 'shield' },
       maxhp:  { color: '#F472B6', shape: 'diamond' },
       frenzy: { color: '#EF4444', shape: 'star' },
       speed:  { color: '#FBBF24', shape: 'arrow' },
+      [TowerType.FREEZE]: { color: '#67E8F9', shape: 'tower' },
+      [TowerType.FIRE]:   { color: '#F97316', shape: 'tower' },
+      [TowerType.POISON]: { color: '#22C55E', shape: 'tower' },
     };
 
     const special = specialRewards[this.reward as string];
@@ -189,6 +192,13 @@ export class FrozenUpgrade {
         this.rewardMesh = Mesh.MergeMeshes([t, b], true, false) || t;
       } else if (special.shape === 'star') {
         this.rewardMesh = MeshBuilder.CreatePolyhedron('rs', { type: 1, size: 0.5 }, this.scene);
+      } else if (special.shape === 'tower') {
+        // Tower icon — cylinder base + top shape
+        const base = MeshBuilder.CreateCylinder('rtb', { diameter: 0.6, height: 0.4, tessellation: 6 }, this.scene);
+        base.position.y = -0.2; base.material = mat;
+        const top = MeshBuilder.CreatePolyhedron('rtt', { type: 1, size: 0.3 }, this.scene);
+        top.position.y = 0.3; top.material = mat;
+        this.rewardMesh = Mesh.MergeMeshes([base, top], true, false) || base;
       } else {
         // Arrow for speed
         const shaft = MeshBuilder.CreateBox('ra', { width: 0.2, height: 0.8, depth: 0.2 }, this.scene);

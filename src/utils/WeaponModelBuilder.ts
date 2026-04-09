@@ -12,6 +12,7 @@ export class WeaponModelBuilder {
       case WeaponType.MINIGUN: return this.buildMinigun(scene);
       case WeaponType.RAILGUN: return this.buildRailgun(scene);
       case WeaponType.FLAMETHROWER: return this.buildFlamethrower(scene);
+      case WeaponType.GRENADE: return this.buildGrenade(scene);
     }
   }
 
@@ -161,6 +162,20 @@ export class WeaponModelBuilder {
     const grip = MeshBuilder.CreateBox('fg', { width: 0.06, height: 0.12, depth: 0.05 }, scene);
     grip.position.set(0, -0.1, 0.05); grip.material = mat;
     return this.merge(scene, [nozzle, body, tank, grip], mat, 'flamethrower');
+  }
+
+  private static buildGrenade(scene: Scene): Mesh {
+    const mat = this.mat(scene, '#4A5E3A', '#84CC16');
+    // Short wide tube with drum magazine
+    const tube = MeshBuilder.CreateCylinder('gt', { diameter: 0.18, height: 0.4, tessellation: 8 }, scene);
+    tube.rotation.x = Math.PI / 2; tube.position.z = 0.2; tube.material = mat;
+    const drum = MeshBuilder.CreateCylinder('gd', { diameter: 0.22, height: 0.12, tessellation: 8 }, scene);
+    drum.position.set(0, -0.06, 0.05); drum.material = mat;
+    const stock = MeshBuilder.CreateBox('gs', { width: 0.1, height: 0.08, depth: 0.2 }, scene);
+    stock.position.z = -0.1; stock.material = mat;
+    const grip = MeshBuilder.CreateBox('gg', { width: 0.06, height: 0.12, depth: 0.05 }, scene);
+    grip.position.set(0, -0.1, -0.02); grip.material = mat;
+    return this.merge(scene, [tube, drum, stock, grip], mat, 'grenade');
   }
 
   private static mat(scene: Scene, diffuse: string, emissive: string): StandardMaterial {

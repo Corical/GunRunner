@@ -20,9 +20,14 @@ export class Enemy {
   private mat: StandardMaterial;
   private flashTimer: number = 0;
   private laneSwitchTimer: number = 0;
-
-  // Cache meshes by type to avoid create/dispose every activation
   private cachedType: EnemyType | null = null;
+
+  // Status effects from towers
+  public slowMultiplier: number = 1.0;
+  public poisonTimer: number = 0;
+  private poisonTickTimer: number = 0;
+  public isBurning: boolean = false;
+  private burnTickTimer: number = 0;
 
   constructor(scene: Scene) {
     this.scene = scene;
@@ -65,6 +70,28 @@ export class Enemy {
     if (this.maxHp > 1) this.createHPBar();
 
     this.laneSwitchTimer = 2 + Math.random() * 3;
+
+    // Reset status effects
+    this.slowMultiplier = 1.0;
+    this.poisonTimer = 0;
+    this.poisonTickTimer = 0;
+    this.isBurning = false;
+    this.burnTickTimer = 0;
+  }
+
+  /** Apply slow effect (from freeze tower) */
+  public applySlow(mult: number): void {
+    this.slowMultiplier = Math.min(this.slowMultiplier, mult);
+  }
+
+  /** Apply poison (lingers after leaving tower range) */
+  public applyPoison(duration: number): void {
+    this.poisonTimer = Math.max(this.poisonTimer, duration);
+  }
+
+  /** Apply burn (damage while in fire tower range) */
+  public applyBurn(burning: boolean): void {
+    this.isBurning = burning;
   }
 
   private buildMesh(): void {
@@ -265,8 +292,36 @@ export class Enemy {
   public update(dt: number): void {
     if (!this.active) return;
 
-    this.position.z -= Config.ENEMY_SPEED * this.config.speed * dt;
+    // Apply slow from towers (reset each frame — tower manager re-applies if in range)
+    const effectiveSpeed = Config.ENEMY_SPEED * this.config.speed * this.slowMultiplier;
+    this.slowMultiplier = 1.0; // Reset — tower will re-apply next frame if still in range
+
+    this.position.z -= effectiveSpeed * dt;
     this.mesh.position.copyFrom(this.position);
+
+    // Burn damage (from fire tower — 1 dmg/sec)
+    if (this.isBurning) {
+      this.burnTickTimer += dt;
+      if (this.burnTickTimer >= 1.0) {
+        this.burnTickTimer = 0;
+        this.takeDamage(1);
+      }
+      this.isBurning = false; // Reset — tower re-applies if still in range
+    }
+
+    // Poison damage (lingers after leaving tower)
+    if (this.poisonTimer > 0) {
+      this.poisonTimer -= dt;
+      this.poisonTickTimer += dt;
+      if (this.poisonTickTimer >= 2.0) {
+        this.poisonTickTimer = 0;
+        this.takeDamage(1);
+      }
+      // Tint green while poisoned
+      if (this.flashTimer <= 0) {
+        this.mat.emissiveColor = new Color3(0.1, 0.5, 0.1);
+      }
+    }
 
     // Flankers weave laterally toward a random target X
     if (this.config.switchesLanes) {
