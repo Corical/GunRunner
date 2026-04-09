@@ -207,9 +207,9 @@ export const WEAPONS: Record<WeaponType, WeaponConfig> = {
   },
   [WeaponType.GRENADE]: {
     name: 'Grenade',
-    fireRate: 1, damage: 5, bulletCount: 1, bulletSpread: 0,
+    fireRate: 1.2, damage: 5, bulletCount: 3, bulletSpread: 3.0,
     bulletColor: '#84CC16', bulletSize: 0.4,
-    maxRange: 60, penetration: 1, splashRadius: 4.0, // Big explosion
+    maxRange: 60, penetration: 1, splashRadius: 4.0,
   },
 };
 
