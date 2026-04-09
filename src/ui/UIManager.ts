@@ -42,6 +42,19 @@ export class UIManager {
     this.el('start-button').addEventListener('click', () => this.startCb?.());
     this.el('restart-button').addEventListener('click', () => this.restartCb?.());
 
+    // Enter/Space to start or restart
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        if (!this.startScreen.classList.contains('hidden')) {
+          this.startCb?.();
+          e.preventDefault();
+        } else if (!this.gameOverScreen.classList.contains('hidden')) {
+          this.restartCb?.();
+          e.preventDefault();
+        }
+      }
+    });
+
     // Speed slider
     const speedSlider = this.el('speed-slider') as HTMLInputElement;
     const speedValue = this.el('speed-value');

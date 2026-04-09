@@ -65,22 +65,40 @@ export class EnemyManager {
     const r = Math.random();
     const d = this.distance;
 
-    // Early game: mostly basic
-    if (d < 150) return EnemyType.BASIC;
-
-    // Mid game: introduce fast + armored
-    if (d < 400) {
-      if (r < 0.55) return EnemyType.BASIC;
-      if (r < 0.75) return EnemyType.FAST;
-      if (r < 0.90) return EnemyType.ARMORED;
-      return EnemyType.SHIELDED;
+    // Early game (0-150m): mostly basic, a few fast
+    if (d < 150) {
+      return r < 0.85 ? EnemyType.BASIC : EnemyType.FAST;
     }
 
-    // Late game: full mix
-    if (r < 0.35) return EnemyType.BASIC;
-    if (r < 0.55) return EnemyType.FAST;
-    if (r < 0.75) return EnemyType.ARMORED;
-    return EnemyType.SHIELDED;
+    // Mid game (150-400m): introduce armored, shielded, bomber
+    if (d < 400) {
+      if (r < 0.40) return EnemyType.BASIC;
+      if (r < 0.55) return EnemyType.FAST;
+      if (r < 0.70) return EnemyType.ARMORED;
+      if (r < 0.80) return EnemyType.SHIELDED;
+      if (r < 0.90) return EnemyType.BOMBER;
+      return EnemyType.HEALER;
+    }
+
+    // Late game (400-800m): full mix, more heavies
+    if (d < 800) {
+      if (r < 0.25) return EnemyType.BASIC;
+      if (r < 0.40) return EnemyType.FAST;
+      if (r < 0.55) return EnemyType.ARMORED;
+      if (r < 0.65) return EnemyType.SHIELDED;
+      if (r < 0.75) return EnemyType.BOMBER;
+      if (r < 0.85) return EnemyType.HEALER;
+      return EnemyType.SPLITTER;
+    }
+
+    // Endgame (800m+): everything, weighted toward dangerous types
+    if (r < 0.15) return EnemyType.BASIC;
+    if (r < 0.25) return EnemyType.FAST;
+    if (r < 0.40) return EnemyType.ARMORED;
+    if (r < 0.50) return EnemyType.SHIELDED;
+    if (r < 0.65) return EnemyType.BOMBER;
+    if (r < 0.80) return EnemyType.HEALER;
+    return EnemyType.SPLITTER;
   }
 
   public getActiveEnemies(): Enemy[] {

@@ -9,6 +9,9 @@ export class WeaponModelBuilder {
       case WeaponType.SHOTGUN: return this.buildShotgun(scene);
       case WeaponType.LASER: return this.buildLaser(scene);
       case WeaponType.ROCKET: return this.buildRocket(scene);
+      case WeaponType.MINIGUN: return this.buildMinigun(scene);
+      case WeaponType.RAILGUN: return this.buildRailgun(scene);
+      case WeaponType.FLAMETHROWER: return this.buildFlamethrower(scene);
     }
   }
 
@@ -104,6 +107,60 @@ export class WeaponModelBuilder {
     grip.position.set(0, -0.12, 0); grip.material = mat;
 
     return this.merge(scene, [tube, exhaust, sight, grip], mat, 'rocket');
+  }
+
+  private static buildMinigun(scene: Scene): Mesh {
+    const mat = this.mat(scene, '#555555', '#AAA033');
+    // Multi-barrel rotating cluster
+    const barrels: Mesh[] = [];
+    for (let i = 0; i < 4; i++) {
+      const b = MeshBuilder.CreateCylinder(`mb${i}`, { diameter: 0.05, height: 0.55, tessellation: 6 }, scene);
+      b.rotation.x = Math.PI / 2;
+      const angle = (i / 4) * Math.PI * 2;
+      b.position.set(Math.cos(angle) * 0.06, Math.sin(angle) * 0.06, 0.28);
+      b.material = mat;
+      barrels.push(b);
+    }
+    const body = MeshBuilder.CreateBox('mgb', { width: 0.14, height: 0.12, depth: 0.25 }, scene);
+    body.material = mat;
+    const grip = MeshBuilder.CreateBox('mgg', { width: 0.06, height: 0.14, depth: 0.05 }, scene);
+    grip.position.set(0, -0.1, -0.05); grip.material = mat;
+    return this.merge(scene, [...barrels, body, grip], mat, 'minigun');
+  }
+
+  private static buildRailgun(scene: Scene): Mesh {
+    const mat = this.mat(scene, '#2D1B69', '#A855F7');
+    // Long sleek barrel with coils
+    const barrel = MeshBuilder.CreateCylinder('rb', { diameter: 0.06, height: 0.7, tessellation: 6 }, scene);
+    barrel.rotation.x = Math.PI / 2; barrel.position.z = 0.35; barrel.material = mat;
+    const body = MeshBuilder.CreateBox('rbd', { width: 0.12, height: 0.1, depth: 0.3 }, scene);
+    body.material = mat;
+    // Coil rings along barrel
+    const coils: Mesh[] = [];
+    for (let i = 0; i < 3; i++) {
+      const coil = MeshBuilder.CreateTorus(`rc${i}`, { diameter: 0.16, thickness: 0.025, tessellation: 8 }, scene);
+      coil.rotation.y = Math.PI / 2;
+      coil.position.z = 0.15 + i * 0.18;
+      coil.material = mat;
+      coils.push(coil);
+    }
+    const tip = MeshBuilder.CreateSphere('rt', { diameter: 0.1, segments: 6 }, scene);
+    tip.position.z = 0.7; tip.material = mat;
+    return this.merge(scene, [barrel, body, ...coils, tip], mat, 'railgun');
+  }
+
+  private static buildFlamethrower(scene: Scene): Mesh {
+    const mat = this.mat(scene, '#7C2D12', '#FB923C');
+    // Wide nozzle + fuel tank
+    const nozzle = MeshBuilder.CreateCylinder('fn', { diameterTop: 0.2, diameterBottom: 0.08, height: 0.4, tessellation: 8 }, scene);
+    nozzle.rotation.x = Math.PI / 2; nozzle.position.z = 0.35; nozzle.material = mat;
+    const body = MeshBuilder.CreateBox('fb', { width: 0.12, height: 0.1, depth: 0.3 }, scene);
+    body.material = mat;
+    const tank = MeshBuilder.CreateCylinder('ft', { diameter: 0.14, height: 0.25, tessellation: 6 }, scene);
+    tank.position.set(0, -0.08, -0.1); tank.material = mat;
+    const grip = MeshBuilder.CreateBox('fg', { width: 0.06, height: 0.12, depth: 0.05 }, scene);
+    grip.position.set(0, -0.1, 0.05); grip.material = mat;
+    return this.merge(scene, [nozzle, body, tank, grip], mat, 'flamethrower');
   }
 
   private static mat(scene: Scene, diffuse: string, emissive: string): StandardMaterial {

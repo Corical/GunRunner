@@ -75,6 +75,9 @@ export class Enemy {
         case EnemyType.ARMORED: this.buildArmored(); break;
         case EnemyType.FAST: this.buildFast(); break;
         case EnemyType.SHIELDED: this.buildShielded(); break;
+        case EnemyType.HEALER: this.buildHealer(); break;
+        case EnemyType.SPLITTER: this.buildSplitter(); break;
+        case EnemyType.BOMBER: this.buildBomber(); break;
         default:
           console.warn('Unknown enemy type:', this.type);
           this.mesh = MeshBuilder.CreateBox('fallback', { size: 1 }, this.scene);
@@ -187,6 +190,65 @@ export class Enemy {
     this.shieldMesh.material = shieldMat;
     this.shieldMesh.isPickable = false;
     this.shieldMesh.parent = this.mesh;
+  }
+
+  private buildHealer(): void {
+    // Green medic — cross on top, rounded body
+    const body = MeshBuilder.CreateSphere('eb', { diameter: 0.9, segments: 8 }, this.scene);
+    body.position.y = 0.5; body.material = this.mat;
+
+    // Cross on top
+    const crossH = MeshBuilder.CreateBox('ech', { width: 0.7, height: 0.15, depth: 0.15 }, this.scene);
+    crossH.position.y = 1.2; crossH.material = this.mat;
+
+    const crossV = MeshBuilder.CreateBox('ecv', { width: 0.15, height: 0.7, depth: 0.15 }, this.scene);
+    crossV.position.y = 1.2; crossV.material = this.mat;
+
+    // Aura ring
+    const ring = MeshBuilder.CreateTorus('ering', { diameter: 1.2, thickness: 0.08, tessellation: 12 }, this.scene);
+    ring.position.y = 0.5; ring.material = this.mat;
+
+    this.mergeParts([body, crossH, crossV, ring], 'enemy_healer');
+  }
+
+  private buildSplitter(): void {
+    // Pink blob that splits — sphere body with smaller spheres budding off
+    const core = MeshBuilder.CreateSphere('ec', { diameter: 1.0, segments: 8 }, this.scene);
+    core.position.y = 0.5; core.material = this.mat;
+
+    const bud1 = MeshBuilder.CreateSphere('eb1', { diameter: 0.5, segments: 6 }, this.scene);
+    bud1.position.set(0.5, 0.7, 0); bud1.material = this.mat;
+
+    const bud2 = MeshBuilder.CreateSphere('eb2', { diameter: 0.5, segments: 6 }, this.scene);
+    bud2.position.set(-0.4, 0.3, 0.3); bud2.material = this.mat;
+
+    const bud3 = MeshBuilder.CreateSphere('eb3', { diameter: 0.4, segments: 6 }, this.scene);
+    bud3.position.set(0.1, 0.9, -0.3); bud3.material = this.mat;
+
+    this.mergeParts([core, bud1, bud2, bud3], 'enemy_splitter');
+  }
+
+  private buildBomber(): void {
+    // Brown bomb with fuse — round body, fuse sticking up
+    const body = MeshBuilder.CreateSphere('eb', { diameter: 0.9, segments: 8 }, this.scene);
+    body.position.y = 0.45; body.material = this.mat;
+
+    // Fuse
+    const fuse = MeshBuilder.CreateCylinder('ef', { diameter: 0.08, height: 0.5, tessellation: 4 }, this.scene);
+    fuse.position.set(0, 1.1, 0); fuse.rotation.z = 0.3; fuse.material = this.mat;
+
+    // Spark at tip (small bright sphere)
+    const spark = MeshBuilder.CreateSphere('es', { diameter: 0.18, segments: 4 }, this.scene);
+    spark.position.set(0.08, 1.35, 0); spark.material = this.mat;
+
+    // Wings (bomber swoops in)
+    const lWing = MeshBuilder.CreateBox('elw', { width: 0.5, height: 0.05, depth: 0.3 }, this.scene);
+    lWing.position.set(-0.5, 0.5, 0); lWing.rotation.z = -0.3; lWing.material = this.mat;
+
+    const rWing = MeshBuilder.CreateBox('erw', { width: 0.5, height: 0.05, depth: 0.3 }, this.scene);
+    rWing.position.set(0.5, 0.5, 0); rWing.rotation.z = 0.3; rWing.material = this.mat;
+
+    this.mergeParts([body, fuse, spark, lWing, rWing], 'enemy_bomber');
   }
 
   public deactivate(): void {

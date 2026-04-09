@@ -57,6 +57,9 @@ export const Config = {
     ENEMY_ARMORED: '#7C3AED',
     ENEMY_FAST: '#F97316',
     ENEMY_SHIELDED: '#6B7280',
+    ENEMY_HEALER: '#22C55E',
+    ENEMY_SPLITTER: '#EC4899',
+    ENEMY_BOMBER: '#854D0E',
     BOSS: '#DC2626',
     FROZEN_ICE: '#67E8F9',
     ROAD: '#555555',
@@ -93,6 +96,9 @@ export enum WeaponType {
   SHOTGUN = 'shotgun',
   LASER = 'laser',
   ROCKET = 'rocket',
+  MINIGUN = 'minigun',
+  RAILGUN = 'railgun',
+  FLAMETHROWER = 'flamethrower',
 }
 
 export enum EnemyType {
@@ -100,6 +106,9 @@ export enum EnemyType {
   ARMORED = 'armored',
   FAST = 'fast',
   SHIELDED = 'shielded',
+  HEALER = 'healer',
+  SPLITTER = 'splitter',
+  BOMBER = 'bomber',
 }
 
 export interface WeaponConfig {
@@ -158,6 +167,33 @@ export const WEAPONS: Record<WeaponType, WeaponConfig> = {
     bulletColor: '#EF4444',
     bulletSize: 0.35,
   },
+  [WeaponType.MINIGUN]: {
+    name: 'Minigun',
+    fireRate: 20,
+    damage: 1,
+    bulletCount: 1,
+    bulletSpread: 0.5,
+    bulletColor: '#FDE68A',
+    bulletSize: 0.1,
+  },
+  [WeaponType.RAILGUN]: {
+    name: 'Railgun',
+    fireRate: 0.8,
+    damage: 15,
+    bulletCount: 1,
+    bulletSpread: 0,
+    bulletColor: '#C084FC',
+    bulletSize: 0.25,
+  },
+  [WeaponType.FLAMETHROWER]: {
+    name: 'Flamethrower',
+    fireRate: 15,
+    damage: 1,
+    bulletCount: 3,
+    bulletSpread: 1.5,
+    bulletColor: '#FB923C',
+    bulletSize: 0.2,
+  },
 };
 
 export interface EnemyConfig {
@@ -206,5 +242,32 @@ export const ENEMIES: Record<EnemyType, EnemyConfig> = {
     size: 1.2,
     score: 25,
     switchesLanes: false,
+  },
+  [EnemyType.HEALER]: {
+    name: 'Healer',
+    hp: 2,
+    speed: 0.6,
+    color: Config.COLORS.ENEMY_HEALER,
+    size: 1.0,
+    score: 35,
+    switchesLanes: false,
+  },
+  [EnemyType.SPLITTER]: {
+    name: 'Splitter',
+    hp: 2,
+    speed: 1.0,
+    color: Config.COLORS.ENEMY_SPLITTER,
+    size: 1.1,
+    score: 40,
+    switchesLanes: false,
+  },
+  [EnemyType.BOMBER]: {
+    name: 'Bomber',
+    hp: 1,
+    speed: 1.3,
+    color: Config.COLORS.ENEMY_BOMBER,
+    size: 0.9,
+    score: 30,
+    switchesLanes: true,
   },
 };
