@@ -13,29 +13,23 @@ export enum SoundType {
 }
 
 /**
- * Manages all sound effects using procedural Web Audio synthesis.
- * No external audio files required.
+ * Sound system using raw Web Audio API — bypasses BabylonJS audio entirely.
+ * Each sound is synthesized on-the-fly when played.
  */
 export class SoundSystem {
-  private scene: BABYLON.Scene;
-  private sounds: Map<SoundType, BABYLON.Sound> = new Map();
+  private ctx: AudioContext | null = null;
   private isMuted: boolean = false;
-  private sfxVolume: number = 0.5;
-  private initialized: boolean = false;
+  private volume: number = 0.3;
 
-  constructor(scene: BABYLON.Scene) {
-    this.scene = scene;
-    // Defer sound creation — audio context won't exist until user interacts
-    this.tryInit();
-    // Also try on first user gesture
+  constructor(_scene: BABYLON.Scene) {
+    // Try to create AudioContext immediately
+    this.tryCreateContext();
+
+    // Also try on user gesture (browsers block audio before interaction)
     const unlock = () => {
-      if (!this.initialized) {
-        // Unlock BabylonJS audio engine
-        if (BABYLON.Engine.audioEngine && !BABYLON.Engine.audioEngine.unlocked) {
-          BABYLON.Engine.audioEngine.unlock();
-        }
-        // Wait a tick for context to be ready, then init
-        setTimeout(() => this.tryInit(), 100);
+      this.tryCreateContext();
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume();
       }
       window.removeEventListener('click', unlock);
       window.removeEventListener('keydown', unlock);
@@ -46,289 +40,104 @@ export class SoundSystem {
     window.addEventListener('touchstart', unlock);
   }
 
-  private tryInit(): void {
-    if (this.initialized) return;
-    const ctx = BABYLON.Engine.audioEngine?.audioContext;
-    if (!ctx) return;
-    // Resume suspended context
-    if (ctx.state === 'suspended') {
-      ctx.resume();
-    }
-    this.initializeSounds();
-    this.initialized = true;
-    console.log('SoundSystem initialized');
-  }
-
-  private initializeSounds(): void {
-    this.createShootSound();
-    this.createEnemyHitSound();
-    this.createEnemyKillSound();
-    this.createPlayerHitSound();
-    this.createIceCrackSound();
-    this.createIceShatterSound();
-    this.createWeaponPickupSound();
-    this.createBossIntroSound();
-    this.createGameOverSound();
-  }
-
-  /** SHOOT: 0.05s, 1200 Hz sine, fast decay — quick click/pop */
-  private createShootSound(): void {
-    const sound = this.createOscillatorSound(
-      [1200],
-      [0.05],
-      0.4,
-      'sine'
-    );
-    if (sound) this.sounds.set(SoundType.SHOOT, sound);
-  }
-
-  /** ENEMY_HIT: 0.1s noise burst — thud */
-  private createEnemyHitSound(): void {
-    const sound = this.createNoiseSound(0.1, 0.35, 8);
-    if (sound) this.sounds.set(SoundType.ENEMY_HIT, sound);
-  }
-
-  /** ENEMY_KILL: 0.15s ascending 440→880 Hz — satisfying crunch */
-  private createEnemyKillSound(): void {
-    const sound = this.createOscillatorSound(
-      [440, 660, 880],
-      [0.05, 0.05, 0.05],
-      0.45,
-      'square'
-    );
-    if (sound) this.sounds.set(SoundType.ENEMY_KILL, sound);
-  }
-
-  /** PLAYER_HIT: 0.2s, 200 Hz buzz — warning */
-  private createPlayerHitSound(): void {
-    const sound = this.createOscillatorSound(
-      [200, 180],
-      [0.1, 0.1],
-      0.5,
-      'sawtooth'
-    );
-    if (sound) this.sounds.set(SoundType.PLAYER_HIT, sound);
-  }
-
-  /** ICE_CRACK: 0.1s, 2000 Hz + noise — sharp crack */
-  private createIceCrackSound(): void {
-    const sound = this.createMixedSound(2000, 0.1, 0.35, 'sine', 6);
-    if (sound) this.sounds.set(SoundType.ICE_CRACK, sound);
-  }
-
-  /** ICE_SHATTER: 0.3s, descending 3000→1000 Hz with harmonics — sparkly break */
-  private createIceShatterSound(): void {
-    const sound = this.createOscillatorSound(
-      [3000, 2400, 1800, 1200, 800],
-      [0.05, 0.05, 0.06, 0.07, 0.07],
-      0.4,
-      'sine'
-    );
-    if (sound) this.sounds.set(SoundType.ICE_SHATTER, sound);
-  }
-
-  /** WEAPON_PICKUP: 0.4s, C5 E5 G5 C6 ascending arpeggio — triumphant */
-  private createWeaponPickupSound(): void {
-    const sound = this.createOscillatorSound(
-      [523.25, 659.25, 783.99, 1046.5], // C5, E5, G5, C6
-      [0.08, 0.08, 0.1, 0.14],
-      0.45,
-      'sine'
-    );
-    if (sound) this.sounds.set(SoundType.WEAPON_PICKUP, sound);
-  }
-
-  /** BOSS_INTRO: 0.8s, 80 Hz + 160 Hz low rumble — ominous */
-  private createBossIntroSound(): void {
-    const sound = this.createOscillatorSound(
-      [80, 80, 160, 160, 80],
-      [0.15, 0.15, 0.15, 0.15, 0.2],
-      0.55,
-      'triangle'
-    );
-    if (sound) this.sounds.set(SoundType.BOSS_INTRO, sound);
-  }
-
-  /** GAME_OVER: 0.6s, A4 G4 F4 D4 descending — sad */
-  private createGameOverSound(): void {
-    const sound = this.createOscillatorSound(
-      [440, 392, 349.23, 293.66],
-      [0.15, 0.15, 0.15, 0.15],
-      0.5,
-      'triangle'
-    );
-    if (sound) this.sounds.set(SoundType.GAME_OVER, sound);
-  }
-
-  /**
-   * Synthesize a multi-note oscillator sound into a Babylon Sound.
-   */
-  private createOscillatorSound(
-    frequencies: number[],
-    durations: number[],
-    volume: number,
-    waveType: OscillatorType = 'sine'
-  ): BABYLON.Sound | null {
+  private tryCreateContext(): void {
+    if (this.ctx) return;
     try {
-      const audioContext = BABYLON.Engine.audioEngine?.audioContext;
-      if (!audioContext) return null;
-
-      const totalDuration = durations.reduce((a, b) => a + b, 0);
-      const sampleRate = audioContext.sampleRate;
-      const buffer = audioContext.createBuffer(1, Math.ceil(totalDuration * sampleRate), sampleRate);
-      const channel = buffer.getChannelData(0);
-
-      let offset = 0;
-      frequencies.forEach((freq, index) => {
-        const duration = durations[index];
-        const samples = Math.ceil(duration * sampleRate);
-
-        for (let i = 0; i < samples; i++) {
-          const t = i / sampleRate;
-          const envelope = Math.exp(-5 * t / duration);
-          channel[offset + i] = this.generateWaveSample(waveType, freq, t) * envelope * volume;
-        }
-        offset += samples;
-      });
-
-      return new BABYLON.Sound(
-        `sound_${SoundType}_${Date.now()}`,
-        buffer,
-        this.scene,
-        null,
-        { loop: false, autoplay: false, volume: this.sfxVolume }
-      );
-    } catch (error) {
-      console.warn('Could not create oscillator sound:', error);
-      return null;
+      this.ctx = new AudioContext();
+    } catch {
+      // AudioContext not available
     }
   }
 
-  /**
-   * Synthesize a pure noise burst (for hit thuds).
-   * decayRate controls how quickly the burst dies (higher = faster).
-   */
-  private createNoiseSound(
-    duration: number,
-    volume: number,
-    decayRate: number = 10
-  ): BABYLON.Sound | null {
-    try {
-      const audioContext = BABYLON.Engine.audioEngine?.audioContext;
-      if (!audioContext) return null;
-
-      const sampleRate = audioContext.sampleRate;
-      const buffer = audioContext.createBuffer(1, Math.ceil(duration * sampleRate), sampleRate);
-      const channel = buffer.getChannelData(0);
-
-      for (let i = 0; i < buffer.length; i++) {
-        const t = i / sampleRate;
-        const envelope = Math.exp(-decayRate * t / duration);
-        channel[i] = (Math.random() * 2 - 1) * envelope * volume;
-      }
-
-      return new BABYLON.Sound(
-        `noise_${Date.now()}`,
-        buffer,
-        this.scene,
-        null,
-        { loop: false, autoplay: false, volume: this.sfxVolume }
-      );
-    } catch (error) {
-      console.warn('Could not create noise sound:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Synthesize a blend of a tone and noise — for cracking sounds.
-   */
-  private createMixedSound(
-    frequency: number,
-    duration: number,
-    volume: number,
-    waveType: OscillatorType,
-    noiseDecayRate: number
-  ): BABYLON.Sound | null {
-    try {
-      const audioContext = BABYLON.Engine.audioEngine?.audioContext;
-      if (!audioContext) return null;
-
-      const sampleRate = audioContext.sampleRate;
-      const samples = Math.ceil(duration * sampleRate);
-      const buffer = audioContext.createBuffer(1, samples, sampleRate);
-      const channel = buffer.getChannelData(0);
-
-      for (let i = 0; i < samples; i++) {
-        const t = i / sampleRate;
-        const envelope = Math.exp(-noiseDecayRate * t / duration);
-        const tone = this.generateWaveSample(waveType, frequency, t);
-        const noise = Math.random() * 2 - 1;
-        channel[i] = (tone * 0.5 + noise * 0.5) * envelope * volume;
-      }
-
-      return new BABYLON.Sound(
-        `mixed_${Date.now()}`,
-        buffer,
-        this.scene,
-        null,
-        { loop: false, autoplay: false, volume: this.sfxVolume }
-      );
-    } catch (error) {
-      console.warn('Could not create mixed sound:', error);
-      return null;
-    }
-  }
-
-  private generateWaveSample(waveType: OscillatorType, freq: number, t: number): number {
-    switch (waveType) {
-      case 'sine':
-        return Math.sin(2 * Math.PI * freq * t);
-      case 'square':
-        return Math.sign(Math.sin(2 * Math.PI * freq * t));
-      case 'triangle':
-        return 2 * Math.abs(2 * ((freq * t) % 1) - 1) - 1;
-      case 'sawtooth':
-        return 2 * ((freq * t) % 1) - 1;
-      default:
-        return Math.sin(2 * Math.PI * freq * t);
-    }
-  }
-
-  /**
-   * Play a specific sound effect. Stops current playback to allow rapid re-triggering.
-   */
   public playSound(type: SoundType): void {
-    if (this.isMuted) return;
+    if (this.isMuted || !this.ctx) return;
 
-    const sound = this.sounds.get(type);
-    if (sound && sound.isReady()) {
-      if (sound.isPlaying) sound.stop();
-      sound.play();
+    // Resume if suspended (browser policy)
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+
+    switch (type) {
+      case SoundType.SHOOT:       this.playTone(1200, 0.04, 0.25, 'sine'); break;
+      case SoundType.ENEMY_HIT:   this.playNoise(0.06, 0.2); break;
+      case SoundType.ENEMY_KILL:  this.playChord([440, 660, 880], 0.04, 0.3, 'square'); break;
+      case SoundType.PLAYER_HIT:  this.playTone(180, 0.15, 0.4, 'sawtooth'); break;
+      case SoundType.ICE_CRACK:   this.playMixed(2000, 0.08, 0.25); break;
+      case SoundType.ICE_SHATTER: this.playChord([3000, 2000, 1000], 0.1, 0.3, 'sine'); break;
+      case SoundType.WEAPON_PICKUP: this.playChord([523, 659, 784, 1047], 0.08, 0.35, 'sine'); break;
+      case SoundType.BOSS_INTRO:  this.playChord([80, 160], 0.4, 0.5, 'triangle'); break;
+      case SoundType.GAME_OVER:   this.playChord([440, 392, 349, 294], 0.15, 0.4, 'triangle'); break;
     }
   }
 
-  public toggleMute(): void {
-    this.isMuted = !this.isMuted;
+  /** Play a single tone with exponential decay */
+  private playTone(freq: number, duration: number, vol: number, type: OscillatorType): void {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
 
-    if (this.isMuted) {
-      this.sounds.forEach(sound => {
-        if (sound.isPlaying) sound.stop();
-      });
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol * this.volume, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + duration + 0.01);
+  }
+
+  /** Play a sequence of tones (chord/arpeggio) */
+  private playChord(freqs: number[], noteDuration: number, vol: number, type: OscillatorType): void {
+    if (!this.ctx) return;
+    freqs.forEach((freq, i) => {
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+
+      osc.type = type;
+      osc.frequency.value = freq;
+
+      const startTime = this.ctx!.currentTime + i * noteDuration;
+      gain.gain.setValueAtTime(vol * this.volume, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + noteDuration * 1.5);
+
+      osc.connect(gain);
+      gain.connect(this.ctx!.destination);
+      osc.start(startTime);
+      osc.stop(startTime + noteDuration * 2);
+    });
+  }
+
+  /** Play a noise burst (for impacts) */
+  private playNoise(duration: number, vol: number): void {
+    if (!this.ctx) return;
+    const bufferSize = Math.ceil(this.ctx.sampleRate * duration);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+
+    for (let i = 0; i < bufferSize; i++) {
+      const t = i / this.ctx.sampleRate;
+      const envelope = Math.exp(-15 * t / duration);
+      data[i] = (Math.random() * 2 - 1) * envelope;
     }
+
+    const source = this.ctx.createBufferSource();
+    source.buffer = buffer;
+    const gain = this.ctx.createGain();
+    gain.gain.value = vol * this.volume;
+    source.connect(gain);
+    gain.connect(this.ctx.destination);
+    source.start();
   }
 
-  public setSFXVolume(volume: number): void {
-    this.sfxVolume = Math.max(0, Math.min(1, volume));
-    this.sounds.forEach(sound => sound.setVolume(this.sfxVolume));
+  /** Play a mix of tone + noise (for cracking sounds) */
+  private playMixed(freq: number, duration: number, vol: number): void {
+    this.playTone(freq, duration, vol * 0.5, 'sine');
+    this.playNoise(duration, vol * 0.5);
   }
 
-  public isSoundMuted(): boolean {
-    return this.isMuted;
-  }
-
-  public destroy(): void {
-    this.sounds.forEach(sound => sound.dispose());
-    this.sounds.clear();
-  }
+  public toggleMute(): void { this.isMuted = !this.isMuted; }
+  public isSoundMuted(): boolean { return this.isMuted; }
+  public setSFXVolume(v: number): void { this.volume = Math.max(0, Math.min(1, v)); }
+  public destroy(): void { if (this.ctx) this.ctx.close(); }
 }
