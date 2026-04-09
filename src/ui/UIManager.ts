@@ -15,8 +15,11 @@ export class UIManager {
   private finalKills!: HTMLElement;
   private loadingEl!: HTMLElement;
 
+  private pauseScreen!: HTMLElement;
   private startCb?: () => void;
   private restartCb?: () => void;
+  private pauseCb?: () => void;
+  private resumeCb?: () => void;
   private speedChangeCb?: (speed: number) => void;
   private spawnRateChangeCb?: (interval: number) => void;
 
@@ -39,17 +42,35 @@ export class UIManager {
 
     this.loadingEl.classList.add('hidden');
 
+    this.pauseScreen = this.el('pause-screen');
+
     this.el('start-button').addEventListener('click', () => this.startCb?.());
     this.el('restart-button').addEventListener('click', () => this.restartCb?.());
+    this.el('resume-button').addEventListener('click', () => this.resumeCb?.());
 
-    // Enter/Space to start or restart
+    // Enter for menus, Space for pause/resume
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
+      if (e.key === 'Enter') {
         if (!this.startScreen.classList.contains('hidden')) {
           this.startCb?.();
           e.preventDefault();
         } else if (!this.gameOverScreen.classList.contains('hidden')) {
           this.restartCb?.();
+          e.preventDefault();
+        }
+      } else if (e.key === ' ') {
+        // Space: start screen → start, pause screen → resume, playing → pause
+        if (!this.startScreen.classList.contains('hidden')) {
+          this.startCb?.();
+          e.preventDefault();
+        } else if (!this.pauseScreen.classList.contains('hidden')) {
+          this.resumeCb?.();
+          e.preventDefault();
+        } else if (!this.gameOverScreen.classList.contains('hidden')) {
+          this.restartCb?.();
+          e.preventDefault();
+        } else {
+          this.pauseCb?.();
           e.preventDefault();
         }
       }
@@ -124,8 +145,13 @@ export class UIManager {
   }
   public hideGameOver(): void { this.gameOverScreen.classList.add('hidden'); }
 
+  public showPauseScreen(): void { this.pauseScreen.classList.remove('hidden'); }
+  public hidePauseScreen(): void { this.pauseScreen.classList.add('hidden'); }
+
   public onStartGame(cb: () => void): void { this.startCb = cb; }
   public onRestartGame(cb: () => void): void { this.restartCb = cb; }
+  public onPause(cb: () => void): void { this.pauseCb = cb; }
+  public onResume(cb: () => void): void { this.resumeCb = cb; }
   public onSpeedChange(cb: (speed: number) => void): void { this.speedChangeCb = cb; }
   public onSpawnRateChange(cb: (interval: number) => void): void { this.spawnRateChangeCb = cb; }
 

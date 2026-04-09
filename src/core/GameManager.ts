@@ -83,6 +83,8 @@ export class GameManager {
 
     this.uiManager.onStartGame(() => this.startGame());
     this.uiManager.onRestartGame(() => this.startGame());
+    this.uiManager.onPause(() => this.pause());
+    this.uiManager.onResume(() => this.resume());
     this.uiManager.onSpeedChange((speed) => { this.speedMultiplier = speed; });
     this.uiManager.onSpawnRateChange((interval) => {
       this.enemyManager.setSpawnInterval(interval);
@@ -382,6 +384,20 @@ export class GameManager {
     this.frozenUpgradeManager.spawnUpgrade();
 
     this.score += 500 * this.bossWave;
+  }
+
+  private pause(): void {
+    if (this.gameState !== GameState.PLAYING) return;
+    this.gameState = GameState.PAUSED;
+    this.uiManager.showPauseScreen();
+  }
+
+  private resume(): void {
+    if (this.gameState !== GameState.PAUSED) return;
+    this.gameState = GameState.PLAYING;
+    this.lastFrameTime = performance.now();
+    this.uiManager.hidePauseScreen();
+    this.gameLoop();
   }
 
   private gameOver(): void {
