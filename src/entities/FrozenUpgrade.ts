@@ -4,18 +4,11 @@ import { WeaponModelBuilder } from '@/utils/WeaponModelBuilder';
 
 export type FrozenReward = WeaponType | 'heal' | 'armor' | 'maxhp' | 'frenzy' | 'speed';
 
-const LANE_X: Record<number, number> = {
-  [-1]: Config.LANES.LEFT,
-  [0]:  Config.LANES.CENTER,
-  [1]:  Config.LANES.RIGHT,
-};
-
 export class FrozenUpgrade {
   public active: boolean = false;
   public thawed: boolean = false;
   public collected: boolean = false;
   public position: Vector3;
-  public lane: number = 0;
   public reward: FrozenReward = WeaponType.SMG;
 
   private iceHp: number = Config.FROZEN_ICE_HP;
@@ -73,18 +66,16 @@ export class FrozenUpgrade {
     this.hpBarFill.setEnabled(false);
   }
 
-  public activate(reward: FrozenReward, laneEnum: number, z: number): void {
+  public activate(reward: FrozenReward, xPos: number, z: number): void {
     this.active = true;
     this.thawed = false;
     this.collected = false;
     this.reward = reward;
-    this.lane = laneEnum;
     this.iceHp = Config.FROZEN_ICE_HP;
     this.maxIceHp = Config.FROZEN_ICE_HP;
     this.floatTime = 0;
 
-    const x = LANE_X[laneEnum] ?? Config.LANES.CENTER;
-    this.position.set(x, 1.0, z);
+    this.position.set(xPos, 1.0, z);
 
     // Build the actual reward model
     this.buildRewardMesh();

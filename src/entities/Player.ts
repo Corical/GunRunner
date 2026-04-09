@@ -1,16 +1,14 @@
 import {
   Scene, Vector3, MeshBuilder, StandardMaterial, Color3, TransformNode, Mesh,
 } from '@babylonjs/core';
-import { Config, Lane, LaneDirection, WeaponType, WEAPONS, WeaponConfig } from '@/core/Config';
+import { Config, WeaponType, WEAPONS, WeaponConfig } from '@/core/Config';
 import { WeaponModelBuilder } from '@/utils/WeaponModelBuilder';
+
+const MOVE_SPEED = 15; // Units per second lateral movement
+const ROAD_HALF = Config.ROAD_WIDTH / 2 - 0.5; // Stay slightly inside road edges
 
 export class Player {
   private position: Vector3;
-  private currentLane: Lane = Lane.CENTER;
-  private targetLane: Lane = Lane.CENTER;
-  private laneProgress: number = 1;
-  private laneStartX: number = 0;
-  private laneTargetX: number = 0;
 
   private hp: number;
   private maxHp: number;
@@ -18,9 +16,9 @@ export class Player {
   private fireTimer: number = 0;
 
   // Buffs
-  private armor: number = 0;            // Absorbs damage before HP
-  private frenzyTimer: number = 0;       // Double damage duration remaining
-  private speedBoostTimer: number = 0;   // Fire rate boost duration remaining
+  private armor: number = 0;
+  private frenzyTimer: number = 0;
+  private speedBoostTimer: number = 0;
 
   private mesh: TransformNode;
   private gunMesh: Mesh | null = null;
@@ -34,9 +32,8 @@ export class Player {
     this.scene = scene;
     this.hp = Config.INITIAL_HP;
     this.maxHp = Config.INITIAL_HP;
-    this.position = new Vector3(Config.LANES.CENTER, Config.PLAYER_HEIGHT, Config.PLAYER_Z_POSITION);
+    this.position = new Vector3(0, Config.PLAYER_HEIGHT, Config.PLAYER_Z_POSITION);
 
-    // Build player mesh — simple humanoid
     this.mesh = new TransformNode('player', scene);
 
     const color = Color3.FromHexString(Config.COLORS.PLAYER);
@@ -44,53 +41,31 @@ export class Player {
     this.bodyMat.diffuseColor = color;
     this.bodyMat.emissiveColor = color.scale(0.2);
 
-    // Body
     const body = MeshBuilder.CreateCylinder('pBody', { diameter: 0.7, height: 1.2, tessellation: 8 }, scene);
     body.position.y = 0.6;
     body.material = this.bodyMat;
     body.parent = this.mesh;
 
-    // Head
     const head = MeshBuilder.CreateSphere('pHead', { diameter: 0.5, segments: 8 }, scene);
     head.position.y = 1.5;
     head.material = this.bodyMat;
     head.parent = this.mesh;
 
-    // Weapon model
     this.equipWeaponModel(WeaponType.PISTOL);
-
     this.mesh.position = this.position;
   }
 
-  public switchLane(direction: LaneDirection): void {
-    if (direction === LaneDirection.NONE || this.laneProgress < 1) return;
-    const newLane = this.currentLane + direction;
-    if (newLane < Lane.LEFT || newLane > Lane.RIGHT) return;
-
-    this.targetLane = newLane as Lane;
-    this.laneProgress = 0;
-    this.laneStartX = this.position.x;
-    this.laneTargetX = this.getLaneX(this.targetLane);
-  }
-
-  private getLaneX(lane: Lane): number {
-    return lane === Lane.LEFT ? Config.LANES.LEFT
-      : lane === Lane.RIGHT ? Config.LANES.RIGHT
-      : Config.LANES.CENTER;
+  /** Move player laterally. direction: -1 (left), 0 (stop), 1 (right) */
+  public move(direction: number, dt: number): void {
+    if (direction === 0) return;
+    this.position.x += direction * MOVE_SPEED * dt;
+    // Clamp to road edges
+    this.position.x = Math.max(-ROAD_HALF, Math.min(ROAD_HALF, this.position.x));
   }
 
   public update(dt: number): void {
-    // Lane transition
-    if (this.laneProgress < 1) {
-      this.laneProgress = Math.min(1, this.laneProgress + dt / Config.PLAYER_LANE_SWITCH_DURATION);
-      const t = 1 - Math.pow(1 - this.laneProgress, 3); // ease-out cubic
-      this.position.x = this.laneStartX + (this.laneTargetX - this.laneStartX) * t;
-      if (this.laneProgress >= 1) this.currentLane = this.targetLane;
-    }
-
     this.mesh.position.copyFrom(this.position);
 
-    // Damage flash decay
     if (this.flashTimer > 0) {
       this.flashTimer -= dt;
       if (this.flashTimer <= 0) {
@@ -98,15 +73,11 @@ export class Player {
       }
     }
 
-    // Fire timer
     this.fireTimer += dt;
-
-    // Buff timers
     if (this.frenzyTimer > 0) this.frenzyTimer -= dt;
     if (this.speedBoostTimer > 0) this.speedBoostTimer -= dt;
   }
 
-  /** Returns true if weapon is ready to fire, and resets the timer */
   public tryFire(): boolean {
     const weapon = this.getWeaponConfig();
     let rate = weapon.fireRate;
@@ -119,13 +90,11 @@ export class Player {
     return false;
   }
 
-  /** Get effective damage multiplier (frenzy = 2x) */
   public getDamageMultiplier(): number {
     return this.frenzyTimer > 0 ? 2 : 1;
   }
 
   public takeDamage(amount: number): void {
-    // Armor absorbs first
     if (this.armor > 0) {
       const absorbed = Math.min(this.armor, amount);
       this.armor -= absorbed;
@@ -138,18 +107,14 @@ export class Player {
     this.bodyMat.emissiveColor = new Color3(1, 0.2, 0.2);
   }
 
-  public heal(amount: number): void {
-    this.hp = Math.min(this.maxHp, this.hp + amount);
-  }
-
+  public heal(amount: number): void { this.hp = Math.min(this.maxHp, this.hp + amount); }
   public addArmor(amount: number): void { this.armor += amount; }
   public addMaxHP(amount: number): void {
     this.maxHp = Math.min(Config.MAX_HP, this.maxHp + amount);
-    this.hp = Math.min(this.maxHp, this.hp + amount); // Also heal the added HP
+    this.hp = Math.min(this.maxHp, this.hp + amount);
   }
   public activateFrenzy(duration: number): void { this.frenzyTimer = duration; }
   public activateSpeedBoost(duration: number): void { this.speedBoostTimer = duration; }
-
   public hasFrenzy(): boolean { return this.frenzyTimer > 0; }
   public hasSpeedBoost(): boolean { return this.speedBoostTimer > 0; }
   public getArmor(): number { return this.armor; }
@@ -161,10 +126,7 @@ export class Player {
   }
 
   private equipWeaponModel(type: WeaponType): void {
-    if (this.gunMesh) {
-      this.gunMesh.dispose();
-      this.gunMesh = null;
-    }
+    if (this.gunMesh) { this.gunMesh.dispose(); this.gunMesh = null; }
     this.gunMesh = WeaponModelBuilder.create(this.scene, type);
     this.gunMesh.scaling.setAll(2.5);
     this.gunMesh.position.set(0.5, 0.9, 0.8);
@@ -177,8 +139,8 @@ export class Player {
   public getMaxHP(): number { return this.maxHp; }
   public isAlive(): boolean { return this.hp > 0; }
   public getPosition(): Vector3 { return this.position.clone(); }
+  public getX(): number { return this.position.x; }
   public getMuzzlePosition(): Vector3 { return new Vector3(this.position.x, 1, this.position.z + 1); }
-  public getCurrentLane(): Lane { return this.currentLane; }
 
   public reset(): void {
     this.hp = Config.INITIAL_HP;
@@ -189,10 +151,7 @@ export class Player {
     this.frenzyTimer = 0;
     this.speedBoostTimer = 0;
     this.equipWeaponModel(WeaponType.PISTOL);
-    this.currentLane = Lane.CENTER;
-    this.targetLane = Lane.CENTER;
-    this.laneProgress = 1;
-    this.position.set(Config.LANES.CENTER, Config.PLAYER_HEIGHT, Config.PLAYER_Z_POSITION);
+    this.position.set(0, Config.PLAYER_HEIGHT, Config.PLAYER_Z_POSITION);
     this.mesh.position.copyFrom(this.position);
   }
 }

@@ -1,6 +1,6 @@
 import { Scene } from '@babylonjs/core';
 import { Enemy } from '@/entities/Enemy';
-import { Config, EnemyType, Lane } from '@/core/Config';
+import { Config, EnemyType } from '@/core/Config';
 
 const POOL_SIZE = 30;
 
@@ -34,25 +34,28 @@ export class EnemyManager {
   }
 
   private spawnWave(): void {
-    // How many enemies per wave increases with distance
     const waveSize = Math.min(3, 1 + Math.floor(this.distance / 300));
+    const roadHalf = Config.ROAD_WIDTH / 2 - 1;
 
-    // Pick lanes — avoid stacking too many in one lane
-    const usedLanes = new Set<Lane>();
+    // Spread enemies across the road width, avoid stacking
+    const usedXZones: number[] = [];
 
     for (let i = 0; i < waveSize; i++) {
       const enemy = this.getInactive();
       if (!enemy) return;
 
-      // Pick a lane not already used this wave
-      const lanes = [Lane.LEFT, Lane.CENTER, Lane.RIGHT].filter(l => !usedLanes.has(l));
-      if (lanes.length === 0) break;
-      const lane = lanes[Math.floor(Math.random() * lanes.length)];
-      usedLanes.add(lane);
+      // Pick a random X position, avoiding overlap with others in this wave
+      let xPos: number;
+      let attempts = 0;
+      do {
+        xPos = (Math.random() - 0.5) * 2 * roadHalf;
+        attempts++;
+      } while (attempts < 10 && usedXZones.some(x => Math.abs(x - xPos) < 2.5));
+      usedXZones.push(xPos);
 
       const type = this.rollEnemyType();
       const z = Config.ENEMY_SPAWN_DISTANCE + Math.random() * 10;
-      enemy.activate(type, lane, z);
+      enemy.activate(type, xPos, z);
     }
 
     // Difficulty scaling — only if user hasn't overridden

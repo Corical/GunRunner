@@ -1,6 +1,6 @@
 import { Scene } from '@babylonjs/core';
 import { FrozenUpgrade, FrozenReward } from '@/entities/FrozenUpgrade';
-import { Config, WeaponType, Lane } from '@/core/Config';
+import { Config, WeaponType } from '@/core/Config';
 
 const POOL_SIZE = 5;
 
@@ -20,8 +20,6 @@ const REWARD_WEIGHTS: { reward: FrozenReward; threshold: number }[] = [
   { reward: WeaponType.RAILGUN,       threshold: 1.00 },
 ];
 
-const ALL_LANES = [Lane.LEFT, Lane.CENTER, Lane.RIGHT] as const;
-
 function rollReward(): FrozenReward {
   const r = Math.random();
   for (const entry of REWARD_WEIGHTS) {
@@ -30,8 +28,9 @@ function rollReward(): FrozenReward {
   return WeaponType.SMG;
 }
 
-function pickRandomLane(): Lane {
-  return ALL_LANES[Math.floor(Math.random() * ALL_LANES.length)];
+function randomX(): number {
+  const roadHalf = Config.ROAD_WIDTH / 2 - 1;
+  return (Math.random() - 0.5) * 2 * roadHalf;
 }
 
 export class FrozenUpgradeManager {
@@ -48,10 +47,10 @@ export class FrozenUpgradeManager {
     if (!upgrade) return;
 
     const selectedReward = reward ?? rollReward();
-    const lane = pickRandomLane();
+    const xPos = randomX();
     const z = Config.ENEMY_SPAWN_DISTANCE + Math.random() * 10;
 
-    upgrade.activate(selectedReward, lane, z);
+    upgrade.activate(selectedReward, xPos, z);
   }
 
   public update(dt: number): void {

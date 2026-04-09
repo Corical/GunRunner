@@ -1,11 +1,12 @@
-import { LaneDirection } from '@/core/Config';
-
 export class InputHandler {
-  private inputQueue: LaneDirection[] = [];
-  private touchStartX: number = 0;
-  private keyStates: Map<string, boolean> = new Map();
-  private lastKeyPressTime: Map<string, number> = new Map();
+  // Continuous movement: -1 (left held), 0 (nothing), 1 (right held)
+  private moveDirection: number = 0;
   private speedChangeCb?: (delta: number) => void;
+
+  // Touch tracking
+  private touchActive: boolean = false;
+  private touchCurrentX: number = 0;
+  private touchCenterX: number = 0;
 
   public initialize(): void {
     window.addEventListener('keydown', this.onKeyDown);
@@ -15,29 +16,25 @@ export class InputHandler {
     window.addEventListener('touchend', this.onTouchEnd);
   }
 
-  public getInputDirection(): LaneDirection {
-    return this.inputQueue.length > 0 ? this.inputQueue.shift()! : LaneDirection.NONE;
+  /** Returns continuous movement: -1 (left), 0 (idle), 1 (right) */
+  public getMoveDirection(): number {
+    if (this.touchActive) {
+      // Touch: map finger position to movement
+      const dx = this.touchCurrentX - this.touchCenterX;
+      const threshold = 20;
+      if (dx < -threshold) return -1;
+      if (dx > threshold) return 1;
+      return 0;
+    }
+    return this.moveDirection;
   }
 
   private onKeyDown = (e: KeyboardEvent): void => {
-    const now = performance.now();
-    const debounce = 100;
-
     if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
-      const last = this.lastKeyPressTime.get('left') || 0;
-      if (!this.keyStates.get('left') || now - last > debounce) {
-        this.inputQueue.push(LaneDirection.LEFT);
-        this.lastKeyPressTime.set('left', now);
-      }
-      this.keyStates.set('left', true);
+      this.moveDirection = -1;
       e.preventDefault();
     } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
-      const last = this.lastKeyPressTime.get('right') || 0;
-      if (!this.keyStates.get('right') || now - last > debounce) {
-        this.inputQueue.push(LaneDirection.RIGHT);
-        this.lastKeyPressTime.set('right', now);
-      }
-      this.keyStates.set('right', true);
+      this.moveDirection = 1;
       e.preventDefault();
     } else if (e.key === 'ArrowUp') {
       this.speedChangeCb?.(0.1);
@@ -50,30 +47,31 @@ export class InputHandler {
 
   private onKeyUp = (e: KeyboardEvent): void => {
     if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
-      this.keyStates.set('left', false);
+      if (this.moveDirection === -1) this.moveDirection = 0;
     } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
-      this.keyStates.set('right', false);
+      if (this.moveDirection === 1) this.moveDirection = 0;
     }
   };
 
   private onTouchStart = (e: TouchEvent): void => {
-    if (e.touches.length > 0) this.touchStartX = e.touches[0].clientX;
+    if (e.touches.length > 0) {
+      this.touchActive = true;
+      this.touchCenterX = e.touches[0].clientX;
+      this.touchCurrentX = e.touches[0].clientX;
+    }
     e.preventDefault();
   };
 
   private onTouchMove = (e: TouchEvent): void => {
-    if (e.touches.length > 0 && this.touchStartX > 0) {
-      const dx = e.touches[0].clientX - this.touchStartX;
-      if (Math.abs(dx) > 50) {
-        this.inputQueue.push(dx > 0 ? LaneDirection.RIGHT : LaneDirection.LEFT);
-        this.touchStartX = 0;
-      }
+    if (e.touches.length > 0 && this.touchActive) {
+      this.touchCurrentX = e.touches[0].clientX;
     }
     e.preventDefault();
   };
 
   private onTouchEnd = (_e: TouchEvent): void => {
-    this.touchStartX = 0;
+    this.touchActive = false;
+    this.moveDirection = 0;
   };
 
   public onSpeedChange(cb: (delta: number) => void): void {

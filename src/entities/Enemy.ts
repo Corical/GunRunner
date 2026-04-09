@@ -1,12 +1,12 @@
 import {
   Scene, Vector3, MeshBuilder, StandardMaterial, Color3, Mesh,
 } from '@babylonjs/core';
-import { Config, EnemyType, ENEMIES, EnemyConfig, Lane } from '@/core/Config';
+import { Config, EnemyType, ENEMIES, EnemyConfig } from '@/core/Config';
 
 export class Enemy {
   public active: boolean = false;
   public position: Vector3;
-  public lane: Lane = Lane.CENTER;
+  public targetX: number = 0;  // For flankers — smooth lateral movement target
   public type: EnemyType = EnemyType.BASIC;
   public hp: number = 1;
   public maxHp: number = 1;
@@ -36,17 +36,14 @@ export class Enemy {
     this.mesh.setEnabled(false);
   }
 
-  public activate(type: EnemyType, lane: Lane, z: number): void {
+  public activate(type: EnemyType, xPos: number, z: number): void {
     this.active = true;
     this.type = type;
     this.config = ENEMIES[type];
     this.hp = this.config.hp;
     this.maxHp = this.config.hp;
-    this.lane = lane;
-
-    const laneX = lane === Lane.LEFT ? Config.LANES.LEFT
-      : lane === Lane.RIGHT ? Config.LANES.RIGHT : Config.LANES.CENTER;
-    this.position.set(laneX, this.config.size * 0.5, z);
+    this.targetX = xPos;
+    this.position.set(xPos, this.config.size * 0.5, z);
 
     // Update material color
     const color = Color3.FromHexString(this.config.color);
@@ -265,16 +262,18 @@ export class Enemy {
     this.position.z -= Config.ENEMY_SPEED * this.config.speed * dt;
     this.mesh.position.copyFrom(this.position);
 
-    // Flankers switch lanes
+    // Flankers weave laterally toward a random target X
     if (this.config.switchesLanes) {
       this.laneSwitchTimer -= dt;
       if (this.laneSwitchTimer <= 0) {
         this.laneSwitchTimer = 1.5 + Math.random() * 2;
-        const lanes = [Lane.LEFT, Lane.CENTER, Lane.RIGHT];
-        const otherLanes = lanes.filter(l => l !== this.lane);
-        this.lane = otherLanes[Math.floor(Math.random() * otherLanes.length)];
-        this.position.x = this.lane === Lane.LEFT ? Config.LANES.LEFT
-          : this.lane === Lane.RIGHT ? Config.LANES.RIGHT : Config.LANES.CENTER;
+        const roadHalf = Config.ROAD_WIDTH / 2 - 1;
+        this.targetX = (Math.random() - 0.5) * 2 * roadHalf;
+      }
+      // Smooth movement toward target X
+      const dx = this.targetX - this.position.x;
+      if (Math.abs(dx) > 0.1) {
+        this.position.x += Math.sign(dx) * Math.min(Math.abs(dx), 8 * dt);
       }
     }
 

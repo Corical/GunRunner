@@ -144,12 +144,11 @@ export class GameManager {
   }
 
   private update(dt: number): void {
-    // 1. Input
-    const dir = this.inputHandler.getInputDirection();
-    if (dir !== 0) this.player.switchLane(dir);
-
-    // Apply speed multiplier
     const adjustedDt = dt * this.speedMultiplier;
+
+    // 1. Input — continuous free movement
+    const moveDir = this.inputHandler.getMoveDirection();
+    this.player.move(moveDir, adjustedDt);
 
     // 2. Player
     this.player.update(adjustedDt);
@@ -265,13 +264,13 @@ export class GameManager {
       }
     });
 
-    // 10. Thawed upgrade pickup
-    const playerLane = this.player.getCurrentLane();
+    // 10. Thawed upgrade pickup — proximity-based (free movement)
     for (const upgrade of activeUpgrades) {
       if (!upgrade.thawed || upgrade.collected) continue;
-      if (upgrade.lane === playerLane) {
-        const dz = Math.abs(upgrade.position.z - this.player.getPosition().z);
-        if (dz < 2.5) {
+      const playerPos = this.player.getPosition();
+      const dx = Math.abs(upgrade.position.x - playerPos.x);
+      const dz = Math.abs(upgrade.position.z - playerPos.z);
+      if (dx < 2.0 && dz < 2.5) {
           upgrade.collected = true;
           upgrade.deactivate();
 
@@ -312,7 +311,6 @@ export class GameManager {
 
           this.cameraEffects.zoomIn(0.9);
         }
-      }
     }
 
     // 11. Enemy → Player collisions
