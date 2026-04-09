@@ -21,6 +21,9 @@ export class Enemy {
   private flashTimer: number = 0;
   private laneSwitchTimer: number = 0;
 
+  // Cache meshes by type to avoid create/dispose every activation
+  private cachedType: EnemyType | null = null;
+
   constructor(scene: Scene) {
     this.scene = scene;
     this.position = Vector3.Zero();
@@ -50,8 +53,11 @@ export class Enemy {
     this.mat.diffuseColor = color;
     this.mat.emissiveColor = color.scale(0.3);
 
-    // Rebuild mesh for this enemy type
-    this.buildMesh();
+    // Only rebuild mesh if type changed — reuse cached mesh otherwise
+    if (this.cachedType !== type) {
+      this.buildMesh();
+      this.cachedType = type;
+    }
 
     this.mesh.setEnabled(true);
     this.mesh.position.copyFrom(this.position);

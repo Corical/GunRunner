@@ -21,6 +21,18 @@ export class SceneManager {
 
     this.engine.runRenderLoop(() => this.scene.render());
     window.addEventListener('resize', () => this.engine.resize());
+
+    // Handle WebGL context loss recovery
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+    if (gl) {
+      canvas.addEventListener('webglcontextlost', (e) => {
+        console.warn('WebGL context lost');
+        e.preventDefault();
+      });
+      canvas.addEventListener('webglcontextrestored', () => {
+        console.log('WebGL context restored');
+      });
+    }
   }
 
   private createCamera(canvas: HTMLCanvasElement): void {
