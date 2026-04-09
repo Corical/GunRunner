@@ -131,8 +131,7 @@ export class Player {
     }
     this.gunMesh = WeaponModelBuilder.create(this.scene, type);
     this.gunMesh.scaling.setAll(2.5);
-    this.gunMesh.position.set(0.6, 0.9, 0.5);
-    this.gunMesh.rotation.y = Math.PI / 2; // Rotate 90° so barrel points right — shows full profile from above
+    this.gunMesh.position.set(0.5, 0.9, 0.8);
     this.gunMesh.parent = this.mesh;
   }
 

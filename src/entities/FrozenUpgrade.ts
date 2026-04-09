@@ -182,9 +182,10 @@ export class FrozenUpgrade {
       this.rewardMesh = Mesh.MergeMeshes([h, v], true, false) || h;
       this.rewardMesh.material = mat;
     } else {
-      // Actual weapon model
+      // Actual weapon model — rotated 90° so you see the side profile
       this.rewardMesh = WeaponModelBuilder.create(this.scene, this.reward as WeaponType);
       this.rewardMesh.scaling.setAll(2.0);
+      this.rewardMesh.rotation.y = Math.PI / 2;
     }
 
     this.rewardMesh.isPickable = false;
