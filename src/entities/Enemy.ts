@@ -145,24 +145,28 @@ export class Enemy {
   }
 
   private buildShielded(): void {
-    // Body with visible translucent shield wall in front
-    const body = MeshBuilder.CreateCylinder('eb', { diameter: 0.7, height: 1.0, tessellation: 6 }, this.scene);
-    body.position.y = 0.5; body.material = this.mat;
+    // Distinct body — darker grey, stocky, holding the shield
+    const body = MeshBuilder.CreateCylinder('eb', { diameter: 0.8, height: 1.2, tessellation: 6 }, this.scene);
+    body.position.y = 0.6; body.material = this.mat;
 
-    const head = MeshBuilder.CreateSphere('eh', { diameter: 0.4, segments: 6 }, this.scene);
-    head.position.y = 1.2; head.material = this.mat;
+    const head = MeshBuilder.CreateSphere('eh', { diameter: 0.45, segments: 6 }, this.scene);
+    head.position.y = 1.4; head.material = this.mat;
 
-    this.mesh = Mesh.MergeMeshes([body, head], true, false) || body;
+    // Shield arm — box sticking forward
+    const arm = MeshBuilder.CreateBox('ea', { width: 0.15, height: 0.15, depth: 0.5 }, this.scene);
+    arm.position.set(-0.3, 0.7, -0.35); arm.material = this.mat;
+
+    this.mesh = Mesh.MergeMeshes([body, head, arm], true, false) || body;
     this.mesh.name = 'enemy_shielded';
 
-    // Large translucent cyan shield in front — separate mesh for transparency
-    this.shieldMesh = MeshBuilder.CreateBox('eshield', { width: 1.3, height: 1.3, depth: 0.12 }, this.scene);
-    this.shieldMesh.position.z = -0.7;
-    this.shieldMesh.position.y = 0.6;
+    // Shield — thin curved disc in front, NOT covering the body from above
+    this.shieldMesh = MeshBuilder.CreateDisc('eshield', { radius: 0.8, tessellation: 12 }, this.scene);
+    this.shieldMesh.rotation.y = Math.PI; // Face toward player
+    this.shieldMesh.position.set(-0.15, 0.7, -0.8);
     const shieldMat = new StandardMaterial('shieldMat', this.scene);
     shieldMat.diffuseColor = Color3.FromHexString('#67E8F9');
-    shieldMat.emissiveColor = Color3.FromHexString('#67E8F9').scale(0.5);
-    shieldMat.alpha = 0.5;
+    shieldMat.emissiveColor = Color3.FromHexString('#67E8F9').scale(0.6);
+    shieldMat.alpha = 0.4;
     shieldMat.backFaceCulling = false;
     this.shieldMesh.material = shieldMat;
     this.shieldMesh.isPickable = false;
