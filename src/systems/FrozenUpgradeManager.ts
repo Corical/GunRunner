@@ -6,13 +6,17 @@ const POOL_SIZE = 5;
 
 // Weighted reward table — cumulative thresholds must sum to 1.0
 const REWARD_WEIGHTS: { reward: FrozenReward; threshold: number }[] = [
-  { reward: WeaponType.SMG,           threshold: 0.20 },
-  { reward: WeaponType.SHOTGUN,       threshold: 0.35 },
-  { reward: WeaponType.LASER,         threshold: 0.48 },
-  { reward: WeaponType.MINIGUN,       threshold: 0.58 },
-  { reward: WeaponType.FLAMETHROWER,  threshold: 0.68 },
-  { reward: 'heal',                   threshold: 0.80 },
-  { reward: WeaponType.ROCKET,        threshold: 0.90 },
+  { reward: WeaponType.SMG,           threshold: 0.12 },
+  { reward: WeaponType.SHOTGUN,       threshold: 0.22 },
+  { reward: WeaponType.LASER,         threshold: 0.32 },
+  { reward: WeaponType.MINIGUN,       threshold: 0.40 },
+  { reward: WeaponType.FLAMETHROWER,  threshold: 0.48 },
+  { reward: 'heal',                   threshold: 0.58 },
+  { reward: 'armor',                  threshold: 0.65 },
+  { reward: 'maxhp',                  threshold: 0.72 },
+  { reward: 'frenzy',                 threshold: 0.80 },
+  { reward: 'speed',                  threshold: 0.87 },
+  { reward: WeaponType.ROCKET,        threshold: 0.94 },
   { reward: WeaponType.RAILGUN,       threshold: 1.00 },
 ];
 

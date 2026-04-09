@@ -6,7 +6,7 @@ export const Config = {
   LANE_WIDTH: 5,
   ROAD_WIDTH: 15,
   INITIAL_HP: 5,
-  MAX_HP: 8,
+  MAX_HP: 12,
 
   // Lanes
   LANES: { LEFT: -5, CENTER: 0, RIGHT: 5 },
@@ -173,6 +173,19 @@ export const WEAPONS: Record<WeaponType, WeaponConfig> = {
     bulletColor: '#FB923C', bulletSize: 0.2,
     maxRange: 25, penetration: 1, splashRadius: 2.0, // Short range + ignites nearby
   },
+};
+
+/**
+ * Weapon effectiveness against enemy types.
+ * 1.0 = normal, 2.0 = double damage, 0.5 = half damage
+ */
+export const WEAPON_EFFECTIVENESS: Partial<Record<WeaponType, Partial<Record<EnemyType, number>>>> = {
+  [WeaponType.SHOTGUN]:      { [EnemyType.BASIC]: 2.0, [EnemyType.FAST]: 2.0, [EnemyType.ARMORED]: 0.5 },
+  [WeaponType.LASER]:        { [EnemyType.SHIELDED]: 2.0, [EnemyType.ARMORED]: 1.5 },
+  [WeaponType.ROCKET]:       { [EnemyType.ARMORED]: 2.0, [EnemyType.HEALER]: 2.0 },
+  [WeaponType.FLAMETHROWER]: { [EnemyType.BASIC]: 1.5, [EnemyType.SPLITTER]: 2.0, [EnemyType.ARMORED]: 0.5 },
+  [WeaponType.RAILGUN]:      { [EnemyType.ARMORED]: 2.0, [EnemyType.SHIELDED]: 2.0, [EnemyType.FAST]: 0.5 },
+  [WeaponType.MINIGUN]:      { [EnemyType.FAST]: 1.5, [EnemyType.SHIELDED]: 0.5 },
 };
 
 export interface EnemyConfig {

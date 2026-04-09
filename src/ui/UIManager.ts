@@ -80,11 +80,10 @@ export class UIManager {
 
   public updateWeapon(name: string): void { this.weaponEl.textContent = name.toUpperCase(); }
 
-  public updateHP(current: number, max: number): void {
+  public updateHP(current: number, max: number, armor: number = 0): void {
     const pct = Math.max(0, current / max) * 100;
     this.hpFill.style.width = `${pct}%`;
 
-    // Color shift: green → yellow → red
     if (pct > 60) {
       this.hpFill.style.background = 'linear-gradient(90deg, #22C55E, #4ADE80)';
     } else if (pct > 30) {
@@ -93,7 +92,9 @@ export class UIManager {
       this.hpFill.style.background = 'linear-gradient(90deg, #EF4444, #F87171)';
     }
 
-    this.hpText.textContent = `HP ${current}/${max}`;
+    this.hpText.textContent = armor > 0
+      ? `HP ${current}/${max}  🛡${armor}`
+      : `HP ${current}/${max}`;
   }
 
   public showCombo(combo: number): void {

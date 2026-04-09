@@ -1,6 +1,6 @@
 import { Scene, Vector3 } from '@babylonjs/core';
 import { Bullet } from '@/entities/Bullet';
-import { WeaponConfig } from '@/core/Config';
+import { WeaponConfig, WeaponType } from '@/core/Config';
 
 const POOL_SIZE = 120;
 
@@ -14,7 +14,7 @@ export class BulletManager {
   }
 
   /** Fire bullets from a position using the weapon config */
-  public fire(muzzlePos: Vector3, weapon: WeaponConfig): void {
+  public fire(muzzlePos: Vector3, weapon: WeaponConfig, weaponType: WeaponType = WeaponType.PISTOL): void {
     for (let i = 0; i < weapon.bulletCount; i++) {
       const bullet = this.getInactive();
       if (!bullet) return; // pool exhausted
@@ -28,7 +28,7 @@ export class BulletManager {
 
       bullet.activate(
         muzzlePos.clone(), weapon.damage, spreadX,
-        weapon.maxRange, weapon.penetration, weapon.splashRadius
+        weapon.maxRange, weapon.penetration, weapon.splashRadius, weaponType
       );
     }
   }

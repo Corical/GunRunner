@@ -1,7 +1,7 @@
 import { Bullet } from '@/entities/Bullet';
 import { Enemy } from '@/entities/Enemy';
 import { Player } from '@/entities/Player';
-import { Config } from '@/core/Config';
+import { Config, WEAPON_EFFECTIVENESS } from '@/core/Config';
 
 export interface KillEvent {
   enemy: Enemy;
@@ -46,7 +46,11 @@ export class CollisionSystem {
           if (bulletHitSet.has(key)) continue;
           bulletHitSet.add(key);
 
-          const killed = enemy.takeDamage(bullet.damage);
+          // Apply weapon effectiveness multiplier
+          const effectiveness = WEAPON_EFFECTIVENESS[bullet.weaponType]?.[enemy.type] ?? 1.0;
+          const effectiveDamage = Math.max(1, Math.round(bullet.damage * effectiveness));
+
+          const killed = enemy.takeDamage(effectiveDamage);
           const pos = { x: enemy.position.x, y: enemy.position.y, z: enemy.position.z };
 
           if (killed) {

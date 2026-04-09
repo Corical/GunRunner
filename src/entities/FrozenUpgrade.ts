@@ -2,7 +2,7 @@ import { Scene, Vector3, MeshBuilder, StandardMaterial, Color3, Mesh } from '@ba
 import { Config, WeaponType } from '@/core/Config';
 import { WeaponModelBuilder } from '@/utils/WeaponModelBuilder';
 
-export type FrozenReward = WeaponType | 'heal';
+export type FrozenReward = WeaponType | 'heal' | 'armor' | 'maxhp' | 'frenzy' | 'speed';
 
 const LANE_X: Record<number, number> = {
   [-1]: Config.LANES.LEFT,
@@ -167,22 +167,48 @@ export class FrozenUpgrade {
   }
 
   private buildRewardMesh(): void {
-    // Dispose old reward mesh
     if (this.rewardMesh) this.rewardMesh.dispose();
 
-    if (this.reward === 'heal') {
-      // Green cross for heal
-      const h = MeshBuilder.CreateBox('rh', { width: 1.0, height: 0.3, depth: 0.3 }, this.scene);
-      const v = MeshBuilder.CreateBox('rv', { width: 0.3, height: 1.0, depth: 0.3 }, this.scene);
-      const mat = new StandardMaterial('healMat', this.scene);
-      mat.diffuseColor = Color3.FromHexString('#22C55E');
-      mat.emissiveColor = Color3.FromHexString('#22C55E').scale(0.5);
-      h.material = mat;
-      v.material = mat;
-      this.rewardMesh = Mesh.MergeMeshes([h, v], true, false) || h;
+    const specialRewards: Record<string, { color: string; shape: 'cross' | 'shield' | 'star' | 'arrow' | 'diamond' }> = {
+      heal:   { color: '#22C55E', shape: 'cross' },
+      armor:  { color: '#60A5FA', shape: 'shield' },
+      maxhp:  { color: '#F472B6', shape: 'diamond' },
+      frenzy: { color: '#EF4444', shape: 'star' },
+      speed:  { color: '#FBBF24', shape: 'arrow' },
+    };
+
+    const special = specialRewards[this.reward as string];
+    if (special) {
+      const mat = new StandardMaterial('rewardMat', this.scene);
+      mat.diffuseColor = Color3.FromHexString(special.color);
+      mat.emissiveColor = Color3.FromHexString(special.color).scale(0.5);
+
+      if (special.shape === 'cross') {
+        const h = MeshBuilder.CreateBox('rh', { width: 1.0, height: 0.3, depth: 0.3 }, this.scene);
+        const v = MeshBuilder.CreateBox('rv', { width: 0.3, height: 1.0, depth: 0.3 }, this.scene);
+        h.material = mat; v.material = mat;
+        this.rewardMesh = Mesh.MergeMeshes([h, v], true, false) || h;
+      } else if (special.shape === 'shield') {
+        this.rewardMesh = MeshBuilder.CreateCylinder('rs', { diameter: 1.0, height: 0.15, tessellation: 8 }, this.scene);
+      } else if (special.shape === 'diamond') {
+        const t = MeshBuilder.CreateCylinder('rt', { diameterTop: 0, diameterBottom: 0.8, height: 0.6, tessellation: 6 }, this.scene);
+        t.position.y = 0.3; t.material = mat;
+        const b = MeshBuilder.CreateCylinder('rb', { diameterTop: 0.8, diameterBottom: 0, height: 0.6, tessellation: 6 }, this.scene);
+        b.position.y = -0.3; b.material = mat;
+        this.rewardMesh = Mesh.MergeMeshes([t, b], true, false) || t;
+      } else if (special.shape === 'star') {
+        this.rewardMesh = MeshBuilder.CreatePolyhedron('rs', { type: 1, size: 0.5 }, this.scene);
+      } else {
+        // Arrow for speed
+        const shaft = MeshBuilder.CreateBox('ra', { width: 0.2, height: 0.8, depth: 0.2 }, this.scene);
+        shaft.material = mat;
+        const tip = MeshBuilder.CreateCylinder('rt', { diameterTop: 0, diameterBottom: 0.6, height: 0.4, tessellation: 4 }, this.scene);
+        tip.position.y = 0.6; tip.material = mat;
+        this.rewardMesh = Mesh.MergeMeshes([shaft, tip], true, false) || shaft;
+      }
       this.rewardMesh.material = mat;
     } else {
-      // Actual weapon model — rotated 90° so you see the side profile
+      // Weapon model — rotated 90° for side profile
       this.rewardMesh = WeaponModelBuilder.create(this.scene, this.reward as WeaponType);
       this.rewardMesh.scaling.setAll(2.0);
       this.rewardMesh.rotation.y = Math.PI / 2;

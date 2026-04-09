@@ -95,7 +95,7 @@ export class GameManager {
 
     this.gameState = GameState.MENU;
     this.uiManager.showStartScreen();
-    this.uiManager.updateHP(this.player.getHP(), this.player.getMaxHP());
+    this.uiManager.updateHP(this.player.getHP(), this.player.getMaxHP(), this.player.getArmor());
   }
 
   public startGame(): void {
@@ -121,7 +121,7 @@ export class GameManager {
     this.uiManager.hideCombo();
     this.uiManager.updateScore(0);
     this.uiManager.updateDistance(0);
-    this.uiManager.updateHP(this.player.getHP(), this.player.getMaxHP());
+    this.uiManager.updateHP(this.player.getHP(), this.player.getMaxHP(), this.player.getArmor());
     this.uiManager.updateWeapon(this.player.getWeaponConfig().name);
 
     this.gameLoop();
@@ -154,10 +154,17 @@ export class GameManager {
     // 2. Player
     this.player.update(adjustedDt);
 
-    // 3. Auto-fire
+    // 3. Auto-fire — apply frenzy damage multiplier
     if (this.player.tryFire()) {
       const weapon = this.player.getWeaponConfig();
-      this.bulletManager.fire(this.player.getMuzzlePosition(), weapon);
+      const wType = this.player.getWeaponType();
+      const dmgMult = this.player.getDamageMultiplier();
+      if (dmgMult !== 1) {
+        const boosted = { ...weapon, damage: Math.ceil(weapon.damage * dmgMult) };
+        this.bulletManager.fire(this.player.getMuzzlePosition(), boosted, wType);
+      } else {
+        this.bulletManager.fire(this.player.getMuzzlePosition(), weapon, wType);
+      }
       this.soundSystem.playSound(SoundType.SHOOT);
       this.particleSystem.createMuzzleFlash(this.player.getMuzzlePosition());
     }
@@ -275,16 +282,34 @@ export class GameManager {
             upgrade.position.clone(), BABYLON.Color3.Yellow()
           );
 
-          if (upgrade.reward === 'heal') {
-            this.player.heal(1);
-            this.floatingText.showPowerUpActivated('HEAL!', upgrade.position.clone());
-          } else {
-            this.player.setWeapon(upgrade.reward as WeaponType);
-            this.uiManager.updateWeapon(this.player.getWeaponConfig().name);
-            this.floatingText.showPowerUpActivated(
-              this.player.getWeaponConfig().name.toUpperCase() + '!',
-              upgrade.position.clone()
-            );
+          const pos = upgrade.position.clone();
+          switch (upgrade.reward) {
+            case 'heal':
+              this.player.heal(2);
+              this.floatingText.showPowerUpActivated('+2 HP!', pos);
+              break;
+            case 'armor':
+              this.player.addArmor(3);
+              this.floatingText.showPowerUpActivated('+3 ARMOR!', pos);
+              break;
+            case 'maxhp':
+              this.player.addMaxHP(1);
+              this.floatingText.showPowerUpActivated('MAX HP UP!', pos);
+              break;
+            case 'frenzy':
+              this.player.activateFrenzy(8);
+              this.floatingText.showPowerUpActivated('FRENZY! 8s', pos);
+              break;
+            case 'speed':
+              this.player.activateSpeedBoost(10);
+              this.floatingText.showPowerUpActivated('FIRE RATE! 10s', pos);
+              break;
+            default:
+              this.player.setWeapon(upgrade.reward as WeaponType);
+              this.uiManager.updateWeapon(this.player.getWeaponConfig().name);
+              this.floatingText.showPowerUpActivated(
+                this.player.getWeaponConfig().name.toUpperCase() + '!', pos
+              );
           }
 
           this.cameraEffects.zoomIn(0.9);
@@ -321,7 +346,7 @@ export class GameManager {
 
     this.uiManager.updateScore(this.score);
     this.uiManager.updateDistance(this.distance);
-    this.uiManager.updateHP(this.player.getHP(), this.player.getMaxHP());
+    this.uiManager.updateHP(this.player.getHP(), this.player.getMaxHP(), this.player.getArmor());
 
     // Juice updates
     this.cameraEffects.update(dt);

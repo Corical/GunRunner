@@ -1,12 +1,13 @@
 import { Scene, Vector3, MeshBuilder, StandardMaterial, Color3, Mesh } from '@babylonjs/core';
-import { Config } from '@/core/Config';
+import { Config, WeaponType } from '@/core/Config';
 
 export class Bullet {
   public active: boolean = false;
   public position: Vector3;
   public damage: number = 1;
-  public penetration: number = 1;  // How many enemies it can pass through
-  public splashRadius: number = 0; // 0 = no splash, >0 = damages nearby enemies
+  public penetration: number = 1;
+  public splashRadius: number = 0;
+  public weaponType: WeaponType = WeaponType.PISTOL;
 
   private mesh: Mesh;
   private velocity: Vector3 = Vector3.Zero();
@@ -33,13 +34,15 @@ export class Bullet {
     spreadX: number = 0,
     maxRange: number = Config.BULLET_DESPAWN_Z,
     penetration: number = 1,
-    splashRadius: number = 0
+    splashRadius: number = 0,
+    weaponType: WeaponType = WeaponType.PISTOL
   ): void {
     this.active = true;
     this.position.copyFrom(pos);
     this.damage = damage;
     this.penetration = penetration;
     this.splashRadius = splashRadius;
+    this.weaponType = weaponType;
     this.maxRange = maxRange;
     this.startZ = pos.z;
     this.distanceTraveled = 0;

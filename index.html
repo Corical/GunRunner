@@ -132,6 +132,27 @@
       <div id="boss-hp-bar"><div id="boss-hp-fill"></div></div>
     </div>
 
+    <div id="enemy-key" style="position:absolute;top:60px;left:16px;pointer-events:all;z-index:15;">
+      <button id="key-toggle" style="background:rgba(0,0,0,0.5);color:white;border:1px solid rgba(255,255,255,0.3);padding:5px 12px;border-radius:12px;font-size:11px;cursor:pointer;" onclick="var p=document.getElementById('key-panel');p.style.display=p.style.display==='none'?'block':'none'">Enemy Guide</button>
+      <div id="key-panel" style="display:none;background:rgba(0,0,0,0.85);color:white;padding:12px;border-radius:10px;font-size:11px;margin-top:6px;line-height:1.7;min-width:260px;max-height:70vh;overflow-y:auto;">
+        <div style="font-weight:bold;color:#FBBF24;margin-bottom:6px;font-size:13px;">ENEMIES</div>
+        <div><span style="color:#EF4444;">●</span> <b>Runner</b> — 1HP, basic. Weak to: Shotgun, Flamethrower</div>
+        <div><span style="color:#7C3AED;">●</span> <b>Tank</b> — 4HP, slow, armored. Weak to: Rocket, Railgun, Laser</div>
+        <div><span style="color:#F97316;">●</span> <b>Flanker</b> — 1HP, fast, switches lanes. Weak to: Minigun, Shotgun</div>
+        <div><span style="color:#6B7280;">●</span> <b>Shield</b> — 3HP, has shield. Weak to: Laser, Railgun</div>
+        <div><span style="color:#22C55E;">●</span> <b>Healer</b> — 2HP, slow. Weak to: Rocket</div>
+        <div><span style="color:#EC4899;">●</span> <b>Splitter</b> — 2HP, splits. Weak to: Flamethrower</div>
+        <div><span style="color:#854D0E;">●</span> <b>Bomber</b> — 1HP, fast, switches lanes</div>
+
+        <div style="font-weight:bold;color:#FBBF24;margin:10px 0 6px;">PICKUPS</div>
+        <div><span style="color:#22C55E;">+</span> <b>Heal</b> — Restores 2 HP</div>
+        <div><span style="color:#60A5FA;">●</span> <b>Armor</b> — +3 shield, absorbs damage</div>
+        <div><span style="color:#F472B6;">◆</span> <b>Max HP</b> — Increases max HP by 1</div>
+        <div><span style="color:#EF4444;">★</span> <b>Frenzy</b> — 2x damage for 8s</div>
+        <div><span style="color:#FBBF24;">▲</span> <b>Speed</b> — 1.5x fire rate for 10s</div>
+      </div>
+    </div>
+
     <div id="hp-text">HP</div>
     <div id="hp-bar-container"><div id="hp-bar-fill"></div></div>
 
