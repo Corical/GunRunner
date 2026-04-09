@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Gun Runner</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      overflow: hidden;
+      width: 100%;
+      height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #111;
+    }
+
+    #renderCanvas { width: 100%; height: 100%; touch-action: none; display: block; }
+
+    #ui-overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none; z-index: 10;
+    }
+
+    /* HP Bar */
+    #hp-bar-container {
+      position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+      width: 250px; height: 16px;
+      background: rgba(0,0,0,0.6); border-radius: 8px; border: 2px solid rgba(255,255,255,0.3);
+      overflow: hidden;
+    }
+    #hp-bar-fill {
+      height: 100%; width: 100%;
+      background: linear-gradient(90deg, #22C55E, #4ADE80);
+      border-radius: 6px; transition: width 0.3s ease;
+    }
+    #hp-text {
+      position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
+      color: white; font-size: 13px; font-weight: bold;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+
+    /* Score + Weapon */
+    #score-display {
+      position: absolute; top: 16px; left: 16px;
+      background: rgba(0,0,0,0.6); color: white;
+      padding: 10px 20px; border-radius: 20px;
+      font-size: 22px; font-weight: bold;
+    }
+    #weapon-display {
+      position: absolute; top: 16px; right: 16px;
+      background: rgba(0,0,0,0.6); color: #FBBF24;
+      padding: 10px 20px; border-radius: 20px;
+      font-size: 16px; font-weight: bold;
+    }
+    #distance-display {
+      position: absolute; top: 60px; left: 16px;
+      color: rgba(255,255,255,0.6); font-size: 14px;
+    }
+    #combo-display {
+      position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+      color: #FBBF24; font-size: 20px; font-weight: bold;
+      text-shadow: 0 0 10px rgba(251,191,36,0.5);
+      opacity: 0; transition: opacity 0.3s;
+    }
+    #combo-display.visible { opacity: 1; }
+
+    /* Boss HP */
+    #boss-hp-container {
+      position: absolute; top: 70px; left: 50%; transform: translateX(-50%);
+      width: 400px; max-width: 80%; display: none;
+    }
+    #boss-name {
+      color: #EF4444; font-size: 14px; font-weight: bold; text-align: center;
+      margin-bottom: 4px; text-transform: uppercase; letter-spacing: 2px;
+    }
+    #boss-hp-bar {
+      width: 100%; height: 12px;
+      background: rgba(0,0,0,0.6); border-radius: 6px; border: 1px solid #EF4444;
+      overflow: hidden;
+    }
+    #boss-hp-fill {
+      height: 100%; width: 100%;
+      background: linear-gradient(90deg, #DC2626, #EF4444);
+      border-radius: 5px; transition: width 0.2s ease;
+    }
+
+    /* Screens */
+    #start-screen, #game-over-screen {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.7); pointer-events: all;
+    }
+    .screen-content {
+      background: #1a1a2e; padding: 40px; border-radius: 16px;
+      text-align: center; border: 1px solid rgba(255,255,255,0.1);
+      max-width: 400px; width: 90%;
+    }
+    h1 { color: #FBBF24; margin-bottom: 12px; font-size: 36px; }
+    h2 { color: #EF4444; margin-bottom: 12px; font-size: 32px; }
+    p { color: #9CA3AF; margin-bottom: 20px; font-size: 15px; line-height: 1.5; }
+    .stat { color: #60A5FA; font-size: 20px; font-weight: bold; margin: 8px 0; }
+
+    button {
+      background: linear-gradient(135deg, #FBBF24, #F59E0B);
+      color: #1a1a2e; border: none;
+      padding: 14px 36px; border-radius: 8px;
+      font-size: 18px; font-weight: bold; cursor: pointer;
+      transition: transform 0.15s;
+    }
+    button:hover { transform: scale(1.05); }
+    button:active { transform: scale(0.98); }
+
+    .hidden { display: none !important; }
+    #loading {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      color: #FBBF24; font-size: 20px; font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="renderCanvas"></canvas>
+
+  <div id="ui-overlay">
+    <div id="score-display">0</div>
+    <div id="distance-display">0m</div>
+    <div id="weapon-display">PISTOL</div>
+    <div id="combo-display">x5 COMBO</div>
+
+    <div id="boss-hp-container">
+      <div id="boss-name">BOSS</div>
+      <div id="boss-hp-bar"><div id="boss-hp-fill"></div></div>
+    </div>
+
+    <div id="hp-text">HP</div>
+    <div id="hp-bar-container"><div id="hp-bar-fill"></div></div>
+
+    <div id="start-screen">
+      <div class="screen-content">
+        <h1>GUN RUNNER</h1>
+        <p>Arrow keys or swipe to switch lanes<br>Auto-fire destroys enemies<br>Shoot ice blocks to unlock upgrades!</p>
+        <button id="start-button">LOCK & LOAD</button>
+      </div>
+    </div>
+
+    <div id="game-over-screen" class="hidden">
+      <div class="screen-content">
+        <h2>GAME OVER</h2>
+        <div class="stat">Score: <span id="final-score">0</span></div>
+        <div class="stat">Distance: <span id="final-distance">0</span>m</div>
+        <div class="stat">Kills: <span id="final-kills">0</span></div>
+        <button id="restart-button">TRY AGAIN</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="loading">Loading...</div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
