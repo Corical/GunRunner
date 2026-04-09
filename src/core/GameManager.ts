@@ -172,10 +172,8 @@ export class GameManager {
     // 4. Bullets
     this.bulletManager.update(adjustedDt);
 
-    // 5. Enemies (paused during boss)
-    if (!this.bossActive) {
-      this.enemyManager.update(adjustedDt, this.distance);
-    }
+    // 5. Enemies — always update (move + despawn), spawning paused during boss
+    this.enemyManager.update(adjustedDt, this.distance);
 
     // 6. Bullet → Enemy collisions
     const bullets = this.bulletManager.getActiveBullets();

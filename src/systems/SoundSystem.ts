@@ -21,10 +21,42 @@ export class SoundSystem {
   private sounds: Map<SoundType, BABYLON.Sound> = new Map();
   private isMuted: boolean = false;
   private sfxVolume: number = 0.5;
+  private initialized: boolean = false;
 
   constructor(scene: BABYLON.Scene) {
     this.scene = scene;
+    // Defer sound creation — audio context won't exist until user interacts
+    this.tryInit();
+    // Also try on first user gesture
+    const unlock = () => {
+      if (!this.initialized) {
+        // Unlock BabylonJS audio engine
+        if (BABYLON.Engine.audioEngine && !BABYLON.Engine.audioEngine.unlocked) {
+          BABYLON.Engine.audioEngine.unlock();
+        }
+        // Wait a tick for context to be ready, then init
+        setTimeout(() => this.tryInit(), 100);
+      }
+      window.removeEventListener('click', unlock);
+      window.removeEventListener('keydown', unlock);
+      window.removeEventListener('touchstart', unlock);
+    };
+    window.addEventListener('click', unlock);
+    window.addEventListener('keydown', unlock);
+    window.addEventListener('touchstart', unlock);
+  }
+
+  private tryInit(): void {
+    if (this.initialized) return;
+    const ctx = BABYLON.Engine.audioEngine?.audioContext;
+    if (!ctx) return;
+    // Resume suspended context
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
     this.initializeSounds();
+    this.initialized = true;
+    console.log('SoundSystem initialized');
   }
 
   private initializeSounds(): void {
