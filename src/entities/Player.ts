@@ -1,7 +1,8 @@
 import {
-  Scene, Vector3, MeshBuilder, StandardMaterial, Color3, TransformNode,
+  Scene, Vector3, MeshBuilder, StandardMaterial, Color3, TransformNode, Mesh,
 } from '@babylonjs/core';
 import { Config, Lane, LaneDirection, WeaponType, WEAPONS, WeaponConfig } from '@/core/Config';
+import { WeaponModelBuilder } from '@/utils/WeaponModelBuilder';
 
 export class Player {
   private position: Vector3;
@@ -17,12 +18,15 @@ export class Player {
   private fireTimer: number = 0;
 
   private mesh: TransformNode;
+  private gunMesh: Mesh | null = null;
+  private scene: Scene;
 
   // Damage flash
   private flashTimer: number = 0;
   private bodyMat: StandardMaterial;
 
   constructor(scene: Scene) {
+    this.scene = scene;
     this.hp = Config.INITIAL_HP;
     this.maxHp = Config.INITIAL_HP;
     this.position = new Vector3(Config.LANES.CENTER, Config.PLAYER_HEIGHT, Config.PLAYER_Z_POSITION);
@@ -47,13 +51,8 @@ export class Player {
     head.material = this.bodyMat;
     head.parent = this.mesh;
 
-    // Gun arm (small box sticking forward)
-    const gun = MeshBuilder.CreateBox('pGun', { width: 0.15, height: 0.15, depth: 0.6 }, scene);
-    gun.position.set(0.4, 0.8, 0.3);
-    const gunMat = new StandardMaterial('gunMat', scene);
-    gunMat.diffuseColor = new Color3(0.3, 0.3, 0.3);
-    gun.material = gunMat;
-    gun.parent = this.mesh;
+    // Weapon model
+    this.equipWeaponModel(WeaponType.PISTOL);
 
     this.mesh.position = this.position;
   }
@@ -122,6 +121,18 @@ export class Player {
   public setWeapon(type: WeaponType): void {
     this.weapon = type;
     this.fireTimer = 0;
+    this.equipWeaponModel(type);
+  }
+
+  private equipWeaponModel(type: WeaponType): void {
+    if (this.gunMesh) {
+      this.gunMesh.dispose();
+      this.gunMesh = null;
+    }
+    this.gunMesh = WeaponModelBuilder.create(this.scene, type);
+    this.gunMesh.scaling.setAll(0.8);
+    this.gunMesh.position.set(0.4, 0.8, 0.3);
+    this.gunMesh.parent = this.mesh;
   }
 
   public getWeaponConfig(): WeaponConfig { return WEAPONS[this.weapon]; }
@@ -138,6 +149,7 @@ export class Player {
     this.maxHp = Config.INITIAL_HP;
     this.weapon = WeaponType.PISTOL;
     this.fireTimer = 0;
+    this.equipWeaponModel(WeaponType.PISTOL);
     this.currentLane = Lane.CENTER;
     this.targetLane = Lane.CENTER;
     this.laneProgress = 1;

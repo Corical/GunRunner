@@ -17,6 +17,8 @@ export class UIManager {
 
   private startCb?: () => void;
   private restartCb?: () => void;
+  private speedChangeCb?: (speed: number) => void;
+  private spawnRateChangeCb?: (interval: number) => void;
 
   public initialize(): void {
     this.scoreEl = this.el('score-display');
@@ -39,6 +41,25 @@ export class UIManager {
 
     this.el('start-button').addEventListener('click', () => this.startCb?.());
     this.el('restart-button').addEventListener('click', () => this.restartCb?.());
+
+    // Speed slider
+    const speedSlider = this.el('speed-slider') as HTMLInputElement;
+    const speedValue = this.el('speed-value');
+    speedSlider.addEventListener('input', () => {
+      const v = parseFloat(speedSlider.value);
+      speedValue.textContent = `${v.toFixed(1)}x`;
+      this.speedChangeCb?.(v);
+    });
+
+    // Spawn rate slider
+    const spawnSlider = this.el('spawn-slider') as HTMLInputElement;
+    const spawnValue = this.el('spawn-value');
+    spawnSlider.addEventListener('input', () => {
+      const v = parseFloat(spawnSlider.value) / 10;
+      const label = v < 1.0 ? 'Insane' : v < 1.5 ? 'Very High' : v < 2.0 ? 'High' : v < 2.5 ? 'Normal' : v < 3.0 ? 'Low' : 'Very Low';
+      spawnValue.textContent = label;
+      this.spawnRateChangeCb?.(v);
+    });
   }
 
   public updateScore(score: number): void { this.scoreEl.textContent = score.toLocaleString(); }
@@ -91,6 +112,8 @@ export class UIManager {
 
   public onStartGame(cb: () => void): void { this.startCb = cb; }
   public onRestartGame(cb: () => void): void { this.restartCb = cb; }
+  public onSpeedChange(cb: (speed: number) => void): void { this.speedChangeCb = cb; }
+  public onSpawnRateChange(cb: (interval: number) => void): void { this.spawnRateChangeCb = cb; }
 
   private el(id: string): HTMLElement {
     const e = document.getElementById(id);

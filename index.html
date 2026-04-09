@@ -135,6 +135,25 @@
     <div id="hp-text">HP</div>
     <div id="hp-bar-container"><div id="hp-bar-fill"></div></div>
 
+    <button id="settings-toggle" style="position:absolute;top:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.5);color:white;border:1px solid rgba(255,255,255,0.3);padding:6px 14px;border-radius:16px;font-size:12px;cursor:pointer;pointer-events:all;" onclick="document.getElementById('settings-panel').style.display=document.getElementById('settings-panel').style.display==='none'?'block':'none'">Settings</button>
+
+    <div id="settings-panel" style="display:none;position:absolute;bottom:80px;left:16px;background:rgba(0,0,0,0.85);color:white;padding:16px 20px;border-radius:12px;pointer-events:all;min-width:220px;font-size:13px;">
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span>Game Speed</span>
+          <span id="speed-value" style="color:#FBBF24;font-weight:bold;">1.0x</span>
+        </div>
+        <input type="range" id="speed-slider" min="0.3" max="3.0" value="1.0" step="0.1" style="width:100%;accent-color:#FBBF24;">
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span>Enemy Spawn Rate</span>
+          <span id="spawn-value" style="color:#EF4444;font-weight:bold;">Normal</span>
+        </div>
+        <input type="range" id="spawn-slider" min="3" max="30" value="18" step="1" style="width:100%;accent-color:#EF4444;">
+      </div>
+    </div>
+
     <div id="start-screen">
       <div class="screen-content">
         <h1>GUN RUNNER</h1>

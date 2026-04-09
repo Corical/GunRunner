@@ -9,6 +9,7 @@ export class EnemyManager {
   private spawnTimer: number = 0;
   private spawnInterval: number = Config.ENEMY_SPAWN_INTERVAL;
   private distance: number = 0;
+  private manualOverride: boolean = false;
 
   constructor(scene: Scene) {
     for (let i = 0; i < POOL_SIZE; i++) {
@@ -54,8 +55,10 @@ export class EnemyManager {
       enemy.activate(type, lane, z);
     }
 
-    // Difficulty scaling — slightly faster spawns over time
-    this.spawnInterval = Math.max(0.8, Config.ENEMY_SPAWN_INTERVAL - this.distance * 0.001);
+    // Difficulty scaling — only if user hasn't overridden
+    if (!this.manualOverride) {
+      this.spawnInterval = Math.max(0.8, Config.ENEMY_SPAWN_INTERVAL - this.distance * 0.001);
+    }
   }
 
   private rollEnemyType(): EnemyType {
@@ -88,6 +91,12 @@ export class EnemyManager {
     for (const e of this.pool) e.deactivate();
     this.spawnTimer = 0;
     this.spawnInterval = Config.ENEMY_SPAWN_INTERVAL;
+  }
+
+  /** Set spawn interval manually (from settings slider) */
+  public setSpawnInterval(interval: number): void {
+    this.spawnInterval = interval;
+    this.manualOverride = true;
   }
 
   /** Pause spawning (for boss fights) */

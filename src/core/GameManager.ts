@@ -28,6 +28,9 @@ export class GameManager {
   private bossWave: number = 0;
   private bossActive: boolean = false;
 
+  // Manual overrides from settings sliders
+  private speedMultiplier: number = 1.0;
+
   // Core systems
   private sceneManager!: SceneManager;
   private inputHandler!: InputHandler;
@@ -80,6 +83,10 @@ export class GameManager {
 
     this.uiManager.onStartGame(() => this.startGame());
     this.uiManager.onRestartGame(() => this.startGame());
+    this.uiManager.onSpeedChange((speed) => { this.speedMultiplier = speed; });
+    this.uiManager.onSpawnRateChange((interval) => {
+      this.enemyManager.setSpawnInterval(interval);
+    });
 
     this.gameState = GameState.MENU;
     this.uiManager.showStartScreen();
@@ -136,8 +143,11 @@ export class GameManager {
     const dir = this.inputHandler.getInputDirection();
     if (dir !== 0) this.player.switchLane(dir);
 
+    // Apply speed multiplier
+    const adjustedDt = dt * this.speedMultiplier;
+
     // 2. Player
-    this.player.update(dt);
+    this.player.update(adjustedDt);
 
     // 3. Auto-fire
     if (this.player.tryFire()) {
@@ -148,11 +158,11 @@ export class GameManager {
     }
 
     // 4. Bullets
-    this.bulletManager.update(dt);
+    this.bulletManager.update(adjustedDt);
 
     // 5. Enemies (paused during boss)
     if (!this.bossActive) {
-      this.enemyManager.update(dt, this.distance);
+      this.enemyManager.update(adjustedDt, this.distance);
     }
 
     // 6. Bullet → Enemy collisions
@@ -210,7 +220,7 @@ export class GameManager {
       }
 
       // Boss update + projectile → player
-      this.boss.update(dt);
+      this.boss.update(adjustedDt);
       const playerPos = this.player.getPosition();
       const projHits = this.boss.checkProjectileHits(playerPos.x, playerPos.z, 1.0);
       if (projHits > 0) {
@@ -224,7 +234,7 @@ export class GameManager {
     if (!this.bossActive && Math.random() < Config.FROZEN_SPAWN_CHANCE) {
       this.frozenUpgradeManager.spawnUpgrade();
     }
-    this.frozenUpgradeManager.update(dt);
+    this.frozenUpgradeManager.update(adjustedDt);
 
     // 9. Bullet → Frozen collisions
     const activeUpgrades = this.frozenUpgradeManager.getActiveUpgrades();
@@ -296,7 +306,7 @@ export class GameManager {
     }
 
     // 14. Distance + UI
-    this.distance += dt * Config.GAME_SPEED;
+    this.distance += adjustedDt * Config.GAME_SPEED;
 
     this.uiManager.updateScore(this.score);
     this.uiManager.updateDistance(this.distance);
