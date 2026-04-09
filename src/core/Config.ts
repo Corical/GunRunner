@@ -113,86 +113,65 @@ export enum EnemyType {
 
 export interface WeaponConfig {
   name: string;
-  fireRate: number;      // shots per second
+  fireRate: number;       // shots per second
   damage: number;
-  bulletCount: number;    // 1 for single, 3 for shotgun spread
+  bulletCount: number;    // 1 for single, 3+ for shotgun/flamethrower spread
   bulletSpread: number;   // lateral spread in units
   bulletColor: string;
   bulletSize: number;
+  maxRange: number;       // max distance bullets travel (130 = full screen)
+  penetration: number;    // how many enemies a bullet passes through (1 = normal)
+  splashRadius: number;   // 0 = none, >0 = damages enemies within this radius on hit
 }
 
 export const WEAPONS: Record<WeaponType, WeaponConfig> = {
   [WeaponType.PISTOL]: {
     name: 'Pistol',
-    fireRate: 3,
-    damage: 1,
-    bulletCount: 1,
-    bulletSpread: 0,
-    bulletColor: '#FBBF24',
-    bulletSize: 0.2,
+    fireRate: 3, damage: 1, bulletCount: 1, bulletSpread: 0,
+    bulletColor: '#FBBF24', bulletSize: 0.2,
+    maxRange: 130, penetration: 1, splashRadius: 0,
   },
   [WeaponType.SMG]: {
     name: 'SMG',
-    fireRate: 8,
-    damage: 1,
-    bulletCount: 1,
-    bulletSpread: 0.3,
-    bulletColor: '#FCD34D',
-    bulletSize: 0.15,
+    fireRate: 8, damage: 1, bulletCount: 1, bulletSpread: 0.3,
+    bulletColor: '#FCD34D', bulletSize: 0.15,
+    maxRange: 130, penetration: 1, splashRadius: 0,
   },
   [WeaponType.SHOTGUN]: {
     name: 'Shotgun',
-    fireRate: 2,
-    damage: 2,
-    bulletCount: 5,
-    bulletSpread: 2.0,
-    bulletColor: '#F97316',
-    bulletSize: 0.18,
+    fireRate: 2, damage: 2, bulletCount: 5, bulletSpread: 2.0,
+    bulletColor: '#F97316', bulletSize: 0.18,
+    maxRange: 40, penetration: 1, splashRadius: 0, // Close range
   },
   [WeaponType.LASER]: {
     name: 'Laser',
-    fireRate: 12,
-    damage: 1,
-    bulletCount: 1,
-    bulletSpread: 0,
-    bulletColor: '#60A5FA',
-    bulletSize: 0.1,
+    fireRate: 12, damage: 1, bulletCount: 1, bulletSpread: 0,
+    bulletColor: '#60A5FA', bulletSize: 0.1,
+    maxRange: 130, penetration: 1, splashRadius: 0,
   },
   [WeaponType.ROCKET]: {
     name: 'Rocket',
-    fireRate: 1.5,
-    damage: 8,
-    bulletCount: 1,
-    bulletSpread: 0,
-    bulletColor: '#EF4444',
-    bulletSize: 0.35,
+    fireRate: 1.5, damage: 8, bulletCount: 1, bulletSpread: 0,
+    bulletColor: '#EF4444', bulletSize: 0.35,
+    maxRange: 130, penetration: 1, splashRadius: 3.0, // Explosion radius
   },
   [WeaponType.MINIGUN]: {
     name: 'Minigun',
-    fireRate: 20,
-    damage: 1,
-    bulletCount: 1,
-    bulletSpread: 0.5,
-    bulletColor: '#FDE68A',
-    bulletSize: 0.1,
+    fireRate: 20, damage: 1, bulletCount: 1, bulletSpread: 0.5,
+    bulletColor: '#FDE68A', bulletSize: 0.1,
+    maxRange: 130, penetration: 1, splashRadius: 0,
   },
   [WeaponType.RAILGUN]: {
     name: 'Railgun',
-    fireRate: 0.8,
-    damage: 15,
-    bulletCount: 1,
-    bulletSpread: 0,
-    bulletColor: '#C084FC',
-    bulletSize: 0.25,
+    fireRate: 0.8, damage: 15, bulletCount: 1, bulletSpread: 0,
+    bulletColor: '#C084FC', bulletSize: 0.25,
+    maxRange: 130, penetration: 4, splashRadius: 0, // Pierces through 4 enemies
   },
   [WeaponType.FLAMETHROWER]: {
     name: 'Flamethrower',
-    fireRate: 15,
-    damage: 1,
-    bulletCount: 3,
-    bulletSpread: 1.5,
-    bulletColor: '#FB923C',
-    bulletSize: 0.2,
+    fireRate: 15, damage: 1, bulletCount: 3, bulletSpread: 1.5,
+    bulletColor: '#FB923C', bulletSize: 0.2,
+    maxRange: 25, penetration: 1, splashRadius: 2.0, // Short range + ignites nearby
   },
 };
 

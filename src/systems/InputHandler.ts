@@ -5,6 +5,7 @@ export class InputHandler {
   private touchStartX: number = 0;
   private keyStates: Map<string, boolean> = new Map();
   private lastKeyPressTime: Map<string, number> = new Map();
+  private speedChangeCb?: (delta: number) => void;
 
   public initialize(): void {
     window.addEventListener('keydown', this.onKeyDown);
@@ -38,6 +39,12 @@ export class InputHandler {
       }
       this.keyStates.set('right', true);
       e.preventDefault();
+    } else if (e.key === 'ArrowUp') {
+      this.speedChangeCb?.(0.1);
+      e.preventDefault();
+    } else if (e.key === 'ArrowDown') {
+      this.speedChangeCb?.(-0.1);
+      e.preventDefault();
     }
   };
 
@@ -68,6 +75,10 @@ export class InputHandler {
   private onTouchEnd = (_e: TouchEvent): void => {
     this.touchStartX = 0;
   };
+
+  public onSpeedChange(cb: (delta: number) => void): void {
+    this.speedChangeCb = cb;
+  }
 
   public dispose(): void {
     window.removeEventListener('keydown', this.onKeyDown);

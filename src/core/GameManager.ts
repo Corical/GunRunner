@@ -88,6 +88,11 @@ export class GameManager {
       this.enemyManager.setSpawnInterval(interval);
     });
 
+    // Up/Down arrow speed adjustment
+    this.inputHandler.onSpeedChange((delta) => {
+      this.speedMultiplier = Math.max(0.3, Math.min(3.0, this.speedMultiplier + delta));
+    });
+
     this.gameState = GameState.MENU;
     this.uiManager.showStartScreen();
     this.uiManager.updateHP(this.player.getHP(), this.player.getMaxHP());

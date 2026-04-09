@@ -26,7 +26,10 @@ export class BulletManager {
         spreadX = t * weapon.bulletSpread;
       }
 
-      bullet.activate(muzzlePos.clone(), weapon.damage, spreadX);
+      bullet.activate(
+        muzzlePos.clone(), weapon.damage, spreadX,
+        weapon.maxRange, weapon.penetration, weapon.splashRadius
+      );
     }
   }
 
