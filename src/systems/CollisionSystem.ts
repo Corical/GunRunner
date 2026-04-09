@@ -59,9 +59,12 @@ export class CollisionSystem {
             hits.push({ position: pos, damage: bullet.damage });
           }
 
-          // Splash damage — hit nearby enemies too
+          // Splash damage — hit nearby enemies (capped to prevent cascade)
           if (bullet.splashRadius > 0) {
+            let splashCount = 0;
+            const MAX_SPLASH = 5;
             for (const other of enemies) {
+              if (splashCount >= MAX_SPLASH) break;
               if (!other.active || other === enemy) continue;
               const sdx = enemy.position.x - other.position.x;
               const sdz = enemy.position.z - other.position.z;
@@ -74,6 +77,7 @@ export class CollisionSystem {
                 } else {
                   hits.push({ position: sPos, damage: 1 });
                 }
+                splashCount++;
               }
             }
           }

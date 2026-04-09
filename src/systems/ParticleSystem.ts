@@ -4,6 +4,8 @@ import * as BABYLON from '@babylonjs/core';
  * Manages all particle effects for GunRunner.
  * Effects auto-dispose after their animation completes.
  */
+const MAX_ACTIVE_SYSTEMS = 15; // Prevent GPU overload from grenade spam
+
 export class ParticleSystem {
   private scene: BABYLON.Scene;
   private activeSystems: BABYLON.ParticleSystem[] = [];
@@ -12,11 +14,16 @@ export class ParticleSystem {
     this.scene = scene;
   }
 
+  /** Check if we can spawn more particles — skip if at capacity */
+  private canSpawn(): boolean {
+    return this.activeSystems.length < MAX_ACTIVE_SYSTEMS;
+  }
+
   /**
    * Muzzle flash — small yellow burst, very short lived (≈50 ms).
    */
   public createMuzzleFlash(position: BABYLON.Vector3): void {
-    const ps = this.createBurst('muzzleFlash', position, 30, {
+    this.createBurst('muzzleFlash', position, 8, {
       minSize: 0.1,
       maxSize: 0.3,
       minLife: 0.05,
@@ -31,14 +38,14 @@ export class ParticleSystem {
       disposeAfterMs: 150,
       emitterRadius: 0.3,
     });
-    this.track(ps);
+    // tracked in createBurst
   }
 
   /**
    * Enemy hit sparks — small red spark burst.
    */
   public createEnemyHitEffect(position: BABYLON.Vector3): void {
-    const ps = this.createBurst('enemyHit', position, 20, {
+    this.createBurst('enemyHit', position, 8, {
       minSize: 0.15,
       maxSize: 0.4,
       minLife: 0.1,
@@ -53,14 +60,14 @@ export class ParticleSystem {
       disposeAfterMs: 400,
       emitterRadius: 0.5,
     });
-    this.track(ps);
+    // tracked in createBurst
   }
 
   /**
    * Enemy death burst — larger explosion matching enemy color.
    */
   public createEnemyDeathEffect(position: BABYLON.Vector3, color: BABYLON.Color3): void {
-    const ps = this.createBurst('enemyDeath', position, 80, {
+    this.createBurst('enemyDeath', position, 25, {
       minSize: 0.2,
       maxSize: 0.7,
       minLife: 0.3,
@@ -75,14 +82,14 @@ export class ParticleSystem {
       disposeAfterMs: 800,
       emitterRadius: 1.0,
     });
-    this.track(ps);
+    // tracked in createBurst
   }
 
   /**
    * Ice crack — sharp cyan shards.
    */
   public createIceCrackEffect(position: BABYLON.Vector3): void {
-    const ps = this.createBurst('iceCrack', position, 25, {
+    this.createBurst('iceCrack', position, 25, {
       minSize: 0.1,
       maxSize: 0.35,
       minLife: 0.15,
@@ -97,7 +104,7 @@ export class ParticleSystem {
       disposeAfterMs: 500,
       emitterRadius: 0.4,
     });
-    this.track(ps);
+    // tracked in createBurst
   }
 
   /**
@@ -105,7 +112,7 @@ export class ParticleSystem {
    */
   public createIceShatterEffect(position: BABYLON.Vector3): void {
     // Main cyan burst
-    const main = this.createBurst('iceShatterMain', position, 100, {
+    this.createBurst('iceShatterMain', position, 100, {
       minSize: 0.2,
       maxSize: 0.6,
       minLife: 0.3,
@@ -120,10 +127,10 @@ export class ParticleSystem {
       disposeAfterMs: 1000,
       emitterRadius: 1.2,
     });
-    this.track(main);
+    // tracked in createBurst
 
     // White sparkles overlay
-    const sparkles = this.createBurst('iceShatterSparkles', position, 40, {
+    this.createBurst('iceShatterSparkles', position, 40, {
       minSize: 0.08,
       maxSize: 0.2,
       minLife: 0.5,
@@ -138,14 +145,14 @@ export class ParticleSystem {
       disposeAfterMs: 1200,
       emitterRadius: 0.8,
     });
-    this.track(sparkles);
+    // tracked in createBurst
   }
 
   /**
    * Weapon pickup — celebration burst matching weapon color.
    */
   public createWeaponPickupEffect(position: BABYLON.Vector3, color: BABYLON.Color3): void {
-    const ps = this.createBurst('weaponPickup', position, 60, {
+    this.createBurst('weaponPickup', position, 60, {
       minSize: 0.2,
       maxSize: 0.5,
       minLife: 0.5,
@@ -160,7 +167,7 @@ export class ParticleSystem {
       disposeAfterMs: 1500,
       emitterRadius: 0.8,
     });
-    this.track(ps);
+    // tracked in createBurst
   }
 
   /**
@@ -181,7 +188,7 @@ export class ParticleSystem {
           Math.random() * 2,
           (Math.random() - 0.5) * 2
         );
-        const ps = this.createBurst(`bossDeath_${index}`, position.add(offset), 120, {
+        this.createBurst(`bossDeath_${index}`, position.add(offset), 120, {
           minSize: 0.3,
           maxSize: 1.0,
           minLife: 0.4,
@@ -196,7 +203,7 @@ export class ParticleSystem {
           disposeAfterMs: 1200,
           emitterRadius: 1.5,
         });
-        this.track(ps);
+        // tracked in createBurst
       }, index * 120);
     });
   }
@@ -224,7 +231,9 @@ export class ParticleSystem {
       disposeAfterMs: number;
       emitterRadius: number;
     }
-  ): BABYLON.ParticleSystem {
+  ): BABYLON.ParticleSystem | null {
+    if (!this.canSpawn()) return null;
+
     const ps = new BABYLON.ParticleSystem(name, particleCount, this.scene);
 
     const emitter = BABYLON.MeshBuilder.CreateBox(`${name}_emitter`, { size: 0.1 }, this.scene);
@@ -253,6 +262,7 @@ export class ParticleSystem {
     ps.blendMode = BABYLON.ParticleSystem.BLENDMODE_ONEONE;
 
     ps.start();
+    this.activeSystems.push(ps);
 
     setTimeout(() => {
       ps.stop();
@@ -264,9 +274,6 @@ export class ParticleSystem {
     return ps;
   }
 
-  private track(ps: BABYLON.ParticleSystem): void {
-    this.activeSystems.push(ps);
-  }
 
   private disposeSystem(ps: BABYLON.ParticleSystem, emitter: BABYLON.Mesh): void {
     const index = this.activeSystems.indexOf(ps);

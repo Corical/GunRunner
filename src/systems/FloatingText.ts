@@ -27,6 +27,8 @@ class FloatingTextInstance {
  * Renders animated floating text above world positions.
  * Used for damage numbers, pickups, combos, and milestone messages.
  */
+const MAX_FLOATING_TEXTS = 12;
+
 export class FloatingTextSystem {
   private scene: BABYLON.Scene;
   private instances: FloatingTextInstance[] = [];
@@ -48,6 +50,9 @@ export class FloatingTextSystem {
     color: BABYLON.Color3 = BABYLON.Color3.Green(),
     scale: number = 1.0
   ): void {
+    // Cap concurrent floating texts to prevent GPU overload
+    if (this.instances.length >= MAX_FLOATING_TEXTS) return;
+
     const texWidth = 1024;
     const texHeight = 256;
     const texture = new BABYLON.DynamicTexture(
