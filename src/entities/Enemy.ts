@@ -69,19 +69,42 @@ export class Enemy {
     this.mesh.dispose();
     if (this.shieldMesh) { this.shieldMesh.dispose(); this.shieldMesh = null; }
 
-    switch (this.type) {
-      case EnemyType.BASIC: this.buildBasic(); break;
-      case EnemyType.ARMORED: this.buildArmored(); break;
-      case EnemyType.FAST: this.buildFast(); break;
-      case EnemyType.SHIELDED: this.buildShielded(); break;
+    try {
+      switch (this.type) {
+        case EnemyType.BASIC: this.buildBasic(); break;
+        case EnemyType.ARMORED: this.buildArmored(); break;
+        case EnemyType.FAST: this.buildFast(); break;
+        case EnemyType.SHIELDED: this.buildShielded(); break;
+        default:
+          console.warn('Unknown enemy type:', this.type);
+          this.mesh = MeshBuilder.CreateBox('fallback', { size: 1 }, this.scene);
+      }
+    } catch (e) {
+      console.error(`Failed to build enemy mesh for type ${this.type}:`, e);
+      this.mesh = MeshBuilder.CreateBox('fallback', { size: 1 }, this.scene);
     }
 
     this.mesh.material = this.mat;
     this.mesh.isPickable = false;
   }
 
+  private mergeParts(parts: Mesh[], name: string): void {
+    // MergeMeshes with disposeSource=false so we can fallback if merge fails
+    const merged = Mesh.MergeMeshes(parts, false, false);
+    if (merged) {
+      // Dispose originals manually after successful merge
+      parts.forEach(p => p.dispose());
+      merged.name = name;
+      this.mesh = merged;
+    } else {
+      // Merge failed — use first part, dispose the rest
+      this.mesh = parts[0];
+      for (let i = 1; i < parts.length; i++) parts[i].dispose();
+      this.mesh.name = name;
+    }
+  }
+
   private buildBasic(): void {
-    // Humanoid — body + head + arms. Scale ~1.2 so it's clearly visible
     const body = MeshBuilder.CreateCylinder('eb', { diameter: 0.7, height: 1.0, tessellation: 6 }, this.scene);
     body.position.y = 0.5; body.material = this.mat;
 
@@ -97,12 +120,10 @@ export class Enemy {
     const rLeg = MeshBuilder.CreateCylinder('erl', { diameter: 0.2, height: 0.5, tessellation: 4 }, this.scene);
     rLeg.position.set(0.2, -0.2, 0); rLeg.material = this.mat;
 
-    this.mesh = Mesh.MergeMeshes([body, head, arms, lLeg, rLeg], true, false) || body;
-    this.mesh.name = 'enemy_basic';
+    this.mergeParts([body, head, arms, lLeg, rLeg], 'enemy_basic');
   }
 
   private buildArmored(): void {
-    // Chunky wide tank — much bigger than basic
     const body = MeshBuilder.CreateBox('eb', { width: 1.4, height: 1.5, depth: 0.9 }, this.scene);
     body.position.y = 0.75; body.material = this.mat;
 
@@ -115,16 +136,13 @@ export class Enemy {
     const head = MeshBuilder.CreateSphere('eh', { diameter: 0.45, segments: 6 }, this.scene);
     head.position.y = 1.75; head.material = this.mat;
 
-    // Chest plate
     const plate = MeshBuilder.CreateBox('ep', { width: 1.0, height: 0.6, depth: 0.15 }, this.scene);
     plate.position.set(0, 0.9, -0.45); plate.material = this.mat;
 
-    this.mesh = Mesh.MergeMeshes([body, lShoulder, rShoulder, head, plate], true, false) || body;
-    this.mesh.name = 'enemy_armored';
+    this.mergeParts([body, lShoulder, rShoulder, head, plate], 'enemy_armored');
   }
 
   private buildFast(): void {
-    // Sleek pointed cone + swept fins — clearly aerodynamic
     const cone = MeshBuilder.CreateCylinder('ec', {
       diameterTop: 0, diameterBottom: 0.7, height: 1.4, tessellation: 6,
     }, this.scene);
@@ -140,8 +158,7 @@ export class Enemy {
     const tail = MeshBuilder.CreateBox('et', { width: 0.06, height: 0.6, depth: 0.3 }, this.scene);
     tail.position.set(0, 0.6, 0.4); tail.material = this.mat;
 
-    this.mesh = Mesh.MergeMeshes([cone, lFin, rFin, tail], true, false) || cone;
-    this.mesh.name = 'enemy_fast';
+    this.mergeParts([cone, lFin, rFin, tail], 'enemy_fast');
   }
 
   private buildShielded(): void {
@@ -156,8 +173,7 @@ export class Enemy {
     const arm = MeshBuilder.CreateBox('ea', { width: 0.15, height: 0.15, depth: 0.5 }, this.scene);
     arm.position.set(-0.3, 0.7, -0.35); arm.material = this.mat;
 
-    this.mesh = Mesh.MergeMeshes([body, head, arm], true, false) || body;
-    this.mesh.name = 'enemy_shielded';
+    this.mergeParts([body, head, arm], 'enemy_shielded');
 
     // Shield — thin curved disc in front, NOT covering the body from above
     this.shieldMesh = MeshBuilder.CreateDisc('eshield', { radius: 0.8, tessellation: 12 }, this.scene);
