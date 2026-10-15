@@ -20,6 +20,7 @@ const UiKit = preload("res://scripts/ui/ui_kit.gd")
 const Juice = preload("res://scripts/view/juice.gd")
 const SynthSfx = preload("res://scripts/adapters/synth_sfx.gd")
 const DeviceHaptics = preload("res://scripts/adapters/device_haptics.gd")
+const MusicPlayer = preload("res://scripts/audio/music_player.gd")
 const RunRecorder = preload("res://scripts/stats/run_recorder.gd")
 const LevelUpUi = preload("res://scripts/ui/level_up_ui.gd")
 
@@ -41,6 +42,7 @@ var _menus: CanvasLayer
 var _juice: Node3D
 var _sfx: Node
 var _haptics: Node
+var _music: Node
 var _frame_events: Array = []
 var _recorder: RunRecorder
 var _level_ui: CanvasLayer
@@ -117,6 +119,15 @@ func start(rules: Rules, logger: GLog, args: Dictionary) -> void:
 	_haptics = DeviceHaptics.new()
 	add_child(_haptics)
 	_haptics.set_enabled(bool(_settings.get("haptics", true)))
+	_ensure_bus("SFX")
+	_ensure_bus("Music")
+	_sfx.set_volume(float(_settings.get("volume", 0.8)))
+	_music = MusicPlayer.new()
+	add_child(_music)
+	if not _music.errors.is_empty():
+		_logger.error("music", "data_invalid", {"errors": "; ".join(_music.errors)})
+	_music.set_volume(float(_settings.get("music_volume", 0.6)))
+	_music.set_mood(str(_settings.get("music", "Off")))
 
 	_hud = Hud.new()
 	add_child(_hud)
@@ -131,6 +142,7 @@ func start(rules: Rules, logger: GLog, args: Dictionary) -> void:
 	_menus.resume_pressed.connect(_resume)
 	_menus.pause_pressed.connect(_pause)
 	_menus.settings_changed.connect(_on_settings)
+	_menus.set_music_options(_music.moods(), _music.tracks)
 	_level_ui = LevelUpUi.new()
 	add_child(_level_ui)
 	_level_ui.build(rules)
@@ -144,6 +156,16 @@ func start(rules: Rules, logger: GLog, args: Dictionary) -> void:
 		_menus._toggle(_menus._settings_panel)
 	if args.has("autostart"):
 		_start_game()
+
+
+## Separate volume for effects and music: each gets its own bus feeding Master.
+static func _ensure_bus(bus_name: String) -> void:
+	if AudioServer.get_bus_index(bus_name) >= 0:
+		return
+	AudioServer.add_bus()
+	var i := AudioServer.bus_count - 1
+	AudioServer.set_bus_name(i, bus_name)
+	AudioServer.set_bus_send(i, "Master")
 
 
 func _new_sim() -> Sim:
@@ -170,6 +192,7 @@ func _start_game() -> void:
 	_clock.reset()
 	_actors.bind(_sim)
 	_juice.reset()
+	_music.set_boss(false)
 	_menus.show_playing()
 	get_viewport().gui_release_focus()
 	state = State.PLAYING
@@ -215,6 +238,8 @@ func _on_settings(settings: Dictionary, source: String) -> void:
 	_settings_store.save_settings(settings)
 	_sfx.set_volume(float(settings.get("volume", 0.8)))
 	_haptics.set_enabled(bool(settings.get("haptics", true)))
+	_music.set_mood(str(settings.get("music", "Off")))
+	_music.set_volume(float(settings.get("music_volume", 0.6)))
 
 
 func _process(delta: float) -> void:
@@ -233,6 +258,10 @@ func _process(delta: float) -> void:
 			_recorder.after_step(_sim)
 			_frame_events.append_array(_sim.events)
 			for ev in _sim.events:
+				if ev["kind"] == Events.Kind.BOSS_STARTED:
+					_music.set_boss(true)
+				elif ev["kind"] == Events.Kind.BOSS_DEFEATED:
+					_music.set_boss(false)
 				if ev["kind"] == Events.Kind.GAME_OVER:
 					_game_over()
 			if _sim.over:

@@ -27,6 +27,44 @@ var _spawn_value: Label
 var _volume_slider: HSlider
 var _volume_value: Label
 var _haptics_toggle: CheckButton
+var _music_option: OptionButton
+var _music_volume_slider: HSlider
+var _music_volume_value: Label
+var _credits_panel: Control
+
+
+## Fills the Music choice and the Credits screen from data/music.tsv (called once the music player has loaded).
+func set_music_options(moods: PackedStringArray, tracks: Array) -> void:
+	_quiet = true
+	_music_option.clear()
+	for m in moods:
+		_music_option.add_item(m)
+	_quiet = false
+	apply_settings(_settings)
+	var lines := PackedStringArray(["[b]MUSIC[/b]"])
+	for t in tracks:
+		lines.append("[b]%s[/b] - %s  (%s, %s)\n[url=%s]%s[/url]" % [t["title"], t["artist"], t["mood"], t["licence"], t["source_url"], t["source_url"]])
+	lines.append("")
+	lines.append("[b]GAME[/b]\nMade with Godot Engine (MIT licence) - godotengine.org")
+	var text: RichTextLabel = _credits_panel.get_node("Text")
+	text.text = "\n".join(lines)
+
+
+func _build_credits(root: Control) -> Control:
+	var p := UiKit.panel(Color(0, 0, 0, 0.9))
+	p.visible = false
+	root.add_child(p)
+	var text := RichTextLabel.new()
+	text.name = "Text"
+	text.bbcode_enabled = true
+	text.scroll_active = true
+	text.custom_minimum_size = Vector2(620, 360)
+	text.add_theme_font_size_override("normal_font_size", 18)
+	text.add_theme_font_size_override("bold_font_size", 18)
+	text.meta_clicked.connect(func(meta): OS.shell_open(str(meta)))  # tap a link to open the source page
+	p.add_child(text)
+	UiKit.pin(p, Control.PRESET_CENTER, 16)
+	return p
 var _settings := {}
 var _quiet := false  ## true while building/loading, so setting slider values doesn't echo back
 
@@ -68,6 +106,7 @@ func build(rules: Rules, settings: Dictionary) -> void:
 
 	_settings_panel = _build_settings(root)
 	_guide_panel = _build_guide(root, rules)
+	_credits_panel = _build_credits(root)
 	show_start()
 
 
@@ -172,7 +211,7 @@ func _build_settings(root: Control) -> Control:
 	auto.pressed.connect(_on_auto)
 	col.add_child(auto)
 
-	var volume_row := _slider_row(col, "Volume")
+	var volume_row := _slider_row(col, "Effects volume")
 	_volume_value = volume_row[0]
 	_volume_slider = volume_row[1]
 	_volume_slider.min_value = 0.0
@@ -196,6 +235,38 @@ func _build_settings(root: Control) -> Control:
 		_settings["haptics"] = on
 		settings_changed.emit(_settings.duplicate(), "haptics_toggle"))
 	col.add_child(_haptics_toggle)
+
+	var music_row := HBoxContainer.new()
+	col.add_child(music_row)
+	var music_label := UiKit.label("Music", 16, Color.WHITE)
+	music_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	music_row.add_child(music_label)
+	_music_option = OptionButton.new()
+	_music_option.custom_minimum_size = Vector2(160, 44)
+	_music_option.focus_mode = Control.FOCUS_NONE
+	_music_option.item_selected.connect(func(i: int):
+		if _quiet:
+			return
+		_settings["music"] = _music_option.get_item_text(i)
+		settings_changed.emit(_settings.duplicate(), "music_choice"))
+	music_row.add_child(_music_option)
+
+	var mv_row := _slider_row(col, "Music volume")
+	_music_volume_value = mv_row[0]
+	_music_volume_slider = mv_row[1]
+	_music_volume_slider.min_value = 0.0
+	_music_volume_slider.max_value = 1.0
+	_music_volume_slider.step = 0.05
+	_music_volume_slider.value_changed.connect(func(v: float):
+		_music_volume_value.text = "%d%%" % int(round(v * 100))
+		if _quiet:
+			return
+		_settings["music_volume"] = v
+		settings_changed.emit(_settings.duplicate(), "music_volume_slider"))
+
+	var credits_btn := UiKit.small_button("Credits")
+	credits_btn.pressed.connect(func(): _credits_panel.visible = not _credits_panel.visible)
+	col.add_child(credits_btn)
 	apply_settings(_settings)
 	UiKit.pin(p, Control.PRESET_TOP_RIGHT, 16, 124)
 	return p
@@ -209,6 +280,11 @@ func apply_settings(settings: Dictionary) -> void:
 	var interval: float = settings["spawn_interval"]
 	_spawn_slider.value = interval * 10.0 if interval > 0.0 else 18.0
 	_spawn_value.text = _spawn_label(interval)
+	_music_volume_slider.value = settings.get("music_volume", 0.6)
+	_music_volume_value.text = "%d%%" % int(round(_music_volume_slider.value * 100))
+	for i in _music_option.item_count:
+		if _music_option.get_item_text(i) == str(settings.get("music", "Off")):
+			_music_option.select(i)
 	_volume_slider.value = settings.get("volume", 0.8)
 	_volume_value.text = "%d%%" % int(round(_volume_slider.value * 100))
 	_haptics_toggle.button_pressed = settings.get("haptics", true)

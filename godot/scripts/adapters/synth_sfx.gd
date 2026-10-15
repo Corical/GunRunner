@@ -48,6 +48,7 @@ func _ready() -> void:
 	_clips["explode"] = _mix(_sweep(90.0, 40.0, 0.4, 0.6, "sine"), _noise(0.32, 0.45))
 	for i in VOICES:
 		var p := AudioStreamPlayer.new()
+		p.bus = "SFX"
 		add_child(p)
 		_players.append(p)
 
@@ -56,9 +57,11 @@ func set_muted(value: bool) -> void:
 	muted = value
 
 
-## 0..1 master volume (Settings slider); 0 = silent.
+## 0..1 effects volume on the SFX bus (Settings slider); 0 = silent.
 func set_volume(v: float) -> void:
-	var bus := AudioServer.get_bus_index("Master")
+	var bus := AudioServer.get_bus_index("SFX")
+	if bus < 0:
+		return
 	AudioServer.set_bus_mute(bus, v <= 0.001)
 	AudioServer.set_bus_volume_db(bus, linear_to_db(maxf(v, 0.001)))
 

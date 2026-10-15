@@ -1,0 +1,8 @@
+#schema 1
+# Background music, one row per track. The Settings "Music" choice lists the moods; the Credits screen lists
+# every row. Licence must be CC0 or CC-BY (credited on the Credits screen); CC-BY-SA and NC are not allowed
+# (test_music.gd enforces it). Every licence was read on the source page before the file was added.
+# role: run = plays during a run in this mood; boss = plays during boss fights in this mood (optional).
+id	mood	role	title	artist	licence	source_url	file
+string	string	string	string	string	string	string	string
+retro_run	Retro	run	Head in the Sand (seamless loop)	congusbongus	CC0	https://opengameart.org/content/head-in-the-sand-seamless-loop	res://assets/music/headinthesand.ogg

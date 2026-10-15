@@ -19,6 +19,8 @@ func load_settings() -> Dictionary:
 	out["spawn_interval"] = 0.0 if interval <= 0.0 else clampf(interval, 0.3, 3.0)
 	out["haptics"] = bool(cfg.get_value("game", "haptics", out["haptics"]))
 	out["volume"] = clampf(float(cfg.get_value("game", "volume", out["volume"])), 0.0, 1.0)
+	out["music"] = str(cfg.get_value("game", "music", out["music"]))
+	out["music_volume"] = clampf(float(cfg.get_value("game", "music_volume", out["music_volume"])), 0.0, 1.0)
 	return out
 
 
@@ -28,6 +30,8 @@ func save_settings(settings: Dictionary) -> void:
 	cfg.set_value("game", "spawn_interval", settings.get("spawn_interval", 0.0))
 	cfg.set_value("game", "haptics", settings.get("haptics", true))
 	cfg.set_value("game", "volume", settings.get("volume", 0.8))
+	cfg.set_value("game", "music", settings.get("music", "Retro"))
+	cfg.set_value("game", "music_volume", settings.get("music_volume", 0.6))
 	var err := cfg.save(path)
 	if err != OK:
 		push_warning("settings: cannot save %s (error %d)" % [path, err])
