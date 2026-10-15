@@ -438,9 +438,9 @@ static func guide_text(rules: Rules) -> String:
 		var what := ""
 		if t["slow_multiplier"] < 1.0:
 			what = "slows enemies to %d%% speed" % int(t["slow_multiplier"] * 100)
-		elif t["damage_per_sec"] > 0.0:
-			what = "burns enemies in range, %d damage per %ds" % [t["damage_per_sec"], rules.t("burn_tick")]
+		elif t["burn_damage"] > 0:
+			what = "burns enemies in range, %d damage per %ds" % [t["burn_damage"], rules.t("burn_tick")]
 		elif t["poison_duration"] > 0.0:
-			what = "poisons, 1 damage every %ds for %ds after leaving" % [rules.t("poison_tick"), t["poison_duration"]]
+			what = "poisons, %d damage every %ds for %ds after leaving" % [t["poison_damage"], rules.t("poison_tick"), t["poison_duration"]]
 		lines.append("[color=%s]◆[/color] %s — %s" % [t["color"], t["name"], what])
 	return "\n".join(lines)

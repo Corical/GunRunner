@@ -5,7 +5,7 @@ extends RefCounted
 const TABLES := {
 	"weapons": ["id", "name", "fire_rate", "damage", "bullet_count", "bullet_spread", "bullet_size", "bullet_color", "max_range", "penetration", "splash_radius", "detonates"],
 	"enemies": ["id", "name", "hp", "speed", "color", "size", "score", "switches_lanes"],
-	"towers": ["id", "name", "color", "duration", "radius", "damage_per_sec", "slow_multiplier", "poison_duration"],
+	"towers": ["id", "name", "color", "duration", "radius", "burn_damage", "slow_multiplier", "poison_duration", "poison_damage"],
 	"effectiveness": ["id", "weapon", "enemy", "multiplier"],
 	"rewards": ["id", "kind", "weight"],
 	"spawns": ["id", "start"],
@@ -139,6 +139,8 @@ func _build(tables: Dictionary) -> void:
 		towers[row["id"]] = row
 		if row["duration"] <= 0.0: errors.append("tower %s: duration must be > 0" % row["id"])
 		if row["radius"] <= 0.0: errors.append("tower %s: radius must be > 0" % row["id"])
+		if row["burn_damage"] < 0 or row["poison_damage"] < 0: errors.append("tower %s: damage must not be negative" % row["id"])
+		if row["poison_duration"] > 0.0 and row["poison_damage"] < 1: errors.append("tower %s: poisons for %ss but poison_damage is 0" % [row["id"], row["poison_duration"]])
 
 	for row in tables["effectiveness"]:
 		if not weapons.has(row["weapon"]): errors.append("effectiveness %s: unknown weapon '%s'" % [row["id"], row["weapon"]])

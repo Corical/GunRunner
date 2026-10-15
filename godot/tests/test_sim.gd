@@ -103,6 +103,32 @@ func test_burn_kill_scores_like_any_kill() -> void:
 	eq(s.combo, 1, "tower kills build the combo too")
 
 
+## Fable review #16: towers.tsv's damage column was read only as on/off; burn and poison always dealt 1, while the
+## Enemy Guide showed the column. The number in the data must be the number in the game.
+func test_tower_damage_comes_from_the_data() -> void:
+	var s := _quiet()
+	s.rules.towers["fire"]["burn_damage"] = 3
+	s.rules.towers["poison"]["poison_damage"] = 4
+	s.towers.deploy("fire", 0.0, s._emit)
+	var burnt = _place(s, "shielded", 0.0, 54.0)
+	burnt.hp = 1000
+	s.enemies.pool[0].slow_mult = 1.0
+	var hits := _of(_run(s, 120), K.ENEMY_HIT)
+	var burns := hits.filter(func(h): return h["source"] == "burn")
+	ok(burns.size() > 0, "fire tower burned")
+	for h in burns:
+		eq(h["amount"], 3, "burn deals the data's burn_damage")
+	var s2 := _quiet()
+	s2.rules.towers["poison"]["poison_damage"] = 4
+	s2.towers.deploy("poison", 0.0, s2._emit)
+	var p = _place(s2, "shielded", 0.0, 54.0)
+	p.hp = 1000
+	var poisons := _of(_run(s2, 300), K.ENEMY_HIT).filter(func(h): return h["source"] == "poison")
+	ok(poisons.size() > 0, "poison ticked")
+	for h in poisons:
+		eq(h["amount"], 4, "poison deals the data's poison_damage")
+
+
 func test_poison_kill_after_the_tower_has_expired() -> void:
 	var s := _quiet()
 	s.towers.deploy("poison", 0.0, s._emit)

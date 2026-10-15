@@ -68,8 +68,9 @@ func update(dt: float, enemies: Array, emit: Callable) -> void:
 			continue
 		var r: float = t.row["radius"]
 		var slow: float = t.row["slow_multiplier"]
-		var burn: bool = t.row["damage_per_sec"] > 0.0
+		var burn: int = t.row["burn_damage"]
 		var poison: float = t.row["poison_duration"]
+		var poison_dmg: int = t.row["poison_damage"]
 		for e in enemies:
 			if not e.active:
 				continue
@@ -77,10 +78,12 @@ func update(dt: float, enemies: Array, emit: Callable) -> void:
 				continue
 			if slow < 1.0:
 				e.slow_mult = minf(e.slow_mult, slow)
-			if burn:
+			if burn > 0:
 				e.burning = true
+				e.burn_damage = maxi(e.burn_damage, burn)
 			if poison > 0.0:
 				e.poison_timer = maxf(e.poison_timer, poison)
+				e.poison_damage = maxi(e.poison_damage, poison_dmg)
 
 
 func active_count() -> int:

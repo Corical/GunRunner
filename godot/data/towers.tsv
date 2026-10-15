@@ -1,9 +1,9 @@
 #schema 1
 # Source: src/core/Config.ts TOWERS. Towers are placed at the player's x, z = tuning tower_z (Tower.ts:7).
-# slow_multiplier 1.0 = no slow. damage_per_sec > 0 = burn (1 dmg per tuning burn_tick seconds while in range).
-# poison_duration > 0 = poison that lingers after leaving range (1 dmg per tuning poison_tick seconds).
-id	name	color	duration	radius	damage_per_sec	slow_multiplier	poison_duration
-string	string	string	float	float	float	float	float
-freeze	Freeze Tower	#67E8F9	15	6	0	0.4	0
-fire	Fire Tower	#F97316	15	5	1	1.0	0
-poison	Poison Tower	#22C55E	15	7	0	1.0	8
+# slow_multiplier 1.0 = no slow. burn_damage > 0 = burn: that much damage every tuning burn_tick seconds in range.
+# poison_duration > 0 = poison: poison_damage every tuning poison_tick seconds, lasting this long after leaving.
+id	name	color	duration	radius	burn_damage	slow_multiplier	poison_duration	poison_damage
+string	string	string	float	float	int	float	float	int
+freeze	Freeze Tower	#67E8F9	15	6	0	0.4	0	0
+fire	Fire Tower	#F97316	15	5	1	1.0	0	0
+poison	Poison Tower	#22C55E	15	7	0	1.0	8	1

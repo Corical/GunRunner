@@ -28,6 +28,8 @@ class Enemy:
 	## enemy update, so they act one step late - Babylon parity, see sim.gd tick order.
 	var slow_mult := 1.0
 	var burning := false
+	var burn_damage := 0     ## per burn tick, from the tower (towers.tsv burn_damage)
+	var poison_damage := 0   ## per poison tick, from the tower (towers.tsv poison_damage)
 	var burn_timer := 0.0
 	var poison_timer := 0.0
 	var poison_tick_timer := 0.0
@@ -95,16 +97,17 @@ func _update_enemy(e: Enemy, dt: float, damage: Callable, emit: Callable) -> voi
 		e.burn_timer += dt
 		if e.burn_timer >= _rules.t("burn_tick"):
 			e.burn_timer = 0.0
-			if damage.call(e, 1, "burn"):
+			if damage.call(e, e.burn_damage, "burn"):
 				return
 		e.burning = false
+		e.burn_damage = 0
 
 	if e.poison_timer > 0.0:
 		e.poison_timer -= dt
 		e.poison_tick_timer += dt
 		if e.poison_tick_timer >= _rules.t("poison_tick"):
 			e.poison_tick_timer = 0.0
-			if damage.call(e, 1, "poison"):
+			if damage.call(e, e.poison_damage, "poison"):
 				return
 
 	if e.row["switches_lanes"]:
@@ -175,6 +178,8 @@ func _activate(e: Enemy, type_id: String, x: float, z: float, distance := 0.0) -
 	e.burn_timer = 0.0
 	e.poison_timer = 0.0
 	e.poison_tick_timer = 0.0
+	e.burn_damage = 0
+	e.poison_damage = 0
 
 
 ## Enemies get tougher the further you go (Babylon never raised HP, so any upgraded gun one-shot everything):

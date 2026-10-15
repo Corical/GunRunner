@@ -522,7 +522,7 @@ func state_hash() -> int:
 		enemies.spawn_timer, enemies.spawn_interval, enemies.spawning_paused]
 	for e in enemies.pool:
 		if e.active:
-			parts.append_array([e.serial, e.type_id, e.x, e.z, e.hp, e.target_x, e.lane_timer, e.slow_mult, e.burning, e.burn_timer, e.poison_timer, e.poison_tick_timer])
+			parts.append_array([e.serial, e.type_id, e.x, e.z, e.hp, e.target_x, e.lane_timer, e.slow_mult, e.burning, e.burn_timer, e.poison_timer, e.poison_tick_timer, e.burn_damage, e.poison_damage])
 	for b in bullets.pool:
 		if b.active:
 			parts.append_array([b.serial, b.x, b.z, b.vx, b.vz, b.start_z, b.damage, b.penetration, b.splash_radius,
