@@ -17,6 +17,8 @@ const Actors = preload("res://scripts/view/actors.gd")
 const Hud = preload("res://scripts/ui/hud.gd")
 const Menus = preload("res://scripts/ui/menus.gd")
 const UiKit = preload("res://scripts/ui/ui_kit.gd")
+const Juice = preload("res://scripts/view/juice.gd")
+const SynthSfx = preload("res://scripts/adapters/synth_sfx.gd")
 
 enum State { MENU, PLAYING, PAUSED, OVER }
 
@@ -33,6 +35,9 @@ var _world: Node3D
 var _actors: Node3D
 var _hud: CanvasLayer
 var _menus: CanvasLayer
+var _juice: Node3D
+var _sfx: Node
+var _frame_events: Array = []
 var _seed_base := 0
 var _games := 0
 
@@ -87,6 +92,12 @@ func start(rules: Rules, logger: GLog, args: Dictionary) -> void:
 	_actors = Actors.new()
 	add_child(_actors)
 	_actors.setup(catalog, _sim)
+	_juice = Juice.new()
+	add_child(_juice)
+	_juice.setup(rules, _world.camera)
+	_sfx = SynthSfx.new()
+	add_child(_sfx)
+	_sfx.set_muted(args.has("mute"))
 
 	_hud = Hud.new()
 	add_child(_hud)
@@ -122,6 +133,7 @@ func _start_game() -> void:
 	_games += 1
 	_clock.reset()
 	_actors.bind(_sim)
+	_juice.reset()
 	_menus.show_playing()
 	get_viewport().gui_release_focus()
 	state = State.PLAYING
@@ -170,14 +182,22 @@ func _process(delta: float) -> void:
 		_tm_steps += steps
 		for i in steps:
 			_sim.step({"move": _controls.move_axis(_sim)})
+			_frame_events.append_array(_sim.events)
 			for ev in _sim.events:
 				if ev["kind"] == Events.Kind.GAME_OVER:
 					_game_over()
 			if _sim.over:
 				break
+	var view_dt := delta if state == State.PLAYING else 0.0
+	_juice.handle(_frame_events)
+	_sfx.handle(_frame_events)
+	_frame_events.clear()
 	var alpha := _clock.alpha() if state == State.PLAYING else 1.0
 	_world.scroll(_sim.distance - (1.0 - alpha) * _rules.t("game_speed") * FrameClock.STEP)
-	_actors.sync(alpha, delta if state == State.PLAYING else 0.0)
+	_actors.sync(alpha, view_dt)
+	_actors.flash(_juice.flash_requests, view_dt)
+	# Game over keeps the last shake/fade running so the death reads; only a pause freezes effects.
+	_juice.update(delta if state != State.PAUSED else 0.0)
 	_hud.update(_sim, _clock.speed)
 
 
@@ -196,7 +216,7 @@ func _telemetry(delta: float) -> void:
 			"cpu_render_ms": RenderingServer.viewport_get_measured_render_time_cpu(get_viewport().get_viewport_rid()),
 			"process_ms": Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
 			"steps": _tm_steps, "tick": _sim.tick if _sim != null else 0, "dropped": _clock.dropped_steps,
-			"models_built": _actors.models_built, "build_ms": _actors.build_usec / 1000.0,
+			"models_built": _actors.models_built, "build_ms": _actors.build_usec / 1000.0, "fx_skipped": _juice.skipped,
 			"objects": Performance.get_monitor(Performance.OBJECT_COUNT), "nodes": Performance.get_monitor(Performance.OBJECT_NODE_COUNT),
 			"static_mb": Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0,
 			"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
@@ -252,6 +272,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				_on_confirm()
 		KEY_ESCAPE:
 			_pause()
+		KEY_M:
+			_sfx.set_muted(not _sfx.muted)
+			_logger.info("settings", "mute", {"muted": _sfx.muted})
 		KEY_UP:
 			_menus.change_speed(0.1, "key_up")
 		KEY_DOWN:

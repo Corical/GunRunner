@@ -60,7 +60,7 @@ func spawn(reward_id: String, emit: Callable) -> bool:
 	u.ice_hp = int(_rules.t("upgrade_ice_hp"))
 	u.thawed = false
 	_log.info("upgrades", "spawned", {"serial": u.serial, "reward": u.reward_id, "x": u.x, "z": u.z})
-	emit.call(Events.Kind.UPGRADE_SPAWNED, {"serial": u.serial, "reward": u.reward_id, "kind": u.kind, "x": u.x, "z": u.z})
+	emit.call(Events.Kind.UPGRADE_SPAWNED, {"serial": u.serial, "reward": u.reward_id, "reward_kind": u.kind, "x": u.x, "z": u.z})
 	return true
 
 

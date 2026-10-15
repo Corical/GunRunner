@@ -37,6 +37,8 @@ var _upgrades: Array[Slot] = []
 var _towers: Array[Slot] = []
 var _boss: Node3D
 var _bullets: MultiMeshInstance3D
+var _flash_mat: StandardMaterial3D
+var _flash_left := {}  ## enemy slot index -> seconds of white flash left
 var _bar_bg_mat: StandardMaterial3D
 var _bar_fill_mat: StandardMaterial3D
 var _ice_bar_mat: StandardMaterial3D
@@ -44,6 +46,10 @@ var _ice_bar_mat: StandardMaterial3D
 
 func setup(catalog: ModelCatalog, sim: Sim) -> void:
 	_catalog = catalog
+	_flash_mat = StandardMaterial3D.new()
+	_flash_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_flash_mat.albedo_color = Color(1, 1, 1, 0.75)
+	_flash_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_bar_bg_mat = _bar_mat(Color(0.1, 0.1, 0.1, 0.8))
 	_bar_fill_mat = _bar_mat(Color("#EF4444"))
 	_ice_bar_mat = _bar_mat(Color("#67E8F9"))
@@ -70,9 +76,37 @@ func setup(catalog: ModelCatalog, sim: Sim) -> void:
 func bind(sim: Sim) -> void:
 	_sim = sim
 	_player_weapon_id = ""
+	for i in _flash_left.keys():
+		_set_overlay(_enemies[i], null)
+	_flash_left.clear()
 	for s in _enemies + _upgrades + _towers:
 		s.root.visible = false
 	_boss.visible = false
+
+
+## White flash on enemies hit this frame (serials from the juice presenter), 0.1 s on the view clock.
+func flash(serials: Array[int], view_dt: float) -> void:
+	for serial in serials:
+		for i in _enemies.size():
+			if _sim.enemies.pool[i].active and _sim.enemies.pool[i].serial == serial:
+				if not _flash_left.has(i):
+					_set_overlay(_enemies[i], _flash_mat)
+				_flash_left[i] = 0.1
+	serials.clear()
+	for i in _flash_left.keys():
+		_flash_left[i] -= view_dt
+		if _flash_left[i] <= 0.0 or not _sim.enemies.pool[i].active:
+			_set_overlay(_enemies[i], null)
+			_flash_left.erase(i)
+
+
+## Setting applies to the slot's current model; clearing (mat = null) wipes every model in the slot, because the
+## slot may have switched enemy type while the flash was running.
+func _set_overlay(s: Slot, mat: Material) -> void:
+	var targets: Array = s.models.values() if mat == null else ([s.models[s.current]] if s.models.has(s.current) else [])
+	for model in targets:
+		for mi in model.find_children("*", "MeshInstance3D", true, false):
+			(mi as MeshInstance3D).material_overlay = mat
 
 
 func sync(alpha: float, view_dt: float) -> void:

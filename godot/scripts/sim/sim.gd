@@ -240,7 +240,7 @@ func _pickups() -> void:
 		u.active = false
 		_apply_reward(u)
 		_log.info("upgrades", "picked_up", {"serial": u.serial, "reward": u.reward_id})
-		_push_event(Events.Kind.PICKUP, {"serial": u.serial, "reward": u.reward_id, "kind": u.kind, "x": u.x, "z": u.z})
+		_push_event(Events.Kind.PICKUP, {"serial": u.serial, "reward": u.reward_id, "reward_kind": u.kind, "x": u.x, "z": u.z})
 
 
 func _apply_reward(u: Upgrades.Upgrade) -> void:
@@ -260,7 +260,7 @@ func _apply_reward(u: Upgrades.Upgrade) -> void:
 		"speed":
 			player.start_speed_buff(rules.t("speed_buff_seconds"))
 		_:
-			_log.error("upgrades", "unknown_kind", {"kind": u.kind, "reward": u.reward_id})
+			_log.error("upgrades", "unknown_kind", {"reward_kind": u.kind, "reward": u.reward_id})
 
 
 func _enemies_vs_player() -> void:
@@ -297,6 +297,7 @@ func _game_over() -> void:
 
 
 func _push_event(kind: int, fields: Dictionary) -> void:
+	assert(not fields.has("kind"), "event field 'kind' is reserved for the event type: %s" % [fields])
 	fields["kind"] = kind
 	events.append(fields)
 

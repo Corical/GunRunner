@@ -12,11 +12,11 @@ enum Kind {
 	ENEMY_ESCAPED,    ## serial, enemy
 	PLAYER_HURT,      ## amount, absorbed, hp, armor, source
 	COMBO_BROKEN,     ## combo
-	UPGRADE_SPAWNED,  ## serial, reward, kind, x, z
+	UPGRADE_SPAWNED,  ## serial, reward, reward_kind, x, z
 	ICE_HIT,          ## serial, x, z, amount, ice_hp
 	ICE_SHATTERED,    ## serial, reward, x, z
 	UPGRADE_EXPIRED,  ## serial, reward, thawed
-	PICKUP,           ## serial, reward, kind, x, z
+	PICKUP,           ## serial, reward, reward_kind, x, z
 	TOWER_DEPLOYED,   ## serial, tower, x, z
 	TOWER_EXPIRED,    ## serial, tower
 	BOSS_STARTED,     ## wave, hp
