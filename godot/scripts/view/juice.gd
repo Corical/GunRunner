@@ -12,7 +12,7 @@ const K = Events.Kind
 ## Every event kind this presenter reacts to (test_events checks every kind is handled somewhere).
 const HANDLED := [K.FIRED, K.ENEMY_HIT, K.ENEMY_KILLED, K.PLAYER_HURT, K.COMBO_BROKEN, K.ICE_HIT, K.ICE_SHATTERED,
 	K.PICKUP, K.TOWER_DEPLOYED, K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_WRAPPED, K.BOSS_DEFEATED,
-	K.GAME_OVER, K.POOL_EXHAUSTED, K.LEVEL_UP, K.PERK_TAKEN, K.EXPLOSION]
+	K.GAME_OVER, K.POOL_EXHAUSTED, K.LEVEL_UP, K.PERK_TAKEN, K.EXPLOSION, K.CRIT]
 
 const EMITTERS := 72  ## rocket trails add ~60 short-lived puffs per second
 const LABELS := 40
@@ -142,6 +142,12 @@ func handle(events: Array) -> void:
 				_text(ev, "BOSS DEFEATED! +%d" % ev["score_gain"], Color("#FBBF24"), 5.0, 2.0, true)
 			K.GAME_OVER:
 				shake(1.0, 0.8)
+			K.CRIT:
+				# Corne 19:23: "a little smoke wherever you critical strike, with a number popping up".
+				var at := WorldView.view_pos(float(ev["x"]), float(ev["z"]), 1.4)
+				_emit(at, Color(0.85, 0.85, 0.88, 0.8), 8, 0.7, 1.2, 1.6, true)
+				_emit(at, Color("#FDE047"), 14, 0.3, 6.0, 1.2, false)
+				_text(ev, "%d!" % ev["amount"], Color("#FB923C"), 3.5, 1.6, true)
 			K.EXPLOSION:
 				_emit(WorldView.view_pos(float(ev["x"]), float(ev["z"]), 0.8), Color("#FB923C"), 40, 0.6, 9.0, 3.0, false)
 				_emit(WorldView.view_pos(float(ev["x"]), float(ev["z"]), 1.2), Color(0.45, 0.45, 0.5, 0.8), 18, 1.2, 1.5, 2.5, true)

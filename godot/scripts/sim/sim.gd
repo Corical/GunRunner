@@ -223,6 +223,7 @@ func _bullets_vs_enemies() -> void:
 			var dmg := effective_damage(b.damage, b.weapon_id, e.type_id)
 			if player.mods["crit_chance"] > 0.0 and rng.next_float() < player.mods["crit_chance"]:
 				dmg *= 2
+				_push_event(Events.Kind.CRIT, {"x": e.x, "z": e.z, "amount": dmg, "enemy": e.type_id})
 			damage_enemy(e, dmg, "bullet", b.weapon_id)
 			if b.splash_radius > 0.0:
 				_splash(b, hx, hz, e)

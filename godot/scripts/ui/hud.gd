@@ -29,6 +29,7 @@ func build(stand_in_art: bool) -> void:
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
+	_build_vignette(root)
 
 	# Top-left: score, then distance (+ speed when not 1x). Menus put "Enemy Guide" below this block.
 	var top_left := VBoxContainer.new()
@@ -98,6 +99,47 @@ func build(stand_in_art: bool) -> void:
 	_stand_in.visible = stand_in_art
 	root.add_child(_stand_in)
 	UiKit.pin(_stand_in, Control.PRESET_BOTTOM_LEFT, 16)
+
+
+## Damage flash (Corne 19:24: "like Call of Duty... a red, like blood... subtle, but still there... can switch it
+## off"): red glow at the screen edges only, never over the middle; fades in 0.4 s; Settings "Damage flash".
+var hurt_flash_enabled := true
+var _vignette: TextureRect
+var _vignette_alpha := 0.0
+
+
+func _build_vignette(root: Control) -> void:
+	var g := Gradient.new()
+	g.set_color(0, Color(0.7, 0.0, 0.0, 0.0))
+	g.set_color(1, Color(0.7, 0.0, 0.0, 0.85))
+	g.add_point(0.55, Color(0.7, 0.0, 0.0, 0.0))  # middle of the screen stays fully clear
+	var tex := GradientTexture2D.new()
+	tex.gradient = g
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.05, 0.5)
+	tex.width = 256
+	tex.height = 128
+	_vignette = TextureRect.new()
+	_vignette.texture = tex
+	_vignette.stretch_mode = TextureRect.STRETCH_SCALE
+	_vignette.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_vignette.modulate.a = 0.0
+	root.add_child(_vignette)
+
+
+## strength 0..1 (enemy hit 0.6, boss hit 1.0).
+func flash_hurt(strength: float) -> void:
+	if hurt_flash_enabled:
+		_vignette_alpha = maxf(_vignette_alpha, strength)
+
+
+func tick(dt: float) -> void:
+	if _vignette == null:
+		return
+	_vignette_alpha = maxf(0.0, _vignette_alpha - dt / 0.4)
+	_vignette.modulate.a = _vignette_alpha
 
 
 func update(s: Sim, speed := 1.0) -> void:

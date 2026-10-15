@@ -52,6 +52,7 @@ var _seed_base := 0
 var _games := 0
 var _debug_weapon := ""  ## --weapon=grenade: start runs with this weapon (testing weapon feel); recorded in the header
 var _debug_tower := ""  ## --tower=fire: a tower on the road at the start (testing status visuals); recorded
+var _demo_fx := false  ## --demo-fx: 50% crits and the damage flash held on, to screenshot the effects
 
 # Telemetry: one line per second of frame time, GPU time and sim steps (find what makes it slow).
 var _tm_frames := 0
@@ -74,6 +75,7 @@ func start(rules: Rules, logger: GLog, args: Dictionary) -> void:
 	_seed_base = int(args.get("seed", Time.get_unix_time_from_system()))
 	_debug_weapon = str(args.get("weapon", ""))
 	_debug_tower = str(args.get("tower", ""))
+	_demo_fx = args.has("demo-fx")
 	_controls = BotControls.new() if args.has("bot") else HumanControls.new()
 	_settings_store = ConfigSettings.new()
 	_settings = _settings_store.load_settings()
@@ -133,6 +135,7 @@ func start(rules: Rules, logger: GLog, args: Dictionary) -> void:
 	add_child(_hud)
 	_hud.build(catalog.is_stand_in())
 	_hud.update(_sim, _clock.speed)
+	_hud.hurt_flash_enabled = bool(_settings.get("hurt_flash", true))
 
 	_menus = Menus.new()
 	add_child(_menus)
@@ -187,6 +190,8 @@ func _start_game() -> void:
 	if _debug_tower != "" and _rules.towers.has(_debug_tower):
 		_sim.towers.deploy(_debug_tower, 0.0, func(_k, _f): pass)
 		_recorder.start_tower(_debug_tower)
+	if _demo_fx:  # debug screenshots only; not recorded, so a replay of this run will not match
+		_sim.player.mods["crit_chance"] = 0.5
 	_logger.info("play", "recording", {"path": ProjectSettings.globalize_path(_recorder.path)})
 	_games += 1
 	_clock.reset()
@@ -240,6 +245,7 @@ func _on_settings(settings: Dictionary, source: String) -> void:
 	_haptics.set_enabled(bool(settings.get("haptics", true)))
 	_music.set_mood(str(settings.get("music", "Off")))
 	_music.set_volume(float(settings.get("music_volume", 0.6)))
+	_hud.hurt_flash_enabled = bool(settings.get("hurt_flash", true))
 
 
 func _process(delta: float) -> void:
@@ -258,6 +264,10 @@ func _process(delta: float) -> void:
 			_recorder.after_step(_sim)
 			_frame_events.append_array(_sim.events)
 			for ev in _sim.events:
+				if ev["kind"] == Events.Kind.PLAYER_HURT:
+					_hud.flash_hurt(0.6)
+				elif ev["kind"] == Events.Kind.BOSS_CONTACT:
+					_hud.flash_hurt(1.0)
 				if ev["kind"] == Events.Kind.BOSS_STARTED:
 					_music.set_boss(true)
 				elif ev["kind"] == Events.Kind.BOSS_DEFEATED:
@@ -279,6 +289,9 @@ func _process(delta: float) -> void:
 	# Game over keeps the last shake/fade running so the death reads; only a pause freezes effects.
 	_juice.update(delta if state != State.PAUSED else 0.0, _world.camera_base)
 	_hud.update(_sim, _clock.speed)
+	_hud.tick(delta)
+	if _demo_fx:
+		_hud.flash_hurt(0.6)
 	_level_ui.show_choices(_sim.choices if state == State.PLAYING else PackedStringArray(), _sim.level, _sim.player.perk_stacks)
 
 

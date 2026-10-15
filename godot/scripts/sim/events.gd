@@ -28,6 +28,7 @@ enum Kind {
 	LEVEL_UP,         ## level, choices (perk ids) - the game waits for a pick
 	PERK_TAKEN,       ## perk, stacks, level
 	EXPLOSION,        ## x, z, radius, weapon, impact (false = detonated at the end of its range)
+	CRIT,             ## x, z, amount, enemy (Lucky Shot doubled this hit)
 }
 
 ## Damage sources, for ENEMY_HIT / ENEMY_KILLED / PLAYER_HURT.

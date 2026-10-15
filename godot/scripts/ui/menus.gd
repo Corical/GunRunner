@@ -27,6 +27,7 @@ var _spawn_value: Label
 var _volume_slider: HSlider
 var _volume_value: Label
 var _haptics_toggle: CheckButton
+var _flash_toggle: CheckButton
 var _music_option: OptionButton
 var _music_volume_slider: HSlider
 var _music_volume_value: Label
@@ -236,6 +237,18 @@ func _build_settings(root: Control) -> Control:
 		settings_changed.emit(_settings.duplicate(), "haptics_toggle"))
 	col.add_child(_haptics_toggle)
 
+	_flash_toggle = CheckButton.new()
+	_flash_toggle.text = "Damage flash"
+	_flash_toggle.custom_minimum_size = Vector2(0, 44)
+	_flash_toggle.add_theme_font_size_override("font_size", 16)
+	_flash_toggle.focus_mode = Control.FOCUS_NONE
+	_flash_toggle.toggled.connect(func(on: bool):
+		if _quiet:
+			return
+		_settings["hurt_flash"] = on
+		settings_changed.emit(_settings.duplicate(), "hurt_flash_toggle"))
+	col.add_child(_flash_toggle)
+
 	var music_row := HBoxContainer.new()
 	col.add_child(music_row)
 	var music_label := UiKit.label("Music", 16, Color.WHITE)
@@ -267,6 +280,23 @@ func _build_settings(root: Control) -> Control:
 	var credits_btn := UiKit.small_button("Credits")
 	credits_btn.pressed.connect(func(): _credits_panel.visible = not _credits_panel.visible)
 	col.add_child(credits_btn)
+
+	# Two columns: one column ran off the bottom of a 720-high screen (Credits was cut off). Gameplay controls
+	# left, feel/audio right. No scrolling: a scroll area would fight the slider drags on a phone.
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 24)
+	p.remove_child(col)
+	p.add_child(cols)
+	cols.add_child(col)
+	var right := VBoxContainer.new()
+	right.add_theme_constant_override("separation", 10)
+	right.custom_minimum_size = Vector2(280, 0)
+	col.custom_minimum_size = Vector2(280, 0)
+	cols.add_child(right)
+	var split := _haptics_toggle.get_index()
+	for c in col.get_children().slice(split):
+		col.remove_child(c)
+		right.add_child(c)
 	apply_settings(_settings)
 	UiKit.pin(p, Control.PRESET_TOP_RIGHT, 16, 124)
 	return p
@@ -288,6 +318,7 @@ func apply_settings(settings: Dictionary) -> void:
 	_volume_slider.value = settings.get("volume", 0.8)
 	_volume_value.text = "%d%%" % int(round(_volume_slider.value * 100))
 	_haptics_toggle.button_pressed = settings.get("haptics", true)
+	_flash_toggle.button_pressed = settings.get("hurt_flash", true)
 	_quiet = false
 
 

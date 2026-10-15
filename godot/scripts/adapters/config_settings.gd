@@ -21,6 +21,7 @@ func load_settings() -> Dictionary:
 	out["volume"] = clampf(float(cfg.get_value("game", "volume", out["volume"])), 0.0, 1.0)
 	out["music"] = str(cfg.get_value("game", "music", out["music"]))
 	out["music_volume"] = clampf(float(cfg.get_value("game", "music_volume", out["music_volume"])), 0.0, 1.0)
+	out["hurt_flash"] = bool(cfg.get_value("game", "hurt_flash", out["hurt_flash"]))
 	return out
 
 
@@ -32,6 +33,7 @@ func save_settings(settings: Dictionary) -> void:
 	cfg.set_value("game", "volume", settings.get("volume", 0.8))
 	cfg.set_value("game", "music", settings.get("music", "Retro"))
 	cfg.set_value("game", "music_volume", settings.get("music_volume", 0.6))
+	cfg.set_value("game", "hurt_flash", settings.get("hurt_flash", true))
 	var err := cfg.save(path)
 	if err != OK:
 		push_warning("settings: cannot save %s (error %d)" % [path, err])

@@ -171,6 +171,27 @@ func test_piercing_bullet_never_hits_the_same_enemy_twice() -> void:
 	eq(tank.hp, 1000 - 30)
 
 
+## The crit number on screen must be the damage actually dealt, and a non-crit must never show one.
+func test_crit_event_matches_damage_dealt_and_only_on_crits() -> void:
+	var s := _quiet()
+	s.player.mods["crit_chance"] = 1.0
+	var tank = _place(s, "shielded", 0.0, 10.0)
+	tank.hp = 1000
+	_shoot(s, "pistol", 0.0, 0.0, 7)
+	var evs := _run(s, 40)
+	var crits := _of(evs, K.CRIT)
+	eq(crits.size(), 1, "one crit per crit hit")
+	eq(int(crits[0]["amount"]), 1000 - tank.hp, "number shown = damage dealt")
+	eq(int(crits[0]["amount"]), 14, "doubled")
+
+	var s2 := _quiet()
+	s2.player.mods["crit_chance"] = 0.0
+	var t2 = _place(s2, "shielded", 0.0, 10.0)
+	t2.hp = 1000
+	_shoot(s2, "pistol", 0.0, 0.0, 7)
+	eq(_of(_run(s2, 40), K.CRIT).size(), 0, "no crit chance, no crit pop")
+
+
 func test_railgun_hits_boss_once_per_bullet() -> void:
 	var s := _quiet({"boss_steer_speed": 0})
 	s._start_boss()
