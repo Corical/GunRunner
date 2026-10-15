@@ -958,6 +958,33 @@ func test_enemy_passing_beside_you_misses_and_one_brushing_you_hits() -> void:
 		eq(_of(ev, K.PLAYER_HURT).size(), case[1], "basic enemy passing %.1f m to the side" % case[0])
 
 
+# ---------- lane switchers ----------
+
+## 16 Oct: a lane switcher "quickly steps into my lane, I don't even have a chance to shoot it". Inside
+## flanker_lock_distance it runs straight - even one caught mid-slide - and further out it still switches.
+func test_lane_switchers_run_straight_once_close() -> void:
+	for type_id in ["fast", "bomber"]:
+		var s := _quiet()
+		var lock: float = s.rules.t("flanker_lock_distance")
+		var near = _place(s, type_id, -5.0, s.player.z + lock + 1.0)
+		near.target_x = 5.0      # mid-slide to the far side as it crosses the line
+		near.lane_timer = 1e9
+		var far = _place(s, type_id, -5.0, s.player.z + 70.0)
+		far.target_x = 5.0
+		far.lane_timer = 1e9
+		var near_x: Array[float] = []
+		var moved_far := false
+		for i in 60 * 3:
+			s.step({})
+			if near.active and near.z - s.player.z < lock:
+				near_x.append(near.x)
+			moved_far = moved_far or far.x > -4.0
+		ok(near_x.size() > 30, "%s: watched it inside the lock (%d steps)" % [type_id, near_x.size()])
+		if near_x.size() > 0:
+			ok(near_x.max() - near_x.min() < 0.2, "%s: no sideways move inside %d m (%.2f..%.2f)" % [type_id, lock, near_x.min(), near_x.max()])
+		ok(moved_far, "%s: still switches lanes further out" % type_id)
+
+
 # ---------- first weapon ----------
 
 ## Three of five PC runs on 15 Oct died at 200-340 m without ever seeing a gun. Every seed must offer two

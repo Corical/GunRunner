@@ -32,6 +32,7 @@ flanker_first_extra	3	Enemy.ts activate laneSwitchTimer
 flanker_retarget_min	1.5	Enemy.ts update laneSwitchTimer
 flanker_retarget_extra	2	Enemy.ts update laneSwitchTimer
 flanker_lateral_speed	8	Enemy.ts update
+flanker_lock_distance	25	ours: inside this many metres of the player a lane-switcher runs straight (16 Oct: one "quickly steps into my lane", no chance to shoot it)
 burn_tick	1.0	Enemy.ts update
 poison_tick	2.0	Enemy.ts update
 bullet_speed	40	ours: was 60; slower so you see shots travel and land

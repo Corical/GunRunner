@@ -110,7 +110,7 @@ func _update_enemy(e: Enemy, dt: float, damage: Callable, emit: Callable) -> voi
 			if damage.call(e, e.poison_damage, "poison"):
 				return
 
-	if e.row["switches_lanes"]:
+	if e.row["switches_lanes"] and e.z - _rules.t("player_z") > _rules.t("flanker_lock_distance"):  # close in: straight line
 		e.lane_timer -= dt
 		if e.lane_timer <= 0.0:
 			e.lane_timer = _rules.t("flanker_retarget_min") + _rng.next_float() * _rules.t("flanker_retarget_extra")

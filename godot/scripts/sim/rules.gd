@@ -29,7 +29,7 @@ const TUNING_KEYS := [
 	"muzzle_z_offset", "enemy_speed", "enemy_spawn_distance", "enemy_spawn_jitter", "enemy_despawn_z", "enemy_pool",
 	"enemy_road_margin", "enemy_radius_per_size", "spawn_interval", "spawn_interval_min", "spawn_interval_decay",
 	"wave_size_max", "wave_size_metres", "spawn_min_gap", "spawn_tries", "flanker_first_min", "flanker_first_extra",
-	"flanker_retarget_min", "flanker_retarget_extra", "flanker_lateral_speed", "burn_tick", "poison_tick",
+	"flanker_retarget_min", "flanker_retarget_extra", "flanker_lateral_speed", "flanker_lock_distance", "burn_tick", "poison_tick",
 	"bullet_speed", "bullet_despawn_z", "bullet_pool", "bullet_spread_speed", "bullet_hit_radius",
 	"splash_max_victims", "enemy_hit_player_radius", "upgrade_spawn_per_second", "upgrade_ice_hp", "upgrade_speed",
 	"upgrade_pool", "upgrade_despawn_z", "upgrade_radius", "pickup_dx", "pickup_dz", "heal_amount", "armor_amount",
