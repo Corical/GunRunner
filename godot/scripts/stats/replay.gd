@@ -69,6 +69,8 @@ static func replay(path: String, sim_logger: GLog) -> Result:
 				checks[int(e["t"])] = int(e["hash"])
 			"start_weapon":
 				sim.player.set_weapon(str(e["weapon"]))
+			"start_tower":
+				sim.towers.deploy(str(e["tower"]), 0.0, func(_k, _f): pass)
 			"end":
 				end = e
 	var last_tick: int = int(end["t"]) if not end.is_empty() else (int(checks.keys().max()) if not checks.is_empty() else 0)

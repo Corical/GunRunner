@@ -47,6 +47,7 @@ var _data_fingerprint := 0
 var _seed_base := 0
 var _games := 0
 var _debug_weapon := ""  ## --weapon=grenade: start runs with this weapon (testing weapon feel); recorded in the header
+var _debug_tower := ""  ## --tower=fire: a tower on the road at the start (testing status visuals); recorded
 
 # Telemetry: one line per second of frame time, GPU time and sim steps (find what makes it slow).
 var _tm_frames := 0
@@ -68,6 +69,7 @@ func start(rules: Rules, logger: GLog, args: Dictionary) -> void:
 	_data_fingerprint = RunRecorder.data_fingerprint()
 	_seed_base = int(args.get("seed", Time.get_unix_time_from_system()))
 	_debug_weapon = str(args.get("weapon", ""))
+	_debug_tower = str(args.get("tower", ""))
 	_controls = BotControls.new() if args.has("bot") else HumanControls.new()
 	_settings_store = ConfigSettings.new()
 	_settings = _settings_store.load_settings()
@@ -152,6 +154,9 @@ func _start_game() -> void:
 	if _debug_weapon != "" and _rules.weapons.has(_debug_weapon):
 		_sim.player.set_weapon(_debug_weapon)
 		_recorder.start_weapon(_debug_weapon)
+	if _debug_tower != "" and _rules.towers.has(_debug_tower):
+		_sim.towers.deploy(_debug_tower, 0.0, func(_k, _f): pass)
+		_recorder.start_tower(_debug_tower)
 	_logger.info("play", "recording", {"path": ProjectSettings.globalize_path(_recorder.path)})
 	_games += 1
 	_clock.reset()

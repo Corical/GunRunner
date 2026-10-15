@@ -304,6 +304,22 @@ func _muzzle(ev: Dictionary) -> void:
 		_emit(at, Color(0.75, 0.75, 0.78, 0.7), spec[2], 0.9, 0.8, 1.6, true)
 
 
+## Burning / poisoned enemies: small rising flames or green bubbles, 8 puffs a second per enemy.
+var _status_last := {}
+
+
+func status_puff(serial: int, pos: Vector3, status: String, now: float) -> void:
+	if now - float(_status_last.get(serial, -1.0)) < 0.07:
+		return
+	_status_last[serial] = now
+	if _status_last.size() > 128:
+		_status_last.clear()
+	if status == "burn":
+		_emit(pos, Color("#FDBA74"), 7, 0.5, 2.2, 2.0, true)
+	else:
+		_emit(pos, Color("#4ADE80"), 4, 0.8, 1.0, 1.4, true)
+
+
 ## Rocket smoke trail: a few slow grey puffs every 0.05 s per rocket (called by the actor view per frame).
 var _trail_last := {}
 

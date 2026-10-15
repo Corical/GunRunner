@@ -34,6 +34,11 @@ func start_weapon(id: String) -> void:
 	_write({"type": "start_weapon", "weapon": id})
 
 
+## Debug start (--tower=): a tower placed at x 0 before the first step. Replay applies it first.
+func start_tower(id: String) -> void:
+	_write({"type": "start_tower", "tower": id})
+
+
 ## Call with the input about to be given to step T+1 (T = sim.tick before the step).
 func input(tick: int, inp: Dictionary) -> void:
 	if inp == _last_input:

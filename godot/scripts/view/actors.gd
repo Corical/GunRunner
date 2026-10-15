@@ -19,6 +19,7 @@ class Slot:
 	var bar_bg: MeshInstance3D
 	var bar_fill: MeshInstance3D
 	var extra: Node3D      ## ice block for upgrades
+	var status := ""       ## "", "burn", "poison": overlay currently applied
 
 
 var _sim: Sim
@@ -48,6 +49,8 @@ var _towers: Array[Slot] = []
 var _boss: Node3D
 var _bullets: MultiMeshInstance3D
 var _flash_mat: StandardMaterial3D
+var _burn_mat: StandardMaterial3D
+var _poison_mat: StandardMaterial3D
 var _flash_left := {}  ## enemy slot index -> seconds of white flash left
 var _bar_bg_mat: StandardMaterial3D
 var _bar_fill_mat: StandardMaterial3D
@@ -61,6 +64,10 @@ func setup(catalog: ModelCatalog, sim: Sim) -> void:
 	_flash_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_flash_mat.albedo_color = Color(1, 1, 1, 0.75)
 	_flash_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_burn_mat = _flash_mat.duplicate()
+	_burn_mat.albedo_color = Color(1.0, 0.62, 0.05, 0.8)  # strong: orange on red enemies barely showed at 0.55
+	_poison_mat = _flash_mat.duplicate()
+	_poison_mat.albedo_color = Color(0.2, 1.0, 0.25, 0.78)  # strong: at 0.5 red+green read as yellow
 	_bar_bg_mat = _bar_mat(Color(0.1, 0.1, 0.1, 0.8))
 	_bar_fill_mat = _bar_mat(Color("#EF4444"))
 	_ice_bar_mat = _bar_mat(Color("#67E8F9"))
@@ -141,6 +148,7 @@ func flash(serials: Array[int], view_dt: float) -> void:
 		_flash_left[i] -= view_dt
 		if _flash_left[i] <= 0.0 or not _sim.enemies.pool[i].active:
 			_set_overlay(_enemies[i], null)
+			_enemies[i].status = ""  # status tint is re-applied next frame if still burning/poisoned
 			_flash_left.erase(i)
 
 
@@ -189,6 +197,15 @@ func _sync_enemies(alpha: float) -> void:
 		s.root.visible = true
 		s.root.position = WorldView.view_pos(lerpf(e.prev_x, e.x, alpha), lerpf(e.prev_z, e.z, alpha))
 		s.models[s.current].position.y = absf(sin(_t * 11.0 + e.serial * 1.7)) * 0.15  # run bob, out of step
+		# Status look (Corne 18:52: "at least look like it's on fire... or poison"): tint + rising flames/bubbles.
+		var status := "burn" if e.burning else ("poison" if e.poison_timer > 0.0 else "")
+		if status != s.status and not _flash_left.has(i):
+			_set_overlay(s, null)
+			if status != "":
+				_set_overlay(s, _burn_mat if status == "burn" else _poison_mat)
+			s.status = status
+		if status != "" and juice != null:
+			juice.status_puff(e.serial, s.root.position + Vector3(0, float(e.row["size"]) * 1.2, 0), status, _t)
 		_set_bar(s, float(e.hp) / e.max_hp, e.max_hp > 1, float(e.row["size"]) * 1.4 + 1.0)
 
 
