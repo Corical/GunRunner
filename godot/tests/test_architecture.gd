@@ -54,7 +54,11 @@ func test_scanner_allows_legitimate_code() -> void:
 ## A script with a parse error prints "SCRIPT ERROR" here, which check.bat fails on; load() also returns null.
 func test_every_script_parses() -> void:
 	var count := 0
-	for dir in ["res://scripts", "res://scripts/sim", "res://scripts/data", "res://scripts/log", "res://tests"]:
+	var dirs: Array[String] = ["res://tests", "res://scripts"]
+	for sub in DirAccess.get_directories_at("res://scripts"):
+		dirs.append("res://scripts".path_join(sub))
+	ok(dirs.has("res://scripts/batch") and dirs.has("res://scripts/sim"), "folders discovered: %s" % [dirs])
+	for dir in dirs:
 		for f in DirAccess.get_files_at(dir):
 			if not f.ends_with(".gd"):
 				continue
