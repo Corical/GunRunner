@@ -4,7 +4,7 @@ extends SceneTree
 
 
 func _init() -> void:
-	for dir in ["res://assets/models/kenney_blaster"]:
+	for dir in ["res://assets/models/kenney_blaster", "res://assets/models/kenney_blocky"]:
 		for f in DirAccess.get_files_at(dir):
 			if not f.ends_with(".glb"):
 				continue

@@ -1,0 +1,20 @@
+#schema 1
+# Real models for the player, every enemy and every boss (presentation only - the sim never reads this).
+# id: "player", an enemies.tsv id or a bosses.tsv id (rules.gd checks every one has a row).
+# model: glTF under res://assets/models/ ("-" = stand-in). Kenney Blocky Characters 2.0, CC0 (License.txt beside it).
+# scale: size multiplier (models are 2.7 m tall; enemies are also scaled by their size in enemies.tsv).
+# yaw: degrees to turn it so it faces down the road toward the player (-z). anim: looping clip to play.
+id	model	scale	yaw	anim
+string	string	float	float	string
+player	kenney_blocky/character-m.glb	0.7	180	sprint
+basic	kenney_blocky/character-l.glb	0.7	180	sprint
+armored	kenney_blocky/character-g.glb	0.7	180	walk
+fast	kenney_blocky/character-r.glb	0.7	180	sprint
+shielded	kenney_blocky/character-h.glb	0.7	180	walk
+healer	kenney_blocky/character-i.glb	0.7	180	walk
+splitter	kenney_blocky/character-o.glb	0.7	180	sprint
+bomber	kenney_blocky/character-d.glb	0.7	180	sprint
+brute	kenney_blocky/character-k.glb	2.2	180	walk
+summoner	kenney_blocky/character-q.glb	2.2	180	idle
+gunner	kenney_blocky/character-j.glb	2.2	180	holding-right-shoot
+juggernaut	kenney_blocky/character-b.glb	2.4	180	walk

@@ -57,6 +57,17 @@ func test_reward_must_reference_real_weapon_or_tower() -> void:
 	_expect_error(func(t): _row(t, "rewards", "heal")["kind"] = "potion", "unknown kind 'potion'")
 
 
+func test_every_character_needs_a_look_row() -> void:
+	_expect_error(func(t): t["character_looks"] = t["character_looks"].filter(func(r): return r["id"] != "healer"),
+		"healer: no row in character_looks.tsv")
+	_expect_error(func(t): t["character_looks"] = t["character_looks"].filter(func(r): return r["id"] != "gunner"),
+		"gunner: no row in character_looks.tsv")
+	_expect_error(func(t): t["character_looks"] = t["character_looks"].filter(func(r): return r["id"] != "player"),
+		"player: no row in character_looks.tsv")
+	_expect_error(func(t): _row(t, "character_looks", "basic")["id"] = "dragon", "character_looks dragon: not the player")
+	_expect_error(func(t): _row(t, "character_looks", "bomber")["scale"] = 0.0, "character_looks bomber: scale must be > 0")
+
+
 func test_bosses_validated() -> void:
 	_expect_error(func(t): _row(t, "bosses", "summoner")["summon_enemy"] = "dragon", "boss summoner: summon_enemy 'dragon' is not an enemy")
 	_expect_error(func(t): _row(t, "bosses", "summoner")["summon_count"] = 0, "boss summoner: summons nothing")

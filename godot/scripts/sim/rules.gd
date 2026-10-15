@@ -14,6 +14,7 @@ const TABLES := {
 	"weapon_looks": ["id", "kick_ms", "kick_amp", "muzzle_color", "muzzle_sparks", "muzzle_smoke", "bullet_stretch",
 		"bullet_arc", "bullet_grow", "smoke_trail", "model_length", "model_radius", "model", "model_scale", "model_yaw"],
 	"traps": ["id", "name", "effect", "amount", "seconds", "weight", "label", "color"],
+	"character_looks": ["id", "model", "scale", "yaw", "anim"],
 	"bosses": ["id", "name", "color", "hp_mult", "speed", "steer", "contact_dx", "contact_damage", "hold_z", "hold_seconds", "strafe",
 		"summon_every", "summon_count", "summon_enemy", "shoot_every", "shot_speed", "shot_damage"],
 }
@@ -68,6 +69,7 @@ var perks: Array[Dictionary] = []  ## rows in table order (roll order)
 var traps: Array[Dictionary] = []  ## rows in roll order
 var trap_by_id := {}  ## id -> row
 var bosses: Array = []  ## bosses.tsv rows in order; wave n fights bosses[(n - 1) % size]
+var character_looks := {}  ## "player" / enemy id / boss id -> presentation row (the sim never reads it)
 
 
 ## Half the road an enemy may use, read from raw tuning rows (the bosses table is checked before tuning is built).
@@ -193,6 +195,17 @@ func _build(tables: Dictionary) -> void:
 		if row["steer"] <= 0.0: errors.append("boss %s: steer must be > 0 (a charger that cannot follow you wraps round forever)" % id)
 		if row["strafe"] > tuning_half_road(tables): errors.append("boss %s: strafe %s goes off the road" % [id, row["strafe"]])
 		if not Color.html_is_valid(row["color"]): errors.append("boss %s: color '%s' is not a colour" % [id, row["color"]])
+
+	var boss_ids := {}
+	for b in bosses:
+		boss_ids[b["id"]] = true
+	for row in tables["character_looks"]:
+		character_looks[row["id"]] = row
+		if row["id"] != "player" and not enemies.has(row["id"]) and not boss_ids.has(row["id"]):
+			errors.append("character_looks %s: not the player, an enemy or a boss" % row["id"])
+		if row["scale"] <= 0.0: errors.append("character_looks %s: scale must be > 0" % row["id"])
+	for id in ["player"] + enemies.keys() + boss_ids.keys():
+		if not character_looks.has(id): errors.append("%s: no row in character_looks.tsv" % id)
 
 	var reward_total := 0
 	for row in tables["rewards"]:
