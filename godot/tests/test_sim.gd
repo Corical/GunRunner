@@ -419,6 +419,49 @@ func test_bad_input_is_ignored() -> void:
 	eq(Sim._axis(0.5), 0.5)
 
 
+func test_keys_accelerate_and_ease_to_a_stop() -> void:
+	var s := _quiet()
+	s.player.x = -7.0  # room to run: from the centre it would hit the edge (which zeroes speed) before the check
+	_run(s, 1, {"move": 1.0})
+	ok(s.player.vx > 0.0 and s.player.vx < 15.0, "first step is not full speed: %f" % s.player.vx)
+	_run(s, 30, {"move": 1.0})
+	ok(absf(s.player.vx - 15.0) < 1e-6, "reaches key speed 15: %f" % s.player.vx)
+	_run(s, 1, {})
+	ok(s.player.vx > 0.0, "does not stop dead on release")
+	_run(s, 30, {})
+	eq(s.player.vx, 0.0, "stopped after release")
+
+
+func test_drag_reaches_target_without_overshoot() -> void:
+	for target in [5.0, -6.5, 0.3, -0.3]:
+		var s := _quiet()
+		var start: float = s.player.x
+		var worst_past := 0.0
+		for i in 120:
+			s.step({"target_x": target})
+			var past: float = (s.player.x - target) * signf(target - start)
+			worst_past = maxf(worst_past, past)
+		ok(absf(s.player.x - target) < 1e-3, "drag to %.1f ended at %f" % [target, s.player.x])
+		ok(worst_past <= 1e-6, "drag to %.1f overshot by %f" % [target, worst_past])
+
+
+func test_drag_target_off_the_road_stops_at_the_edge() -> void:
+	var s := _quiet()
+	_run(s, 120, {"target_x": 50.0})
+	eq(s.player.x, 7.0)
+	eq(s.player.vx, 0.0, "no leftover speed pushing into the edge")
+
+
+func test_drag_wins_over_keys_and_bad_targets_are_ignored() -> void:
+	var s := _quiet()
+	_run(s, 120, {"move": 1.0, "target_x": -3.0})
+	ok(absf(s.player.x + 3.0) < 1e-3, "drag target beats the key axis: %f" % s.player.x)
+	for bad in [NAN, INF, -INF, "left", null]:
+		var b := _quiet()
+		_run(b, 30, {"target_x": bad, "move": 1.0})
+		ok(b.player.x > 1.0, "target %s ignored, keys still steer: x=%f" % [bad, b.player.x])
+
+
 func test_player_stays_on_the_road() -> void:
 	var s := _quiet()
 	_run(s, 120, {"move": 1.0})

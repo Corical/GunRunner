@@ -28,9 +28,16 @@ var _t := 0.0
 ## Telemetry: models built since last read, and the time spent building them.
 var models_built := 0
 var build_usec := 0
+var prewarm_ms := 0.0
+
+const LEAN_RADIANS := 0.35  ## ours: full lean at drag top speed
 
 var _player: Node3D
+var _player_body: Node3D
+var _player_model: Node3D
 var _player_weapon: Node3D
+var _blob_mesh: QuadMesh
+var _blob_mat: StandardMaterial3D
 var _player_weapon_id := ""
 var _enemies: Array[Slot] = []
 var _upgrades: Array[Slot] = []
@@ -46,6 +53,7 @@ var _ice_bar_mat: StandardMaterial3D
 
 func setup(catalog: ModelCatalog, sim: Sim) -> void:
 	_catalog = catalog
+	_blob_build()
 	_flash_mat = StandardMaterial3D.new()
 	_flash_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_flash_mat.albedo_color = Color(1, 1, 1, 0.75)
@@ -53,11 +61,20 @@ func setup(catalog: ModelCatalog, sim: Sim) -> void:
 	_bar_bg_mat = _bar_mat(Color(0.1, 0.1, 0.1, 0.8))
 	_bar_fill_mat = _bar_mat(Color("#EF4444"))
 	_ice_bar_mat = _bar_mat(Color("#67E8F9"))
-	_player = catalog.make("player", "")
-	_player.rotation.y = PI  # face the enemies
+	# Player = root (position) > body (lean + bob) > model; the blob shadow stays on the ground under the root.
+	_player = Node3D.new()
 	add_child(_player)
+	_player.add_child(_blob(1.0))
+	_player_body = Node3D.new()
+	_player.add_child(_player_body)
+	var model := catalog.make("player", "")
+	model.rotation.y = PI  # face the enemies
+	_player_body.add_child(model)
+	_player_model = model
 	for i in sim.enemies.pool.size():
-		_enemies.append(_new_slot(true, _bar_fill_mat))
+		var es := _new_slot(true, _bar_fill_mat)
+		es.root.add_child(_blob(1.1))
+		_enemies.append(es)
 	for i in sim.upgrades.pool.size():
 		var s := _new_slot(true, _ice_bar_mat)
 		s.extra = catalog.make("ice", "")
@@ -67,9 +84,33 @@ func setup(catalog: ModelCatalog, sim: Sim) -> void:
 		_towers.append(_new_slot(false, null))
 	_boss = catalog.make("boss", "")
 	_boss.visible = false
+	_boss.add_child(_blob(4.5))
 	add_child(_boss)
 	_bullets_build(sim.bullets.pool.size())
+	_prewarm(sim)
 	bind(sim)
+
+
+## Build every model the game can show once, at start-up, so nothing is created (and no new material or
+## mesh reaches the GPU for the first time) in the middle of a run. Enemy slots get every enemy type;
+## upgrade slots every reward; tower slots every tower. All hidden until the sim uses them.
+func _prewarm(sim: Sim) -> void:
+	var started := Time.get_ticks_usec()
+	for s in _enemies:
+		for id in sim.rules.enemy_ids:
+			_show_model(s, "enemy", id)
+	for s in _upgrades:
+		for row in sim.rules.rewards:
+			_show_model(s, "reward", row["id"])
+	for s in _towers:
+		for id in sim.rules.towers:
+			_show_model(s, "tower", id)
+	for s in _enemies + _upgrades + _towers:
+		s.models[s.current].visible = false
+		s.current = ""
+	prewarm_ms = (Time.get_ticks_usec() - started) / 1000.0
+	models_built = 0
+	build_usec = 0
 
 
 ## Point the views at a new game (restart). Hides everything until the sim says it is active.
@@ -122,12 +163,15 @@ func sync(alpha: float, view_dt: float) -> void:
 func _sync_player(alpha: float) -> void:
 	var p := _sim.player
 	_player.position = WorldView.view_pos(lerpf(p.prev_x, p.x, alpha), p.z)
+	# Lean into sideways speed and bob while running (view only; the sim position is untouched).
+	_player_body.rotation.z = clampf(p.vx / _sim.rules.t("player_drag_max_speed"), -1.0, 1.0) * LEAN_RADIANS
+	_player_body.position.y = absf(sin(_t * 14.0)) * 0.12
 	if p.weapon_id != _player_weapon_id:
 		if _player_weapon != null:
 			_player_weapon.queue_free()
 		_player_weapon = _catalog.make("weapon", p.weapon_id)
 		_player_weapon.position = Vector3(-0.45, 1.0, -0.4)  # in the player's (turned-around) hands
-		_player.add_child(_player_weapon)
+		_player_model.add_child(_player_weapon)
 		_player_weapon_id = p.weapon_id
 
 
@@ -141,6 +185,7 @@ func _sync_enemies(alpha: float) -> void:
 		_show_model(s, "enemy", e.type_id)
 		s.root.visible = true
 		s.root.position = WorldView.view_pos(lerpf(e.prev_x, e.x, alpha), lerpf(e.prev_z, e.z, alpha))
+		s.models[s.current].position.y = absf(sin(_t * 11.0 + e.serial * 1.7)) * 0.15  # run bob, out of step
 		_set_bar(s, float(e.hp) / e.max_hp, e.max_hp > 1, float(e.row["size"]) * 1.4 + 1.0)
 
 
@@ -211,6 +256,37 @@ func _sync_boss(alpha: float) -> void:
 
 
 # ---------- helpers ----------
+
+## Soft dark disc on the ground: grounding for characters without real shadows (too costly on the Iris Xe).
+func _blob_build() -> void:
+	var g := Gradient.new()
+	g.set_color(0, Color(0, 0, 0, 0.45))
+	g.set_color(1, Color(0, 0, 0, 0.0))
+	var tex := GradientTexture2D.new()
+	tex.gradient = g
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.0, 0.5)
+	tex.width = 64
+	tex.height = 64
+	_blob_mat = StandardMaterial3D.new()
+	_blob_mat.albedo_texture = tex
+	_blob_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_blob_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_blob_mesh = QuadMesh.new()
+	_blob_mesh.size = Vector2(2, 2)
+	_blob_mesh.orientation = PlaneMesh.FACE_Y
+
+
+func _blob(radius: float) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = _blob_mesh
+	mi.material_override = _blob_mat
+	mi.scale = Vector3(radius, 1, radius)
+	mi.position.y = 0.03
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
 
 func _new_slot(with_bar: bool, fill_mat: StandardMaterial3D) -> Slot:
 	var s := Slot.new()

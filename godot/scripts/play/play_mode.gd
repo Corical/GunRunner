@@ -9,7 +9,7 @@ const Sim = preload("res://scripts/sim/sim.gd")
 const Events = preload("res://scripts/sim/events.gd")
 const FrameClock = preload("res://scripts/sim/frame_clock.gd")
 const PrimitiveCatalog = preload("res://scripts/adapters/primitive_catalog.gd")
-const KeyboardControls = preload("res://scripts/adapters/keyboard_controls.gd")
+const HumanControls = preload("res://scripts/adapters/human_controls.gd")
 const BotControls = preload("res://scripts/adapters/bot_controls.gd")
 const ConfigSettings = preload("res://scripts/adapters/config_settings.gd")
 const WorldView = preload("res://scripts/view/world_view.gd")
@@ -59,7 +59,7 @@ func start(rules: Rules, logger: GLog, args: Dictionary) -> void:
 	_rules = rules
 	_logger = logger
 	_seed_base = int(args.get("seed", Time.get_unix_time_from_system()))
-	_controls = BotControls.new() if args.has("bot") else KeyboardControls.new()
+	_controls = BotControls.new() if args.has("bot") else HumanControls.new()
 	_settings_store = ConfigSettings.new()
 	_settings = _settings_store.load_settings()
 	_clock.set_speed(_settings["speed"])
@@ -71,7 +71,7 @@ func start(rules: Rules, logger: GLog, args: Dictionary) -> void:
 	_world = WorldView.new()
 	add_child(_world)
 	var view_options := {
-		"shadows": args.has("shadows"), "glow": not args.has("no-glow"),
+		"shadows": args.has("shadows"), "glow": args.has("glow"),
 		"fog": not args.has("no-fog"), "trees": not args.has("no-trees"),
 	}
 	_world.build(rules.t("road_width"), 12345, view_options)
@@ -92,6 +92,7 @@ func start(rules: Rules, logger: GLog, args: Dictionary) -> void:
 	_actors = Actors.new()
 	add_child(_actors)
 	_actors.setup(catalog, _sim)
+	_logger.info("perf", "prewarm", {"ms": _actors.prewarm_ms, "nodes": Performance.get_monitor(Performance.OBJECT_NODE_COUNT)})
 	_juice = Juice.new()
 	add_child(_juice)
 	_juice.setup(rules, _world.camera)
@@ -181,7 +182,7 @@ func _process(delta: float) -> void:
 		var steps := _clock.advance(delta)
 		_tm_steps += steps
 		for i in steps:
-			_sim.step({"move": _controls.move_axis(_sim)})
+			_sim.step(_controls.read(_sim))
 			_frame_events.append_array(_sim.events)
 			for ev in _sim.events:
 				if ev["kind"] == Events.Kind.GAME_OVER:
@@ -196,8 +197,9 @@ func _process(delta: float) -> void:
 	_world.scroll(_sim.distance - (1.0 - alpha) * _rules.t("game_speed") * FrameClock.STEP)
 	_actors.sync(alpha, view_dt)
 	_actors.flash(_juice.flash_requests, view_dt)
+	_world.follow(-lerpf(_sim.player.prev_x, _sim.player.x, alpha), view_dt)
 	# Game over keeps the last shake/fade running so the death reads; only a pause freezes effects.
-	_juice.update(delta if state != State.PAUSED else 0.0)
+	_juice.update(delta if state != State.PAUSED else 0.0, _world.camera_base)
 	_hud.update(_sim, _clock.speed)
 
 
@@ -259,6 +261,10 @@ func _report_and_quit() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouse or event is InputEventScreenTouch or event is InputEventScreenDrag:
+		if state == State.PLAYING:
+			_controls.on_pointer(event, _sim, get_viewport().get_visible_rect().size.x)
+		return
 	var key := event as InputEventKey
 	if key == null or not key.pressed or key.echo:
 		return

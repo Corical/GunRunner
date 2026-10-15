@@ -86,8 +86,9 @@ func setup(rules: Rules, camera: Camera3D) -> void:
 		var l := Label3D.new()
 		l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		l.no_depth_test = true
-		l.fixed_size = true
-		l.pixel_size = 0.0012
+		# World-sized: numbers far down the road are small, near ones big (fixed size piled up at the horizon).
+		l.fixed_size = false
+		l.pixel_size = 0.02
 		l.font_size = 40
 		l.outline_size = 10
 		l.render_priority = 20
@@ -145,7 +146,9 @@ func handle(events: Array) -> void:
 				pass  # shown by the HUD / logged; no world effect
 
 
-func update(view_dt: float) -> void:
+## camera_base: where the camera is without shake this frame (the world view's follow camera).
+func update(view_dt: float, camera_base: Transform3D) -> void:
+	_cam_base = camera_base
 	_bursts_this_frame = 0
 	_texts_this_frame = 0
 	for i in _labels.size():
@@ -183,7 +186,6 @@ func reset() -> void:
 	for p in _emitters:
 		p.emitting = false
 	if _camera != null:
-		_camera.transform = _cam_base
 		_camera.fov = _cam_fov
 
 

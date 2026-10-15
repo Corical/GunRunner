@@ -29,7 +29,7 @@ static func view_pos(sim_x: float, sim_z: float, y := 0.0) -> Vector3:
 ## shadows off = 11.6 ms GPU, locked 60 fps, worst 1% 19.6 ms (Babylon: 148 ms).
 func build(road_width: float, view_seed: int, options := {}) -> void:
 	_road_width = road_width
-	_environment(options.get("glow", true), options.get("fog", true))
+	_environment(options.get("glow", false), options.get("fog", true))
 	_lights(options.get("shadows", false))
 	_camera()
 	_ground_and_road()
@@ -57,19 +57,29 @@ func scroll(distance: float) -> void:
 
 
 func _environment(glow: bool, fog: bool) -> void:
+	# Bright daytime look (mobile runner style): blue sky gradient, sky-lit ambient, pale distance haze.
+	var sky_mat := ProceduralSkyMaterial.new()
+	sky_mat.sky_top_color = Color("#2F80D0")
+	sky_mat.sky_horizon_color = Color("#B9E2F7")
+	sky_mat.ground_horizon_color = Color("#B9E2F7")
+	sky_mat.ground_bottom_color = Color("#4E9A3A")
+	sky_mat.sun_angle_max = 20.0
+	var sky := Sky.new()
+	sky.sky_material = sky_mat
 	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.05, 0.05, 0.12)
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.55, 0.55, 0.65)
-	env.ambient_light_energy = 0.7
+	env.background_mode = Environment.BG_SKY
+	env.sky = sky
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+	env.ambient_light_energy = 1.0
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.tonemap_exposure = 0.95
 	env.glow_enabled = glow
-	env.glow_intensity = 0.6
-	env.glow_bloom = 0.05
+	env.glow_intensity = 0.5
+	env.glow_bloom = 0.02
 	env.fog_enabled = fog
-	env.fog_light_color = Color(0.05, 0.05, 0.12)
-	env.fog_density = 0.006
+	env.fog_light_color = Color("#CFEAF8")
+	env.fog_density = 0.0012  # light haze only: 0.0045 washed everything to pastel and hid distant enemies
+	env.fog_sky_affect = 0.0
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
@@ -77,8 +87,8 @@ func _environment(glow: bool, fog: bool) -> void:
 
 func _lights(shadows: bool) -> void:
 	var sun := DirectionalLight3D.new()
-	sun.light_color = Color(1.0, 0.95, 0.85)
-	sun.light_energy = 1.1
+	sun.light_color = Color(1.0, 0.96, 0.88)
+	sun.light_energy = 1.25
 	sun.shadow_enabled = shadows
 	# Cheap shadows for integrated GPUs (measured: full PSSM to 140 m cost ~19 ms/frame on Iris Xe).
 	# One orthogonal split covering the play area near the player; far enemies need no shadow.
@@ -89,20 +99,42 @@ func _lights(shadows: bool) -> void:
 	sun.look_at_from_position(Vector3.ZERO, Vector3(0.3, -1.0, 0.5), Vector3.FORWARD)
 
 
+## Chase camera, lower and closer than Babylon's (0, 18, -22): characters read bigger, the road runs to the
+## horizon. All "ours", set by eye.
+const CAM_HEIGHT := 11.0
+const CAM_BACK := -15.0
+const CAM_LOOK_Z := 20.0
+const CAM_FOV := 60.0
+const CAM_FOLLOW := 0.5       ## share of the player's sideways position the camera follows
+const CAM_FOLLOW_RATE := 6.0  ## higher = snappier follow
+
+## Where the camera would be without shake; the juice presenter adds shake on top.
+var camera_base := Transform3D()
+var _cam_x := 0.0
+
+
 func _camera() -> void:
 	camera = Camera3D.new()
-	camera.fov = rad_to_deg(0.8)  # Config.ts CAMERA_FOV, vertical
+	camera.fov = CAM_FOV
 	camera.keep_aspect = Camera3D.KEEP_HEIGHT
 	camera.far = 400.0
 	add_child(camera)
-	camera.look_at_from_position(Vector3(0, 18, -22), Vector3(0, 0, 8), Vector3.UP)
 	camera.current = true
+	follow(0.0, 1.0)
+	camera.transform = camera_base
+
+
+## Eases the camera after the player (view x). Call every frame; frozen while dt is 0.
+func follow(player_view_x: float, dt: float) -> void:
+	_cam_x = lerpf(_cam_x, player_view_x * CAM_FOLLOW, 1.0 - exp(-CAM_FOLLOW_RATE * dt))
+	var eye := Vector3(_cam_x, CAM_HEIGHT, CAM_BACK)
+	camera_base = Transform3D(Basis(), eye).looking_at(Vector3(_cam_x * 0.6, 0.5, CAM_LOOK_Z), Vector3.UP)
 
 
 func _ground_and_road() -> void:
-	_plane(Vector2(120, ROAD_LENGTH), Color("#2D5A27"), Vector3(0, -0.02, ROAD_CENTRE_Z))
-	_plane(Vector2(_road_width, ROAD_LENGTH), Color("#555555"), Vector3(0, 0.0, ROAD_CENTRE_Z))
-	var curb_mat := _flat_mat(Color(0.4, 0.4, 0.4))
+	_plane(Vector2(160, ROAD_LENGTH), Color("#43A33A"), Vector3(0, -0.02, ROAD_CENTRE_Z))
+	_plane(Vector2(_road_width, ROAD_LENGTH), Color("#4B5563"), Vector3(0, 0.0, ROAD_CENTRE_Z))
+	var curb_mat := _flat_mat(Color("#F3F4F6"))
 	for side in [-1.0, 1.0]:
 		var curb := MeshInstance3D.new()
 		var box := BoxMesh.new()
@@ -130,8 +162,8 @@ func _lane_dashes() -> void:
 func _trees_build(view_seed: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = view_seed
-	var trunk_mat := _flat_mat(Color(0.35, 0.22, 0.1))
-	var leaf_mat := _flat_mat(Color(0.15, 0.45, 0.1))
+	var trunk_mat := _flat_mat(Color("#8B5A2B"))
+	var leaf_mat := _flat_mat(Color("#2E9E44"))
 	var trunk_mesh := CylinderMesh.new()
 	trunk_mesh.top_radius = 0.3
 	trunk_mesh.bottom_radius = 0.3

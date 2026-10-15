@@ -7,6 +7,8 @@ const Rules = preload("res://scripts/sim/rules.gd")
 var x := 0.0
 ## x at the start of the current step, so the view can draw smoothly between steps.
 var prev_x := 0.0
+## Sideways speed (units/s); the view leans the player by it.
+var vx := 0.0
 var z := 0.0
 var hp := 0
 var max_hp := 0
@@ -31,11 +33,39 @@ func _init(rules: Rules, logger: GLog) -> void:
 	max_hp = hp
 
 
-## axis in [-1, 1]; anything else (incl. NaN) is clamped or treated as 0 by the caller.
-func move(axis: float, dt: float) -> void:
-	if axis == 0.0:
-		return
-	x = clampf(x + axis * _rules.t("player_move_speed") * dt, -_half_road, _half_road)
+## Steering, with acceleration so movement eases in and out (Babylon went 0 -> full speed in one frame).
+## Keys: axis in [-1, 1] sets the wanted speed. Drag: target_x (NaN = not dragging) sets a point to move to;
+## wanted speed is proportional to the distance, so it slows as it arrives and does not overshoot.
+func move(axis: float, target_x: float, dt: float) -> void:
+	var wanted := 0.0
+	if not is_nan(target_x):
+		var max_drag := _rules.t("player_drag_max_speed")
+		wanted = clampf((clampf(target_x, -_half_road, _half_road) - x) * _rules.t("player_drag_gain"), -max_drag, max_drag)
+	else:
+		wanted = axis * _rules.t("player_move_speed")
+	var dragging := not is_nan(target_x)
+	if dragging and signf(wanted) == signf(vx) and absf(wanted) < absf(vx):
+		# Dragging: speeding up is limited by acceleration, slowing down is not. Wanted speed shrinks with the
+		# distance, so the player closes in exponentially and can never overshoot the finger.
+		vx = wanted
+	elif dragging and wanted == 0.0:
+		vx = 0.0
+	else:
+		vx = move_toward(vx, wanted, _rules.t("player_accel") * dt)
+	if dragging:
+		# Never step past the target in one step; when within 0.0001 just sit on it (an exponential approach
+		# otherwise never quite arrives and leaves a tiny speed forever).
+		var to_target := clampf(target_x, -_half_road, _half_road) - x
+		if absf(to_target) < 1e-4:
+			x += to_target
+			vx = 0.0
+			return
+		if absf(vx * dt) > absf(to_target) and signf(vx) == signf(to_target):
+			vx = to_target / dt
+	x += vx * dt
+	if x <= -_half_road or x >= _half_road:
+		x = clampf(x, -_half_road, _half_road)
+		vx = 0.0
 
 
 func update_timers(dt: float) -> void:

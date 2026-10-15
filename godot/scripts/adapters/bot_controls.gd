@@ -6,8 +6,8 @@ const Bot = preload("res://scripts/batch/simple_bot.gd")
 var _bot := Bot.new()
 
 
-func move_axis(sim: Object) -> float:
-	return _bot.decide(sim)
+func read(sim: Object) -> Dictionary:
+	return {"move": _bot.decide(sim)}
 
 
 func name() -> String:

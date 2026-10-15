@@ -66,14 +66,14 @@ func build(stand_in_art: bool) -> void:
 	var boss_bar := UiKit.bar(Vector2(_boss_bar_width, 18), Color("#DC2626"))
 	_boss_box.add_child(boss_bar[0])
 	_boss_fill = boss_bar[1]
-	UiKit.pin(_boss_box, Control.PRESET_CENTER_BOTTOM, 20, -96)
+	UiKit.pin(_boss_box, Control.PRESET_CENTER_TOP, 16, 64)
 
 	_combo = UiKit.label("x99 COMBO", 34, Color("#FBBF24"), true)
 	_combo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_combo.add_theme_constant_override("outline_size", 6)
 	_combo.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	root.add_child(_combo)
-	UiKit.pin(_combo, Control.PRESET_CENTER_TOP, 16, 80)
+	UiKit.pin(_combo, Control.PRESET_CENTER_TOP, 16, 124)
 	_combo.text = ""
 
 	var bottom := VBoxContainer.new()
@@ -88,7 +88,8 @@ func build(stand_in_art: bool) -> void:
 	var hp_bar := UiKit.bar(Vector2(_hp_bar_width, 16), Color("#22C55E"))
 	bottom.add_child(hp_bar[0])
 	_hp_fill = hp_bar[1]
-	UiKit.pin(bottom, Control.PRESET_CENTER_BOTTOM, 20)
+	# Top-centre: the player runs at the bottom of the screen and the top is sky, so stats go up there.
+	UiKit.pin(bottom, Control.PRESET_CENTER_TOP, 12)
 
 	_stand_in = UiKit.label("STAND-IN ART", 12, Color(1, 1, 1, 0.45))
 	_stand_in.visible = stand_in_art

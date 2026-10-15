@@ -16,7 +16,8 @@ func _sim() -> Sim:
 	return Sim.new(Loader.load_rules(), 5, logger)
 
 
-## Runs 30 clean steps, applies `breakage`, runs one more step, returns the failures.
+## Runs 30 clean steps, one more step, then applies `breakage` just before the check (applying it before the
+## step let the sim heal some breakages, e.g. it clamps the player back onto the road), returns the failures.
 func _failures_after(breakage: Callable) -> PackedStringArray:
 	var s := _sim()
 	var inv := Invariants.new()
@@ -24,8 +25,8 @@ func _failures_after(breakage: Callable) -> PackedStringArray:
 		s.step({})
 		inv.check_step(s)
 	ok(inv.failures.is_empty(), "clean steps produced failures: %s" % [inv.failures])
-	breakage.call(s)
 	s.step({})
+	breakage.call(s)
 	inv.check_step(s)
 	return inv.failures
 

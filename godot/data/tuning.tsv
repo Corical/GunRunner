@@ -9,6 +9,9 @@ max_hp	12	Config.ts MAX_HP
 player_z	-8	Config.ts PLAYER_Z_POSITION
 player_move_speed	15	Player.ts MOVE_SPEED
 player_road_margin	0.5	Player.ts ROAD_HALF
+player_accel	140	ours: units/s^2 toward the wanted speed (Babylon jumped to full speed instantly); tune by feel
+player_drag_gain	14	ours: drag steering, wanted speed = gain x distance to the finger's target, capped at drag max
+player_drag_max_speed	26	ours: drag steering may move faster than keys, like touch runners; tune by feel
 muzzle_z_offset	1	Player.ts getMuzzlePosition
 enemy_speed	10	Config.ts ENEMY_SPEED
 enemy_spawn_distance	120	Config.ts ENEMY_SPAWN_DISTANCE

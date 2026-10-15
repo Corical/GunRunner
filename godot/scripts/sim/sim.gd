@@ -69,7 +69,8 @@ func _init(game_rules: Rules, seed_value: int, logger: GLog) -> void:
 	_log.info("sim", "start", {"seed": seed_value})
 
 
-## input: {"move": float in [-1, 1]}. Missing, NaN or infinite values count as 0.
+## input: {"move": float in [-1, 1]} for keys/bot, or {"target_x": float} while dragging (wins over move).
+## Missing, NaN, infinite or non-number values count as "no input".
 func step(input: Dictionary) -> void:
 	events.clear()
 	if over:
@@ -79,7 +80,7 @@ func step(input: Dictionary) -> void:
 	var dt := STEP
 
 	player.prev_x = player.x
-	player.move(_axis(input.get("move", 0.0)), dt)
+	player.move(_axis(input.get("move", 0.0)), _target(input.get("target_x", NAN)), dt)
 	player.update_timers(dt)
 	if player.try_fire():
 		var w := player.weapon()
@@ -311,10 +312,18 @@ static func _axis(v: Variant) -> float:
 	return clampf(f, -1.0, 1.0)
 
 
+## Drag target: a finite number, else NaN (= not dragging).
+static func _target(v: Variant) -> float:
+	if typeof(v) != TYPE_FLOAT and typeof(v) != TYPE_INT:
+		return NAN
+	var f := float(v)
+	return NAN if is_inf(f) else f
+
+
 ## Everything that affects future steps, hashed. Equal hashes = equal games.
 func state_hash() -> int:
 	var parts: Array = [tick, distance, score, kills, combo, over, rng.state(),
-		player.x, player.hp, player.max_hp, player.armor, player.weapon_id, player.fire_timer,
+		player.x, player.vx, player.hp, player.max_hp, player.armor, player.weapon_id, player.fire_timer,
 		player.frenzy_timer, player.speed_timer, enemies.spawn_timer, enemies.spawn_interval, enemies.spawning_paused]
 	for e in enemies.pool:
 		if e.active:
