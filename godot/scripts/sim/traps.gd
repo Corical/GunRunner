@@ -7,6 +7,7 @@ const GLog = preload("res://scripts/log/logger.gd")
 const Rules = preload("res://scripts/sim/rules.gd")
 const Rng = preload("res://scripts/sim/rng.gd")
 const Events = preload("res://scripts/sim/events.gd")
+const ExactMath = preload("res://scripts/sim/exact_math.gd")
 
 
 class Trap:
@@ -56,7 +57,7 @@ func spawn(trap_id: String, emit: Callable) -> bool:
 	t.trap_id = row["id"]
 	t.centre_x = _rng.range_float(-half, half)
 	t.phase = _rng.next_float() * TAU
-	t.x = t.centre_x + amp * sin(t.phase)
+	t.x = t.centre_x + amp * ExactMath.wave(t.phase)
 	t.z = _rules.t("enemy_spawn_distance") + _rng.next_float() * _rules.t("enemy_spawn_jitter")
 	t.prev_x = t.x
 	t.prev_z = t.z
@@ -78,7 +79,7 @@ func update(dt: float, emit: Callable) -> void:
 		t.prev_z = t.z
 		t.z -= speed * dt
 		t.phase += w * dt
-		t.x = t.centre_x + amp * sin(t.phase)
+		t.x = t.centre_x + amp * ExactMath.wave(t.phase)
 		if t.z < despawn:
 			t.active = false
 			_log.info("traps", "expired", {"serial": t.serial, "trap": t.trap_id})

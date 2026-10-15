@@ -29,6 +29,7 @@ const Enemies = preload("res://scripts/sim/enemies.gd")
 const Towers = preload("res://scripts/sim/towers.gd")
 const Upgrades = preload("res://scripts/sim/upgrades.gd")
 const Traps = preload("res://scripts/sim/traps.gd")
+const ExactMath = preload("res://scripts/sim/exact_math.gd")
 const Boss = preload("res://scripts/sim/boss.gd")
 
 const STEP := 1.0 / 60.0
@@ -167,7 +168,7 @@ func damage_enemy(e: Enemies.Enemy, amount: int, source: String, weapon := "") -
 
 ## xp needed to go from `lvl` to lvl+1.
 func xp_needed(lvl: int) -> int:
-	return maxi(1, int(round(rules.t("xp_base") * pow(rules.t("xp_growth"), lvl - 1))))  # never 0: that loops forever
+	return maxi(1, int(round(rules.t("xp_base") * ExactMath.int_power(rules.t("xp_growth"), lvl - 1))))  # never 0: that loops forever
 
 
 func _check_level_up() -> void:

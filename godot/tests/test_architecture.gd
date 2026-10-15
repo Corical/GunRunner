@@ -13,6 +13,9 @@ const FORBIDDEN := {
 	"print": "(?<![\\w.])(print|prints|printt|print_rich|printerr)\\s*\\(",
 	"files": "(?<![\\w.])(FileAccess|DirAccess)\\b",
 	"scene tree": "\\bget_tree\\s*\\(",
+	# Platform C-library maths: Windows and Android may differ in the last digit, breaking cross-device replay.
+	# Use ExactMath instead (sqrt, abs, floor, fmod are IEEE-exact and allowed).
+	"platform maths": "(?<![\\w.])(sin|cos|tan|asin|acos|atan|atan2|pow|exp|log|sinh|cosh|tanh)\\s*\\(",
 }
 
 
@@ -40,6 +43,8 @@ func test_scanner_catches_known_bad_code() -> void:
 		"print(\"hi\")\n": "print",
 		"var f = FileAccess.open(p, 1)\n": "files",
 		"get_tree().quit()\n": "scene tree",
+		"var x = sin(a)\n": "platform maths",
+		"var y = pow(2.0, n)\n": "platform maths",
 	}
 	for code in bad:
 		var found := violations(code)

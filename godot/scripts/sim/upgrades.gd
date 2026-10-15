@@ -6,6 +6,7 @@ const GLog = preload("res://scripts/log/logger.gd")
 const Rules = preload("res://scripts/sim/rules.gd")
 const Rng = preload("res://scripts/sim/rng.gd")
 const Events = preload("res://scripts/sim/events.gd")
+const ExactMath = preload("res://scripts/sim/exact_math.gd")
 
 
 class Upgrade:
@@ -58,7 +59,7 @@ func spawn(reward_id: String, emit: Callable) -> bool:
 	u.kind = reward["kind"]
 	u.centre_x = _rng.range_float(-half, half)
 	u.phase = _rng.next_float() * TAU
-	u.x = u.centre_x + amp * sin(u.phase)
+	u.x = u.centre_x + amp * ExactMath.wave(u.phase)
 	u.z = _rules.t("enemy_spawn_distance") + _rng.next_float() * _rules.t("enemy_spawn_jitter")
 	u.prev_x = u.x
 	u.prev_z = u.z
@@ -79,7 +80,7 @@ func update(dt: float, emit: Callable) -> void:
 		u.prev_z = u.z
 		u.z -= speed * dt
 		u.phase += _rules.t("upgrade_sway_speed") * dt
-		u.x = u.centre_x + _rules.t("upgrade_sway_amplitude") * sin(u.phase)
+		u.x = u.centre_x + _rules.t("upgrade_sway_amplitude") * ExactMath.wave(u.phase)
 		if u.z < despawn:
 			u.active = false
 			_log.info("upgrades", "expired", {"serial": u.serial, "reward": u.reward_id, "thawed": u.thawed})
