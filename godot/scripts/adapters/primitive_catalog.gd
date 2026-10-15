@@ -54,7 +54,7 @@ func muzzle(weapon_id: String) -> Vector3:
 ## Booby trap stand-in: dark spiked ball over a glowing ring on the road (Corne: "something reddish around
 ## it"). Jammer red, Jinx purple. Look is not decided yet - mechanics first.
 func _trap(root: Node3D, id: String) -> void:
-	var hue := "#C026D3" if id == "jinx" else "#DC2626"
+	var hue: String = _rules.trap_by_id[id]["color"] if _rules.trap_by_id.has(id) else "#DC2626"
 	var spikes := _mat(hue, 1.0, 0.6)
 	_part(root, _sphere(0.55), _mat("#1F1F1F", 1.0, 0.0), Vector3(0, 0.8, 0))
 	var dirs := [Vector3.UP, Vector3.DOWN, Vector3.LEFT, Vector3.RIGHT, Vector3.FORWARD, Vector3.BACK]

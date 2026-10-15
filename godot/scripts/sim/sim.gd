@@ -518,7 +518,7 @@ static func quantize_input(inp: Dictionary, choosing := false) -> Dictionary:
 func state_hash() -> int:
 	var parts: Array = [tick, distance, score, kills, combo, over, rng.state(),
 		player.x, player.vx, player.hp, player.max_hp, player.armor, player.weapon_id, player.fire_timer,
-		player.frenzy_timer, player.speed_timer, player.jam_timer, player.jam_mult, player.jinx_timer,
+		player.frenzy_timer, player.speed_timer, player.trap_left,
 		enemies.spawn_timer, enemies.spawn_interval, enemies.spawning_paused]
 	for e in enemies.pool:
 		if e.active:

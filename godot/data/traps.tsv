@@ -3,8 +3,9 @@
 # attack percentage for a limited time"). Touch one and its effect runs for `seconds`; shoot it to 0 hp first
 # and it is destroyed harmlessly. Values are ours, first guesses - tune from run logs.
 # effect: fire_rate_mult (fire rate x amount) | no_crit (crit chance 0, amount unused).
-# weight: integer roll weight, must sum to 100.
-id	name	effect	amount	seconds	weight
-string	string	string	float	float	int
-jammer	Jammer	fire_rate_mult	0.5	6	55
-jinx	Jinx	no_crit	0	8	45
+# weight: integer roll weight, must sum to 100. label: shown on the HUD and in the pop-up. color: stand-in model.
+# A new trap with an existing effect is one row here; a new effect also needs rules.gd TRAP_EFFECTS + player.gd.
+id	name	effect	amount	seconds	weight	label	color
+string	string	string	float	float	int	string	string
+jammer	Jammer	fire_rate_mult	0.5	6	55	JAMMED	#DC2626
+jinx	Jinx	no_crit	0	8	45	JINXED - NO CRITS	#C026D3

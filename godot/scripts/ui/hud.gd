@@ -166,10 +166,8 @@ func update(s: Sim, speed := 1.0) -> void:
 		buffs.append("FIRE RATE %ds" % ceili(p.speed_timer))
 	_buffs.text = "   ".join(buffs)
 	var debuffs := PackedStringArray()
-	if p.jam_timer > 0.0:
-		debuffs.append("JAMMED %ds" % ceili(p.jam_timer))
-	if p.jinx_timer > 0.0:
-		debuffs.append("JINXED - NO CRITS %ds" % ceili(p.jinx_timer))
+	for id in p.trap_left:
+		debuffs.append("%s %ds" % [s.rules.trap_by_id[id]["label"], ceili(p.trap_left[id])])
 	_debuffs.text = "   ".join(debuffs)
 	_boss_box.visible = s.boss.active
 	if s.boss.active:

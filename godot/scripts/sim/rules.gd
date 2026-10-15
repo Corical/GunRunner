@@ -11,7 +11,7 @@ const TABLES := {
 	"spawns": ["id", "start"],
 	"tuning": ["id", "value", "source"],
 	"perks": ["id", "name", "desc", "stat", "amount", "max_stacks", "weight"],
-	"traps": ["id", "name", "effect", "amount", "seconds", "weight"],
+	"traps": ["id", "name", "effect", "amount", "seconds", "weight", "label", "color"],
 }
 
 const REWARD_KINDS := ["weapon", "tower", "heal", "armor", "maxhp", "frenzy", "speed"]
@@ -60,6 +60,7 @@ var spawn_bands: Array[Dictionary] = [] ## {id, start, weights: Array of [enemy_
 var tuning := {}         ## id -> float
 var perks: Array[Dictionary] = []  ## rows in table order (roll order)
 var traps: Array[Dictionary] = []  ## rows in roll order
+var trap_by_id := {}  ## id -> row
 const TRAP_EFFECTS := ["fire_rate_mult", "no_crit"]
 
 ## Player modifiers a perk may add to (player.gd reads each one).
@@ -110,6 +111,7 @@ func _build(tables: Dictionary) -> void:
 	var trap_total := 0
 	for row in tables["traps"]:
 		traps.append(row)
+		trap_by_id[row["id"]] = row
 		trap_total += row["weight"]
 		if not TRAP_EFFECTS.has(row["effect"]): errors.append("trap %s: unknown effect '%s'" % [row["id"], row["effect"]])
 		if row["seconds"] <= 0.0: errors.append("trap %s: seconds must be > 0" % row["id"])

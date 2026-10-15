@@ -150,7 +150,7 @@ func handle(events: Array) -> void:
 				_text(ev, "CLEARED", Color("#FCA5A5"), 1.8, 1.0)
 			K.TRAP_TRIGGERED:
 				_burst(ev, 0.0, 1.0, Color("#DC2626"), 30, 0.7, 6.0)
-				_text(ev, "JAMMED!" if ev["effect"] == "fire_rate_mult" else "JINXED!", Color("#EF4444"), 2.6, 1.6, true)
+				_text(ev, String(_rules.trap_by_id[ev["trap"]]["label"]).get_slice(" - ", 0) + "!", Color("#EF4444"), 2.6, 1.6, true)
 				shake(0.35, 0.25)
 			K.CRIT:
 				# Corne 19:23: "a little smoke wherever you critical strike, with a number popping up".

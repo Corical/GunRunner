@@ -73,7 +73,7 @@ func test_jammer_halves_fire_rate_then_wears_off() -> void:
 	var jammed := _shots(s, 180)
 	ok(jammed <= normal / 2 + 1 and jammed >= normal / 2 - 2, "jammed %d shots vs normal %d in 3 s" % [jammed, normal])
 	_run(s, 4 * 60)  # 6 s total jam has run out
-	eq(s.player.jam_timer <= 0.0, true, "jam ends")
+	ok(not s.player.trap_left.has("jammer"), "jam ends")
 	var after := _shots(s, 180)
 	ok(absi(after - normal) <= 1, "fire rate back to normal: %d vs %d" % [after, normal])
 
@@ -84,8 +84,8 @@ func test_second_jammer_restarts_the_timer_instead_of_stacking() -> void:
 	_run(s, 120)
 	_trap(s, "jammer", s.player.x, s.player.z + 0.5)
 	_run(s, 1)
-	eq(s.player.jam_mult, 0.5, "a second Jammer must not make it 0.25")
-	ok(absf(s.player.jam_timer - (6.0 - 1.0 / 60.0)) < 0.02, "timer restarted to 6 s, got %f" % s.player.jam_timer)
+	eq(s.player.trap_left.size(), 1, "a second Jammer must not stack")
+	ok(absf(s.player.trap_left["jammer"] - (6.0 - 1.0 / 60.0)) < 0.02, "timer restarted to 6 s, got %f" % s.player.trap_left["jammer"])
 
 
 func test_jinx_blocks_every_crit_then_crits_return() -> void:
@@ -93,7 +93,7 @@ func test_jinx_blocks_every_crit_then_crits_return() -> void:
 	s.player.mods["crit_chance"] = 1.0
 	_trap(s, "jinx", s.player.x, s.player.z + 0.5)
 	_run(s, 1)
-	ok(s.player.jinx_timer > 0.0, "jinxed")
+	ok(s.player.trap_left.has("jinx"), "jinxed")
 	for i in 6:
 		var e = s.enemies._inactive()
 		s.enemies._activate(e, "shielded", s.player.x, 12.0 + i)
@@ -101,7 +101,7 @@ func test_jinx_blocks_every_crit_then_crits_return() -> void:
 	var during := _of(_run(s, 5 * 60), K.CRIT)
 	eq(during.size(), 0, "100% crit chance must give zero crits while jinxed")
 	_run(s, 4 * 60)
-	ok(s.player.jinx_timer <= 0.0, "jinx over")
+	ok(not s.player.trap_left.has("jinx"), "jinx over")
 	for i in 3:  # the first batch walked past the player by now
 		var e2 = s.enemies._inactive()
 		s.enemies._activate(e2, "shielded", s.player.x, 12.0 + i)
@@ -116,7 +116,7 @@ func test_shot_down_trap_never_applies_its_effect() -> void:
 	var evs := _run(s, 6 * 60)
 	eq(_of(evs, K.TRAP_DESTROYED).size(), 1, "pistol destroys a 1-hp trap")
 	eq(_of(evs, K.TRAP_TRIGGERED).size(), 0, "destroyed trap must not trigger")
-	eq(s.player.jam_timer, 0.0)
+	ok(s.player.trap_left.is_empty(), "no debuff")
 	ok(not t.active, "gone")
 
 
@@ -186,6 +186,30 @@ func _rules_with(edit: Callable) -> Rules:
 	var tables := Loader.load_tables(errors)
 	edit.call(tables)
 	return Rules.from_tables(tables)
+
+
+## Fable review #18: a new trap cost 7 files. Now a new trap with an existing effect is one data row - prove it.
+func test_a_new_trap_needs_only_a_data_row() -> void:
+	var rules := _rules_with(func(t):
+		t["traps"][0]["weight"] = 40
+		t["traps"].append({"id": "sludge", "name": "Sludge", "effect": "fire_rate_mult", "amount": 0.3,
+			"seconds": 3.0, "weight": 15, "label": "SLUDGED", "color": "#65A30D"}))
+	ok(rules.ok(), "data-only trap accepted: %s" % [rules.errors])
+	for key in ["upgrade_spawn_per_second", "trap_spawn_per_second"]:
+		rules.tuning[key] = 0.0
+	rules.tuning["boss_interval"] = 1e9
+	rules.tuning["trap_sway_amplitude"] = 0.0
+	var s := Sim.new(rules, 1, GLog.new())
+	s.enemies.pause_spawning()
+	s.player.hp = 1000000
+	var normal := _shots(s, 120)
+	_trap(s, "sludge", s.player.x, s.player.z + 0.5)
+	_run(s, 1)
+	ok(s.player.trap_left.has("sludge"), "sludge applied")
+	var slowed := _shots(s, 120)
+	ok(slowed <= int(normal * 0.3) + 1, "fire rate x0.3: %d vs %d" % [slowed, normal])
+	_run(s, 120)
+	ok(not s.player.trap_left.has("sludge"), "wears off after 3 s")
 
 
 func test_bad_trap_rows_are_rejected() -> void:
