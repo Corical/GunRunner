@@ -122,14 +122,14 @@ func step(input: Dictionary) -> void:
 		_splash(b, b.x, b.z, null)  # grenade/rocket reached the end of its range: it explodes there
 	if boss.active:
 		_boss_step(dt)
-	if not boss.active and rng.next_float() < rules.t("upgrade_spawn_per_second") * dt:
+	if not boss.active and rng.next_float() < rules.t("upgrade_spawn_per_second") * dt and _drop_lane_clear():
 		if rng.next_float() < rules.t("upgrade_pair_chance"):
 			upgrades.spawn_pair(_emit)
 		else:
 			upgrades.spawn("", _emit)
 	upgrades.update(dt, _emit)
 	_bullets_vs_ice()
-	if not boss.active and rng.next_float() < rules.t("trap_spawn_per_second") * dt:
+	if not boss.active and rng.next_float() < rules.t("trap_spawn_per_second") * dt and _drop_lane_clear():
 		traps.spawn("", _emit)
 	traps.update(dt, _emit)
 	_bullets_vs_traps()
@@ -331,6 +331,19 @@ func _boss_step(dt: float) -> void:
 		2:
 			boss.wrap_around()
 			_push_event(Events.Kind.BOSS_WRAPPED, {"wave": boss.wave})
+
+
+## True when the newest pickup or trap has moved at least drop_min_gap metres down the road, so a new one cannot
+## land on top of it (Corne, 15 Oct: "they spawn all over, they on top of each other").
+func _drop_lane_clear() -> bool:
+	var limit := rules.t("enemy_spawn_distance") + rules.t("enemy_spawn_jitter") - rules.t("drop_min_gap")
+	for u in upgrades.pool:
+		if u.active and u.z > limit:
+			return false
+	for t in traps.pool:
+		if t.active and t.z > limit:
+			return false
+	return true
 
 
 ## Debug and replay: fight the boss with bosses.tsv id `id` right now (as its first appearance). Returns false

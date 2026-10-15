@@ -859,11 +859,11 @@ func test_reward_roll_matches_weights() -> void:
 
 
 func test_upgrade_rate_per_second_and_none_during_boss() -> void:
-	var s := _quiet({"upgrade_spawn_per_second": 0.48, "upgrade_pool": 400, "upgrade_pair_chance": 0})
+	var s := _quiet({"upgrade_spawn_per_second": 0.48, "upgrade_pool": 400, "upgrade_pair_chance": 0, "drop_min_gap": 0})
 	var spawned := _of(_run(s, 36000), K.UPGRADE_SPAWNED).size()
 	ok(spawned >= 230 and spawned <= 346, "10 sim-minutes: %d spawns, expect 288 +- 58" % spawned)
 	# All pairs: the same drop rate (one reward per drop), so exactly twice the pickups on the road.
-	var p := _quiet({"upgrade_spawn_per_second": 0.48, "upgrade_pool": 400, "upgrade_pair_chance": 1})
+	var p := _quiet({"upgrade_spawn_per_second": 0.48, "upgrade_pool": 400, "upgrade_pair_chance": 1, "drop_min_gap": 0})
 	var halves := _of(_run(p, 36000), K.UPGRADE_SPAWNED)
 	ok(halves.size() >= 460 and halves.size() <= 692, "10 sim-minutes of pairs: %d halves, expect 576 +- 116" % halves.size())
 	eq(halves.size() % 2, 0, "pickups only ever come in twos")
@@ -915,6 +915,41 @@ func test_ice_stops_even_a_railgun_bullet() -> void:
 	var ev := _run(s, 10)
 	eq(_of(ev, K.ICE_SHATTERED).size(), 1, "15 damage shatters 8 ice hp")
 	ok(not b.active, "bullet stopped by ice despite penetration 4")
+
+
+# ---------- drop spacing ----------
+
+## At absurd drop rates every step wants a pickup and a trap. None may appear while an older one is still within
+## drop_min_gap of the spawn line (15 Oct: they spawned "on top of each other").
+func test_drops_never_stack_even_at_absurd_rates() -> void:
+	var s := _quiet({"upgrade_spawn_per_second": 10, "trap_spawn_per_second": 10, "upgrade_pool": 40, "trap_pool": 40})
+	var spawn_line: float = s.rules.t("enemy_spawn_distance") + s.rules.t("enemy_spawn_jitter")
+	var gap: float = s.rules.t("drop_min_gap")
+	var drops := 0
+	for i in 60 * 60:
+		var before := {}
+		for u in s.upgrades.pool:
+			if u.active:
+				before[u.serial] = u
+		var traps_before := {}
+		for t in s.traps.pool:
+			if t.active:
+				traps_before[t.serial] = t
+		s.step({})
+		var spawned := false
+		for e in s.events:
+			if e["kind"] in [K.UPGRADE_SPAWNED, K.TRAP_SPAWNED]:
+				spawned = true
+		if not spawned:
+			continue
+		drops += 1
+		for u in before.values():
+			ok(not u.active or u.z <= spawn_line - gap + s.rules.t("upgrade_speed") / 60.0 + 1e-6,
+				"step %d: drop spawned with upgrade %d still at z %.1f" % [s.tick, u.serial, u.z])
+		for t in traps_before.values():
+			ok(not t.active or t.z <= spawn_line - gap + 1.0, "step %d: drop spawned with trap still at z %.1f" % [s.tick, t.z])
+	ok(drops > 20, "drops still come: %d in a minute" % drops)
+	ok(drops < 300, "but spaced: %d in a minute at 10/s" % drops)
 
 
 # ---------- pick-one pairs ----------

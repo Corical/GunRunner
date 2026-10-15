@@ -80,3 +80,4 @@ upgrade_sway_speed	1.0	ours: radians per second
 upgrade_pair_chance	0.8	ours: share of drops that come as a pick-one pair (15 Oct: "very the same shit over and over")
 boss_shot_radius	0.9	ours: how close a Gunner shot must pass to hit you (a dodge of ~1.5 m clears it)
 boss_shot_pool	16	ours: Gunner shots in flight at once
+drop_min_gap	20	ours: a new pickup or trap waits until the last one is this far down the road (15 Oct: they stacked)

@@ -48,7 +48,7 @@ func test_real_data_loads_clean() -> void:
 
 
 func test_reward_weights_must_sum_to_100() -> void:
-	_expect_error(func(t): _row(t, "rewards", "heal")["weight"] = 7, "sum to 99")
+	_expect_error(func(t): _row(t, "rewards", "heal")["weight"] = 12, "sum to 99")
 
 
 func test_reward_must_reference_real_weapon_or_tower() -> void:

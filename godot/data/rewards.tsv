@@ -2,22 +2,23 @@
 # Source: src/systems/FrozenUpgradeManager.ts REWARD_WEIGHTS (cumulative thresholds converted to weights).
 # Integer weights out of 100, rolled in row order. kind: weapon | tower | heal | armor | maxhp | frenzy | speed.
 # For weapon/tower rows, id must exist in weapons.tsv / towers.tsv.
+# 15 Oct 2026: weapons cut from 50 to 33 of 100 ("too easy to pick up weapons"); buffs took the rest.
 # label / color: the name floating above the frozen pickup (15 Oct 2026: "how the fuck do you know what weapon is coming").
 id	kind	weight	label	color
 string	string	int	string	string
-smg	weapon	8	SMG	#FCD34D
-shotgun	weapon	8	SHOTGUN	#F97316
-laser	weapon	8	LASER	#60A5FA
-minigun	weapon	6	MINIGUN	#FDE68A
-flamethrower	weapon	6	FLAMER	#FB923C
-grenade	weapon	6	GRENADES	#84CC16
-heal	heal	8	+HEALTH	#22C55E
-armor	armor	6	+ARMOUR	#60A5FA
-maxhp	maxhp	6	+MAX HP	#F472B6
-frenzy	frenzy	6	FRENZY	#EF4444
-speed	speed	6	SPEED	#FBBF24
+smg	weapon	5	SMG	#FCD34D
+shotgun	weapon	5	SHOTGUN	#F97316
+laser	weapon	5	LASER	#60A5FA
+minigun	weapon	4	MINIGUN	#FDE68A
+flamethrower	weapon	4	FLAMER	#FB923C
+grenade	weapon	4	GRENADES	#84CC16
+heal	heal	13	+HEALTH	#22C55E
+armor	armor	9	+ARMOUR	#60A5FA
+maxhp	maxhp	9	+MAX HP	#F472B6
+frenzy	frenzy	9	FRENZY	#EF4444
+speed	speed	9	SPEED	#FBBF24
 freeze	tower	6	FREEZE TOWER	#67E8F9
 fire	tower	6	FIRE TOWER	#F97316
 poison	tower	6	POISON TOWER	#22C55E
-rocket	weapon	4	ROCKETS	#EF4444
-railgun	weapon	4	RAILGUN	#C084FC
+rocket	weapon	3	ROCKETS	#EF4444
+railgun	weapon	3	RAILGUN	#C084FC
