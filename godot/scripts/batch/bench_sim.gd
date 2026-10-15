@@ -69,8 +69,8 @@ func _bench(rules, mode: String) -> void:
 		var total := sim_usec  # sim only; the bot is not the game
 		results.append(float(total) / STEPS)
 		lines += log.counts[GLog.Level.INFO] + log.counts[GLog.Level.DEBUG]
-		printerr("  %s seed %d: %.1f us/step, worst %d us, %.0f bullets %.0f enemies" % [mode, seed_value,
-			float(total) / STEPS, worst, float(bullets_seen) / STEPS, float(enemies_seen) / STEPS])
+		printerr("  %s seed %d: %.1f us/step, worst %d us, %.0f bullets %.0f enemies, %d waves cut short (pool full)" % [mode, seed_value,
+			float(total) / STEPS, worst, float(bullets_seen) / STEPS, float(enemies_seen) / STEPS, s.enemies.exhausted_count])
 	results.sort()
 	printerr("BENCH %-9s median %7.1f us/step | %.1f log calls/step (a 120 Hz frame is 8,333 us; 3x = 3 steps)" % [
 		mode, results[1], float(lines) / (3 * STEPS)])

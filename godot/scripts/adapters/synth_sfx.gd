@@ -20,6 +20,10 @@ var muted := false
 var _clips := {}
 var _players: Array[AudioStreamPlayer] = []
 var _next := 0
+var _last_ms := {}  ## sound name -> last time it started (ms)
+var PROTECTED := {}  ## clips a new sound must not cut off (filled in _ready)
+## Minimum ms between two starts of the same sound; shot_* default 40. Values are ours, by ear.
+const MIN_GAP_MS := {"hit": 35, "kill": 45, "ice_crack": 60, "crit": 70, "explode": 80, "trap": 200, "trap_break": 80}
 var _rng := RandomNumberGenerator.new()
 
 
@@ -50,6 +54,8 @@ func _ready() -> void:
 	_clips["crit"] = _mix(_sweep(2600.0, 700.0, 0.07, 0.3, "saw"), _noise(0.05, 0.2))
 	_clips["trap"] = _mix(_sweep(420.0, 110.0, 0.35, 0.45, "saw"), _sweep(300.0, 80.0, 0.35, 0.25, "square"))
 	_clips["trap_break"] = _mix(_sweep(500.0, 120.0, 0.12, 0.3, "square"), _noise(0.1, 0.25))
+	for long_clip in ["explode", "level", "boss", "game_over", "trap"]:
+		PROTECTED[_clips[long_clip]] = true
 	for i in VOICES:
 		var p := AudioStreamPlayer.new()
 		p.bus = "SFX"
@@ -113,11 +119,34 @@ func handle(events: Array) -> void:
 			continue
 		if played.get(name, 0) >= PER_FRAME.get(name, 1):
 			continue
+		# Per-frame caps alone allowed ~240 hit sounds a second at 120 fps (Fable review #9): a minimum gap per sound.
+		var now := Time.get_ticks_msec()
+		var gap: int = MIN_GAP_MS.get(name, 40 if name.begins_with("shot_") else 0)
+		if gap > 0 and now - int(_last_ms.get(name, -100000)) < gap:
+			continue
+		_last_ms[name] = now
 		played[name] = played.get(name, 0) + 1
-		var p := _players[_next]
-		_next = (_next + 1) % _players.size()
+		var p := _voice()
+		if p == null:
+			continue
 		p.stream = _clips[name]
 		p.play()
+
+
+## A free voice if there is one; otherwise the oldest that is not playing a long, important sound (explosion,
+## level-up, boss, game over) - those used to be cut off after ~0.1 s by a flood of hit sounds.
+func _voice() -> AudioStreamPlayer:
+	for i in _players.size():
+		var p := _players[(_next + i) % _players.size()]
+		if not p.playing:
+			_next = (_next + i + 1) % _players.size()
+			return p
+	for i in _players.size():
+		var p := _players[(_next + i) % _players.size()]
+		if not PROTECTED.has(p.stream):
+			_next = (_next + i + 1) % _players.size()
+			return p
+	return null
 
 
 # ---------- synthesis ----------
