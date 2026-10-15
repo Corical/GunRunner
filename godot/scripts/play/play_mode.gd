@@ -121,6 +121,7 @@ func start(rules: Rules, logger: GLog, args: Dictionary) -> void:
 	add_child(_sfx)
 	_sfx.set_muted(args.has("mute"))
 	_haptics = DeviceHaptics.new()
+	_haptics.set_rules(rules)
 	add_child(_haptics)
 	_haptics.set_enabled(bool(_settings.get("haptics", true)))
 	_sfx.set_volume(float(_settings.get("volume", 0.8)))

@@ -43,7 +43,7 @@ func test_every_weapon_has_a_sound_and_a_haptic_kick() -> void:
 	var haptics = load("res://scripts/adapters/device_haptics.gd")
 	for id in rules.weapons:
 		ok(sfx._clips.has("shot_" + id), "no fire sound for weapon '%s'" % id)
-		ok(haptics.FIRE.has(id), "no haptic entry for weapon '%s'" % id)
+		ok(rules.weapon_looks.has(id), "no weapon_looks row (haptic kick, muzzle, bullet shape) for '%s'" % id)
 	for p in sfx._players:
 		p.free()
 	sfx.free()

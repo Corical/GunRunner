@@ -1,0 +1,19 @@
+#schema 1
+# How each weapon looks and feels (presentation only - the sim never reads this; weapons.tsv is the rules).
+# Every weapon in weapons.tsv needs a row here (rules.gd checks). Values moved out of code 15 Oct 2026
+# (Fable review #20: they were hard-coded in juice.gd, actors.gd, device_haptics.gd, primitive_catalog.gd).
+# kick_ms / kick_amp: phone vibration per shot (0 ms = none; fast guns would buzz constantly).
+# muzzle_sparks / muzzle_smoke: particles per shot. bullet_stretch: length / width of the bullet.
+# bullet_arc: lob height in metres at mid-range (grenade). bullet_grow: extra size at max range (flame cone).
+# smoke_trail: 1 = leaves a smoke trail (rocket). model_length / model_radius: barrel of the stand-in model.
+id	kick_ms	kick_amp	muzzle_color	muzzle_sparks	muzzle_smoke	bullet_stretch	bullet_arc	bullet_grow	smoke_trail	model_length	model_radius
+string	int	float	string	int	int	float	float	float	int	float	float
+pistol	12	0.25	#FDE68A	4	0	2.5	0	0	0	0.7	0.09
+smg	6	0.15	#FDE68A	3	0	2.5	0	0	0	1.0	0.09
+shotgun	30	0.6	#FB923C	14	5	2.5	0	0	0	1.4	0.09
+laser	8	0.18	#93C5FD	5	0	14	0	0	0	1.0	0.09
+rocket	35	0.65	#FB923C	8	8	3.5	0	0	1	1.2	0.18
+minigun	0	0	#FEF3C7	2	0	2.5	0	0	0	1.2	0.18
+railgun	45	0.9	#C084FC	16	10	2.5	0	0	0	1.4	0.09
+flamethrower	0	0	#000000	0	0	1.2	0	2.5	0	1.2	0.09
+grenade	22	0.45	#BEF264	5	4	1.0	5.0	0	0	1.2	0.18

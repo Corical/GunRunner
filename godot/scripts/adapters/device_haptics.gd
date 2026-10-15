@@ -11,11 +11,8 @@ const HANDLED := [K.FIRED, K.ENEMY_KILLED, K.PLAYER_HURT, K.EXPLOSION, K.PICKUP,
 	K.BOSS_STARTED, K.BOSS_CONTACT, K.BOSS_DEFEATED, K.ICE_SHATTERED, K.GAME_OVER, K.CRIT, K.TRAP_DESTROYED,
 	K.TRAP_TRIGGERED]
 
-## weapon -> [ms, amplitude] on firing; 0 ms = no kick (fast guns would buzz constantly).
-const FIRE := {
-	"pistol": [12, 0.25], "smg": [6, 0.15], "minigun": [0, 0.0], "shotgun": [30, 0.6], "laser": [8, 0.18],
-	"rocket": [35, 0.65], "railgun": [45, 0.9], "flamethrower": [0, 0.0], "grenade": [22, 0.45],
-}
+## Per-weapon kick comes from data/weapon_looks.tsv (kick_ms, kick_amp); set by play_mode.
+var fire_kick := {}  ## weapon id -> [ms, amplitude]
 const MIN_GAP_MS := 45
 
 var enabled := true
@@ -27,6 +24,11 @@ var _supported := false
 
 func _ready() -> void:
 	_supported = OS.has_feature("android") or OS.has_feature("ios")
+
+
+func set_rules(rules) -> void:
+	for id in rules.weapon_looks:
+		fire_kick[id] = [int(rules.weapon_looks[id]["kick_ms"]), float(rules.weapon_looks[id]["kick_amp"])]
 
 
 func set_enabled(on: bool) -> void:
@@ -41,7 +43,7 @@ func handle(events: Array) -> void:
 	for ev in events:
 		match ev["kind"]:
 			K.FIRED:
-				var f: Array = FIRE.get(ev["weapon"], [10, 0.2])
+				var f: Array = fire_kick.get(ev["weapon"], [0, 0.0])
 				if f[0] > 0:
 					_buzz(f[0], f[1])
 			K.ENEMY_KILLED:

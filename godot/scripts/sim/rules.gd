@@ -11,6 +11,8 @@ const TABLES := {
 	"spawns": ["id", "start"],
 	"tuning": ["id", "value", "source"],
 	"perks": ["id", "name", "desc", "stat", "amount", "max_stacks", "weight"],
+	"weapon_looks": ["id", "kick_ms", "kick_amp", "muzzle_color", "muzzle_sparks", "muzzle_smoke", "bullet_stretch",
+		"bullet_arc", "bullet_grow", "smoke_trail", "model_length", "model_radius"],
 	"traps": ["id", "name", "effect", "amount", "seconds", "weight", "label", "color"],
 }
 
@@ -61,6 +63,7 @@ var tuning := {}         ## id -> float
 var perks: Array[Dictionary] = []  ## rows in table order (roll order)
 var traps: Array[Dictionary] = []  ## rows in roll order
 var trap_by_id := {}  ## id -> row
+var weapon_looks := {}  ## weapon id -> presentation row (weapon_looks.tsv; the sim never reads it)
 const TRAP_EFFECTS := ["fire_rate_mult", "no_crit"]
 
 ## Player modifiers a perk may add to (player.gd reads each one).
@@ -127,6 +130,11 @@ func _build(tables: Dictionary) -> void:
 		if row["bullet_count"] < 1: errors.append("weapon %s: bullet_count must be >= 1" % row["id"])
 		if row["penetration"] < 1: errors.append("weapon %s: penetration must be >= 1" % row["id"])
 		if row["max_range"] <= 0.0: errors.append("weapon %s: max_range must be > 0" % row["id"])
+	for row in tables["weapon_looks"]:
+		weapon_looks[row["id"]] = row
+		if not weapons.has(row["id"]): errors.append("weapon_looks %s: no such weapon" % row["id"])
+	for id in weapons:
+		if not weapon_looks.has(id): errors.append("weapon %s: no row in weapon_looks.tsv" % id)
 	if not weapons.has(DEFAULT_WEAPON):
 		errors.append("weapons: default weapon '%s' missing" % DEFAULT_WEAPON)
 

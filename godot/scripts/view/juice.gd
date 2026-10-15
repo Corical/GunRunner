@@ -304,15 +304,11 @@ func _emit(pos: Vector3, colour: Color, amount: int, life: float, speed: float, 
 
 
 ## Per-gun muzzle effect: [flash colour, sparks, smoke puffs] (Corne 18:48: "a little smoke coming from the gun").
-const MUZZLE := {
-	"pistol": ["#FDE68A", 4, 0], "smg": ["#FDE68A", 3, 0], "minigun": ["#FEF3C7", 2, 0],
-	"shotgun": ["#FB923C", 14, 5], "laser": ["#93C5FD", 5, 0], "rocket": ["#FB923C", 8, 8],
-	"railgun": ["#C084FC", 16, 10], "flamethrower": ["#000000", 0, 0], "grenade": ["#BEF264", 5, 4],
-}
 
 
 func _muzzle(ev: Dictionary) -> void:
-	var spec: Array = MUZZLE.get(ev["weapon"], ["#FDE68A", 3, 0])
+	var lk: Dictionary = _rules.weapon_looks[ev["weapon"]]
+	var spec := [lk["muzzle_color"], lk["muzzle_sparks"], lk["muzzle_smoke"]]
 	var at := WorldView.view_pos(float(ev["x"]), float(ev["z"]) + 1.2, 1.1)
 	if spec[1] > 0:
 		_emit(at, Color(spec[0]), spec[1], 0.15, 3.0, 1.0, false)

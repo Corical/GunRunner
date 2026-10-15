@@ -121,23 +121,13 @@ func _boss(root: Node3D) -> void:
 	_part(root, _sphere(0.25), _mat("#FBBF24", 1.0, 2.0), Vector3(0.5, 4.5, -1.0))
 
 
-func _weapon_length(id: String) -> float:
-	match id:
-		"shotgun", "railgun":
-			return 1.4
-		"rocket", "grenade", "minigun", "flamethrower":
-			return 1.2
-		"smg", "laser":
-			return 1.0
-	return 0.7
-
-
 func _weapon(root: Node3D, id: String) -> void:
 	var colour: String = _rules.weapons[id]["bullet_color"] if _rules.weapons.has(id) else "#FBBF24"
 	var body := _mat("#374151")
 	var accent := _mat(colour, 1.0, 0.6)
-	var length := _weapon_length(id)
-	var radius := 0.18 if id in ["rocket", "grenade", "minigun"] else 0.09
+	var lk: Dictionary = _rules.weapon_looks.get(id, {"model_length": 0.7, "model_radius": 0.09})
+	var length: float = lk["model_length"]
+	var radius: float = lk["model_radius"]
 	_part(root, _box(Vector3(0.25, 0.3, 0.6)), body, Vector3(0, 0, 0.1))
 	_part(root, _cylinder(radius, radius, length), accent, Vector3(0, 0.05, -length * 0.5), Vector3(PI / 2, 0, 0))
 

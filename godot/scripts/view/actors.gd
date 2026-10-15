@@ -246,22 +246,11 @@ func _sync_bullets(alpha: float) -> void:
 		var size: float = look[0]
 		var z := lerpf(b.prev_z, b.z, alpha)
 		var t := clampf((z - b.start_z) / maxf(1.0, b.max_range), 0.0, 1.0)  # 0 at the muzzle, 1 at max range
-		var y := 1.0
-		var stretch := 2.5
-		var grow := 1.0
-		match b.weapon_id:
-			"grenade":
-				y += 5.0 * 4.0 * t * (1.0 - t)  # lobbed: up and down over its range (view only)
-				stretch = 1.0
-			"laser":
-				stretch = 14.0
-			"rocket":
-				stretch = 3.5
-			"flamethrower":
-				grow = 1.0 + 2.5 * t
-				stretch = 1.2
+		var y: float = 1.0 + look[3] * 4.0 * t * (1.0 - t)  # bullet_arc: lobbed up and down over the range
+		var stretch: float = look[2]
+		var grow: float = 1.0 + look[4] * t  # bullet_grow: flame cone widens
 		var pos := WorldView.view_pos(lerpf(b.prev_x, b.x, alpha), z, y)
-		if b.weapon_id == "rocket" and juice != null:
+		if look[5] and juice != null:
 			juice.trail(b.serial, pos, _t)
 		var s := size * grow
 		mm.set_instance_transform(n, Transform3D(Basis().scaled(Vector3(s, s, s * stretch)), pos))
@@ -270,13 +259,15 @@ func _sync_bullets(alpha: float) -> void:
 	mm.visible_instance_count = n
 
 
-var _bullet_looks := {}  ## weapon id -> [size, Color]; parsed once, not per bullet per frame (Fable #13)
+var _bullet_looks := {}  ## weapon id -> [size, Color, stretch, arc, grow, trail]; parsed once, not per bullet per frame (Fable #13)
 
 
 func _bullet_look(weapon_id: String) -> Array:
 	if not _bullet_looks.has(weapon_id):
 		var w: Dictionary = _sim.rules.weapons[weapon_id]
-		_bullet_looks[weapon_id] = [float(w["bullet_size"]), Color(w["bullet_color"])]
+		var lk: Dictionary = _sim.rules.weapon_looks[weapon_id]
+		_bullet_looks[weapon_id] = [float(w["bullet_size"]), Color(w["bullet_color"]), float(lk["bullet_stretch"]),
+			float(lk["bullet_arc"]), float(lk["bullet_grow"]), int(lk["smoke_trail"]) == 1]
 	return _bullet_looks[weapon_id]
 
 
