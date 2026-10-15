@@ -2,8 +2,9 @@ extends RefCounted
 ## Port: where player settings are kept between sessions.
 ##   speed: game speed multiplier, 0.3..3.0 (default 1.0)
 ##   spawn_interval: seconds between enemy waves, 0 = automatic difficulty (default 0)
+##   haptics: phone vibration on/off (default on); volume: 0..1 master volume (default 0.8)
 
-const DEFAULTS := {"speed": 1.0, "spawn_interval": 0.0}
+const DEFAULTS := {"speed": 1.0, "spawn_interval": 0.0, "haptics": true, "volume": 0.8}
 
 
 func load_settings() -> Dictionary:

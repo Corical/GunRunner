@@ -28,6 +28,20 @@ func test_every_event_kind_is_handled_or_ignored() -> void:
 		ok(handled, "%s has no presenter and is not in IGNORED" % Events.kind_name(kind))
 
 
+## A new weapon in weapons.tsv must not go silent or skip its vibration.
+func test_every_weapon_has_a_sound_and_a_haptic_kick() -> void:
+	var rules = load("res://scripts/data/rules_loader.gd").load_rules()
+	var sfx := SynthSfx.new()
+	sfx._ready()
+	var haptics = load("res://scripts/adapters/device_haptics.gd")
+	for id in rules.weapons:
+		ok(sfx._clips.has("shot_" + id), "no fire sound for weapon '%s'" % id)
+		ok(haptics.FIRE.has(id), "no haptic entry for weapon '%s'" % id)
+	for p in sfx._players:
+		p.free()
+	sfx.free()
+
+
 func test_ignored_kinds_are_not_also_handled() -> void:
 	for kind in IGNORED:
 		ok(not Juice.HANDLED.has(kind) and not SynthSfx.HANDLED.has(kind), "%s is both ignored and handled" % Events.kind_name(kind))

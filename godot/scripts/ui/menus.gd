@@ -24,6 +24,9 @@ var _speed_slider: HSlider
 var _speed_value: Label
 var _spawn_slider: HSlider
 var _spawn_value: Label
+var _volume_slider: HSlider
+var _volume_value: Label
+var _haptics_toggle: CheckButton
 var _settings := {}
 var _quiet := false  ## true while building/loading, so setting slider values doesn't echo back
 
@@ -168,6 +171,31 @@ func _build_settings(root: Control) -> Control:
 	var auto := UiKit.small_button("Auto (gets harder as you go)")
 	auto.pressed.connect(_on_auto)
 	col.add_child(auto)
+
+	var volume_row := _slider_row(col, "Volume")
+	_volume_value = volume_row[0]
+	_volume_slider = volume_row[1]
+	_volume_slider.min_value = 0.0
+	_volume_slider.max_value = 1.0
+	_volume_slider.step = 0.05
+	_volume_slider.value_changed.connect(func(v: float):
+		_volume_value.text = "%d%%" % int(round(v * 100))
+		if _quiet:
+			return
+		_settings["volume"] = v
+		settings_changed.emit(_settings.duplicate(), "volume_slider"))
+
+	_haptics_toggle = CheckButton.new()
+	_haptics_toggle.text = "Vibration"
+	_haptics_toggle.custom_minimum_size = Vector2(0, 44)
+	_haptics_toggle.add_theme_font_size_override("font_size", 16)
+	_haptics_toggle.focus_mode = Control.FOCUS_NONE
+	_haptics_toggle.toggled.connect(func(on: bool):
+		if _quiet:
+			return
+		_settings["haptics"] = on
+		settings_changed.emit(_settings.duplicate(), "haptics_toggle"))
+	col.add_child(_haptics_toggle)
 	apply_settings(_settings)
 	UiKit.pin(p, Control.PRESET_TOP_RIGHT, 16, 124)
 	return p
@@ -181,6 +209,9 @@ func apply_settings(settings: Dictionary) -> void:
 	var interval: float = settings["spawn_interval"]
 	_spawn_slider.value = interval * 10.0 if interval > 0.0 else 18.0
 	_spawn_value.text = _spawn_label(interval)
+	_volume_slider.value = settings.get("volume", 0.8)
+	_volume_value.text = "%d%%" % int(round(_volume_slider.value * 100))
+	_haptics_toggle.button_pressed = settings.get("haptics", true)
 	_quiet = false
 
 

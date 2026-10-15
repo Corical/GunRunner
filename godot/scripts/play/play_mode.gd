@@ -19,6 +19,7 @@ const Menus = preload("res://scripts/ui/menus.gd")
 const UiKit = preload("res://scripts/ui/ui_kit.gd")
 const Juice = preload("res://scripts/view/juice.gd")
 const SynthSfx = preload("res://scripts/adapters/synth_sfx.gd")
+const DeviceHaptics = preload("res://scripts/adapters/device_haptics.gd")
 const RunRecorder = preload("res://scripts/stats/run_recorder.gd")
 const LevelUpUi = preload("res://scripts/ui/level_up_ui.gd")
 
@@ -39,6 +40,7 @@ var _hud: CanvasLayer
 var _menus: CanvasLayer
 var _juice: Node3D
 var _sfx: Node
+var _haptics: Node
 var _frame_events: Array = []
 var _recorder: RunRecorder
 var _level_ui: CanvasLayer
@@ -111,6 +113,10 @@ func start(rules: Rules, logger: GLog, args: Dictionary) -> void:
 	_sfx = SynthSfx.new()
 	add_child(_sfx)
 	_sfx.set_muted(args.has("mute"))
+	_sfx.set_volume(float(_settings.get("volume", 0.8)))
+	_haptics = DeviceHaptics.new()
+	add_child(_haptics)
+	_haptics.set_enabled(bool(_settings.get("haptics", true)))
 
 	_hud = Hud.new()
 	add_child(_hud)
@@ -134,6 +140,8 @@ func start(rules: Rules, logger: GLog, args: Dictionary) -> void:
 		"controls": _controls.name(), "saved_speed": _settings["speed"], "speed": _clock.speed,
 		"spawn_interval": _settings["spawn_interval"], "settings_file": ProjectSettings.globalize_path(_settings_store.path),
 	})
+	if args.has("open-settings"):  # debug: screenshot the Settings panel
+		_menus._toggle(_menus._settings_panel)
 	if args.has("autostart"):
 		_start_game()
 
@@ -205,6 +213,8 @@ func _on_settings(settings: Dictionary, source: String) -> void:
 		if _recorder != null and state != State.OVER:
 			_recorder.setting(_sim.tick, settings["spawn_interval"])
 	_settings_store.save_settings(settings)
+	_sfx.set_volume(float(settings.get("volume", 0.8)))
+	_haptics.set_enabled(bool(settings.get("haptics", true)))
 
 
 func _process(delta: float) -> void:
@@ -230,6 +240,7 @@ func _process(delta: float) -> void:
 	var view_dt := delta if state == State.PLAYING else 0.0
 	_juice.handle(_frame_events)
 	_sfx.handle(_frame_events)
+	_haptics.handle(_frame_events)
 	_frame_events.clear()
 	var alpha := _clock.alpha() if state == State.PLAYING else 1.0
 	_world.scroll(_sim.distance - (1.0 - alpha) * _rules.t("game_speed") * FrameClock.STEP)

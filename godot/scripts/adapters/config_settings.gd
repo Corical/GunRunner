@@ -17,6 +17,8 @@ func load_settings() -> Dictionary:
 	out["speed"] = clampf(float(cfg.get_value("game", "speed", out["speed"])), 0.3, 3.0)
 	var interval := float(cfg.get_value("game", "spawn_interval", out["spawn_interval"]))
 	out["spawn_interval"] = 0.0 if interval <= 0.0 else clampf(interval, 0.3, 3.0)
+	out["haptics"] = bool(cfg.get_value("game", "haptics", out["haptics"]))
+	out["volume"] = clampf(float(cfg.get_value("game", "volume", out["volume"])), 0.0, 1.0)
 	return out
 
 
@@ -24,6 +26,8 @@ func save_settings(settings: Dictionary) -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("game", "speed", settings.get("speed", 1.0))
 	cfg.set_value("game", "spawn_interval", settings.get("spawn_interval", 0.0))
+	cfg.set_value("game", "haptics", settings.get("haptics", true))
+	cfg.set_value("game", "volume", settings.get("volume", 0.8))
 	var err := cfg.save(path)
 	if err != OK:
 		push_warning("settings: cannot save %s (error %d)" % [path, err])
