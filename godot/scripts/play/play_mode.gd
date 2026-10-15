@@ -19,6 +19,7 @@ const Menus = preload("res://scripts/ui/menus.gd")
 const UiKit = preload("res://scripts/ui/ui_kit.gd")
 const Juice = preload("res://scripts/view/juice.gd")
 const SynthSfx = preload("res://scripts/adapters/synth_sfx.gd")
+const RunRecorder = preload("res://scripts/stats/run_recorder.gd")
 
 enum State { MENU, PLAYING, PAUSED, OVER }
 
@@ -38,6 +39,8 @@ var _menus: CanvasLayer
 var _juice: Node3D
 var _sfx: Node
 var _frame_events: Array = []
+var _recorder: RunRecorder
+var _data_fingerprint := 0
 var _seed_base := 0
 var _games := 0
 
@@ -58,6 +61,7 @@ var _shots_dir := ""
 func start(rules: Rules, logger: GLog, args: Dictionary) -> void:
 	_rules = rules
 	_logger = logger
+	_data_fingerprint = RunRecorder.data_fingerprint()
 	_seed_base = int(args.get("seed", Time.get_unix_time_from_system()))
 	_controls = BotControls.new() if args.has("bot") else HumanControls.new()
 	_settings_store = ConfigSettings.new()
@@ -130,7 +134,12 @@ func _new_sim() -> Sim:
 
 
 func _start_game() -> void:
+	if _recorder != null and _sim != null:
+		_recorder.finish(_sim)  # restart mid-run: close the previous recording properly
 	_sim = _new_sim()
+	var run_seed := _seed_base + _games
+	_recorder = RunRecorder.new("user://runs/run-%d.jsonl" % run_seed, run_seed, _data_fingerprint, float(_settings.get("spawn_interval", 0.0)))
+	_logger.info("play", "recording", {"path": ProjectSettings.globalize_path(_recorder.path)})
 	_games += 1
 	_clock.reset()
 	_actors.bind(_sim)
@@ -161,6 +170,8 @@ func _resume() -> void:
 
 func _game_over() -> void:
 	state = State.OVER
+	if _recorder != null:
+		_recorder.finish(_sim)
 	_menus.show_game_over(UiKit.thousands(_sim.score), int(_sim.distance), _sim.kills)
 
 
@@ -173,6 +184,8 @@ func _on_settings(settings: Dictionary, source: String) -> void:
 	_clock.set_speed(settings["speed"])
 	if _sim != null:
 		_sim.enemies.set_manual_interval(settings["spawn_interval"])
+		if _recorder != null and state != State.OVER:
+			_recorder.setting(_sim.tick, settings["spawn_interval"])
 	_settings_store.save_settings(settings)
 
 
@@ -182,7 +195,10 @@ func _process(delta: float) -> void:
 		var steps := _clock.advance(delta)
 		_tm_steps += steps
 		for i in steps:
-			_sim.step(_controls.read(_sim))
+			var inp: Dictionary = Sim.quantize_input(_controls.read(_sim))
+			_recorder.input(_sim.tick, inp)
+			_sim.step(inp)
+			_recorder.after_step(_sim)
 			_frame_events.append_array(_sim.events)
 			for ev in _sim.events:
 				if ev["kind"] == Events.Kind.GAME_OVER:
@@ -201,6 +217,18 @@ func _process(delta: float) -> void:
 	# Game over keeps the last shake/fade running so the death reads; only a pause freezes effects.
 	_juice.update(delta if state != State.PAUSED else 0.0, _world.camera_base)
 	_hud.update(_sim, _clock.speed)
+
+
+## Android sends the app to the background (home button, call) or closes it without a game over: finish the
+## recording so the run is still complete and verifiable.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_EXIT_TREE:
+		if _recorder != null and _sim != null:
+			_recorder.flush()
+			if what != NOTIFICATION_APPLICATION_PAUSED:
+				_recorder.finish(_sim)
+		if what == NOTIFICATION_APPLICATION_PAUSED and state == State.PLAYING:
+			_pause()
 
 
 func _telemetry(delta: float) -> void:
@@ -227,6 +255,8 @@ func _telemetry(delta: float) -> void:
 		_actors.build_usec = 0
 		# Write the log out every second: on Android the app is killed, not closed, and the buffer was lost.
 		_logger.flush()
+		if _recorder != null:
+			_recorder.flush()
 		_tm_frames = 0
 		_tm_steps = 0
 		_tm_elapsed = 0.0

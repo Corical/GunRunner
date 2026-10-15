@@ -109,12 +109,15 @@ func step(input: Dictionary) -> void:
 
 
 ## The only way an enemy loses health. Applies scoring on a kill. Returns true if the enemy died.
-func damage_enemy(e: Enemies.Enemy, amount: int, source: String) -> bool:
+## weapon: the weapon id for bullet/splash damage, "fire"/"poison" tower ids for burn/poison (stats attribution).
+func damage_enemy(e: Enemies.Enemy, amount: int, source: String, weapon := "") -> bool:
 	if not e.active:
 		return false
+	if weapon == "":
+		weapon = "fire" if source == "burn" else ("poison" if source == "poison" else source)
 	e.hp -= amount
 	if e.hp > 0:
-		_push_event(Events.Kind.ENEMY_HIT, {"serial": e.serial, "enemy": e.type_id, "x": e.x, "z": e.z, "amount": amount, "source": source})
+		_push_event(Events.Kind.ENEMY_HIT, {"serial": e.serial, "enemy": e.type_id, "x": e.x, "z": e.z, "amount": amount, "source": source, "weapon": weapon})
 		return false
 	e.active = false
 	var gain: int = int(e.row["score"]) * maxi(1, combo)
@@ -124,7 +127,7 @@ func damage_enemy(e: Enemies.Enemy, amount: int, source: String) -> bool:
 	_log.debug("score", "kill", {"enemy": e.type_id, "source": source, "gain": gain, "combo": combo})
 	_push_event(Events.Kind.ENEMY_KILLED, {
 		"serial": e.serial, "enemy": e.type_id, "x": e.x, "z": e.z, "amount": amount, "source": source,
-		"score_gain": gain, "combo": combo,
+		"weapon": weapon, "score_gain": gain, "combo": combo,
 	})
 	return true
 
@@ -147,7 +150,7 @@ func _bullets_vs_enemies() -> void:
 			b.hit[e.serial] = true
 			var hx := e.x
 			var hz := e.z
-			damage_enemy(e, effective_damage(b.damage, b.weapon_id, e.type_id), "bullet")
+			damage_enemy(e, effective_damage(b.damage, b.weapon_id, e.type_id), "bullet", b.weapon_id)
 			if b.splash_radius > 0.0:
 				_splash(b, hx, hz, e)
 			if bullets.spend(b):
@@ -167,7 +170,7 @@ func _splash(b: Bullets.Bullet, cx: float, cz: float, centre: Enemies.Enemy) -> 
 			continue
 		if Collision.dist_sq(cx, cz, other.x, other.z) >= r2:
 			continue
-		damage_enemy(other, effective_damage(base, b.weapon_id, other.type_id), "splash")
+		damage_enemy(other, effective_damage(base, b.weapon_id, other.type_id), "splash", b.weapon_id)
 		victims += 1
 
 
@@ -188,7 +191,7 @@ func _boss_step(dt: float) -> void:
 			return
 	match boss.contact(player.x, player.z):
 		1:
-			_hurt_player(int(rules.t("boss_contact_damage")), "boss")
+			_hurt_player(int(rules.t("boss_contact_damage")), "boss", "boss", boss.x)
 			_push_event(Events.Kind.BOSS_CONTACT, {"damage": rules.t("boss_contact_damage")})
 			boss.push_back()
 		2:
@@ -274,17 +277,20 @@ func _enemies_vs_player() -> void:
 			continue
 		e.active = false
 		hits += 1
-		_hurt_player(1, "enemy")
+		_hurt_player(1, "enemy", e.type_id, e.x)
 	if hits > 0 and combo > 0:
 		_push_event(Events.Kind.COMBO_BROKEN, {"combo": combo})
 	if hits > 0:
 		combo = 0
 
 
-func _hurt_player(amount: int, source: String) -> void:
+## by: the enemy type ("boss" for the boss); by_x: where it hit from; player_x: where the player stood.
+func _hurt_player(amount: int, source: String, by: String, by_x: float) -> void:
 	var r := player.take_damage(amount)
-	_log.info("player", "hurt", {"amount": amount, "absorbed": r["absorbed"], "hp": player.hp, "armor": player.armor, "source": source})
-	_push_event(Events.Kind.PLAYER_HURT, {"amount": amount, "absorbed": r["absorbed"], "hp": player.hp, "armor": player.armor, "source": source})
+	var fields := {"amount": amount, "absorbed": r["absorbed"], "hp": player.hp, "armor": player.armor, "source": source,
+		"by": by, "by_x": by_x, "player_x": player.x, "weapon": player.weapon_id, "distance": distance}
+	_log.info("player", "hurt", fields)
+	_push_event(Events.Kind.PLAYER_HURT, fields.duplicate())
 
 
 func _game_over() -> void:
@@ -309,15 +315,30 @@ static func _axis(v: Variant) -> float:
 	var f := float(v)
 	if is_nan(f) or is_inf(f):
 		return 0.0
-	return clampf(f, -1.0, 1.0)
+	return snappedf(clampf(f, -1.0, 1.0), INPUT_GRID)
 
 
-## Drag target: a finite number, else NaN (= not dragging).
+## Drag target: a finite number, else NaN (= not dragging). Rounded like every input (see INPUT_GRID).
 static func _target(v: Variant) -> float:
 	if typeof(v) != TYPE_FLOAT and typeof(v) != TYPE_INT:
 		return NAN
 	var f := float(v)
-	return NAN if is_inf(f) else f
+	return NAN if is_inf(f) or is_nan(f) else snappedf(f, INPUT_GRID)
+
+
+## Inputs are rounded to 1/4096: such values have short exact decimal forms, so a recorded run survives JSON
+## exactly. Unrounded, -0.19641278469132342 came back as ...345 and a replay diverged at tick 96.
+const INPUT_GRID := 1.0 / 4096.0
+
+
+## The input exactly as the sim will use it; record this, not the raw controller value.
+static func quantize_input(inp: Dictionary) -> Dictionary:
+	var out := {}
+	if inp.has("move"):
+		out["move"] = _axis(inp["move"])
+	if inp.has("target_x") and not is_nan(_target(inp["target_x"])):
+		out["target_x"] = _target(inp["target_x"])
+	return out
 
 
 ## Everything that affects future steps, hashed. Equal hashes = equal games.

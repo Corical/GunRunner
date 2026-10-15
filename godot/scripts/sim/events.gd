@@ -7,10 +7,10 @@ enum Kind {
 	FIRED,            ## weapon, x, z, bullets
 	POOL_EXHAUSTED,   ## pool, wanted
 	ENEMY_SPAWNED,    ## serial, enemy, x, z
-	ENEMY_HIT,        ## serial, enemy, x, z, amount, source
-	ENEMY_KILLED,     ## serial, enemy, x, z, amount, source, score_gain, combo
+	ENEMY_HIT,        ## serial, enemy, x, z, amount, source, weapon
+	ENEMY_KILLED,     ## serial, enemy, x, z, amount, source, weapon, score_gain, combo
 	ENEMY_ESCAPED,    ## serial, enemy
-	PLAYER_HURT,      ## amount, absorbed, hp, armor, source
+	PLAYER_HURT,      ## amount, absorbed, hp, armor, source, by, by_x, player_x, weapon, distance
 	COMBO_BROKEN,     ## combo
 	UPGRADE_SPAWNED,  ## serial, reward, reward_kind, x, z
 	ICE_HIT,          ## serial, x, z, amount, ice_hp

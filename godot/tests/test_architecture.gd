@@ -63,7 +63,8 @@ func test_every_script_parses() -> void:
 			if not f.ends_with(".gd"):
 				continue
 			count += 1
-			ok(load(dir.path_join(f)) != null, "%s does not load" % dir.path_join(f))
+			var script: GDScript = load(dir.path_join(f))
+			ok(script != null and script.can_instantiate(), "%s does not load or compile" % dir.path_join(f))
 	ok(count >= 20, "found %d scripts" % count)
 
 

@@ -2,6 +2,7 @@ extends Node
 ## Entry point. Everything is built in code from here.
 ##
 ## Windowed:  godot --path godot [-- --seed=N --bot --autostart]
+## Replay a recorded run (user://runs/*.jsonl, also pulled off the phone): -- --replay=C:/path/run-N.jsonl
 ## Headless batch, the bot plays every run (see batch/batch_runner.gd):
 ##   godot --headless --path godot -- --seed=7 [--runs=1] [--ticks=72000] [--log=C:/path/run.log]
 
@@ -10,6 +11,7 @@ const Sinks = preload("res://scripts/log/sinks.gd")
 const RulesLoader = preload("res://scripts/data/rules_loader.gd")
 const BatchRunner = preload("res://scripts/batch/batch_runner.gd")
 const PlayMode = preload("res://scripts/play/play_mode.gd")
+const Replay = preload("res://scripts/stats/replay.gd")
 
 var logger: GLog
 var _file_sink: Sinks.File
@@ -28,6 +30,11 @@ func _ready() -> void:
 		"seed": seed_value, "headless": headless, "godot": Engine.get_version_info()["string"],
 		"log": ProjectSettings.globalize_path(log_path),
 	})
+	if headless and args.has("replay"):
+		var replay_code := Replay.run(str(args["replay"]), logger)
+		_file_sink.close()
+		get_tree().quit(replay_code)
+		return
 	if headless and (args.has("ticks") or args.has("runs")):
 		var code := BatchRunner.run(logger, _file_sink, seed_value, int(args.get("runs", 1)), int(args.get("ticks", BatchRunner.DEFAULT_TICK_CAP)))
 		_file_sink.close()

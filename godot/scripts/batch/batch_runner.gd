@@ -8,6 +8,7 @@ const RulesLoader = preload("res://scripts/data/rules_loader.gd")
 const Sim = preload("res://scripts/sim/sim.gd")
 const Bot = preload("res://scripts/batch/simple_bot.gd")
 const Invariants = preload("res://scripts/batch/invariants.gd")
+const RunStats = preload("res://scripts/stats/run_stats.gd")
 
 const DEFAULT_TICK_CAP := 72000
 
@@ -25,6 +26,7 @@ static func run(logger: GLog, sim_sink: Object, first_seed: int, runs: int, tick
 	var total_ticks := 0
 	var bosses_beaten := 0
 	var deaths := 0
+	var totals := RunStats.new()
 	for i in runs:
 		var run_seed := first_seed + i
 		var sim_log := GLog.new()
@@ -33,9 +35,12 @@ static func run(logger: GLog, sim_sink: Object, first_seed: int, runs: int, tick
 		var s := Sim.new(rules, run_seed, sim_log)
 		var bot := Bot.new()
 		var inv := Invariants.new()
+		var stats := RunStats.new()
 		while not s.over and s.tick < tick_cap:
 			s.step({"move": bot.decide(s)})
 			inv.check_step(s)
+			stats.step(s)
+		totals.merge(stats)
 		inv.check_end(s, tick_cap)
 		var beaten := s.boss.wave - (1 if s.boss.active else 0)
 		logger.tick = s.tick
@@ -56,6 +61,11 @@ static func run(logger: GLog, sim_sink: Object, first_seed: int, runs: int, tick
 		bosses_beaten += beaten
 		deaths += 1 if s.over else 0
 	logger.tick = -1
+	# Which weapons carry the bot: kills per minute while held, across every run.
+	for row in totals.weapon_rows():
+		logger.info("batch", "weapon", row)
+	for by in totals.hurt_by:
+		logger.info("batch", "hurt_by", {"by": by, "damage": totals.hurt_by[by], "hits": totals.hits_taken_by[by]})
 	logger.info("batch", "summary", {
 		"first_seed": first_seed, "runs": runs, "failed_runs": failed_runs, "deaths": deaths,
 		"avg_distance": total_distance / maxi(1, runs), "max_distance": max_distance,

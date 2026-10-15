@@ -434,7 +434,8 @@ func test_keys_accelerate_and_ease_to_a_stop() -> void:
 
 
 func test_drag_reaches_target_without_overshoot() -> void:
-	for target in [5.0, -6.5, 0.3, -0.3]:
+	for raw_target in [5.0, -6.5, 0.3, -0.3]:
+		var target: float = snappedf(raw_target, Sim.INPUT_GRID)  # the sim rounds inputs to the grid
 		var s := _quiet()
 		var start: float = s.player.x
 		var worst_past := 0.0
