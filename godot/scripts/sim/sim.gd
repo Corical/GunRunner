@@ -299,7 +299,16 @@ func _splash(b: Bullets.Bullet, cx: float, cz: float, centre: Enemies.Enemy) -> 
 
 
 func _boss_step(dt: float) -> void:
-	boss.update(dt, player.x)
+	boss.update(dt, player.x, player.z)
+	var calls := boss.summons_due(dt, player.z)
+	if calls > 0:
+		var z := boss.z - rules.t("boss_radius") - 1.0
+		var placed := enemies.summon(boss.row["summon_enemy"], calls, boss.x, z, 2.5, distance, _emit)
+		_push_event(Events.Kind.BOSS_SUMMONED, {"boss": boss.row["id"], "x": boss.x, "z": z, "count": placed})
+	if boss.shoot_due(dt, player.x, player.z):
+		_push_event(Events.Kind.BOSS_SHOT, {"boss": boss.row["id"], "x": boss.x, "z": boss.z})
+	for dmg in boss.update_shots(dt, player.prev_x, player.x, player.z):
+		_hurt_player(dmg, "boss", boss.row["id"] + "_shot", boss.x)
 	var reach := rules.t("bullet_hit_radius") + rules.t("boss_radius")
 	for b in bullets.pool:
 		if not b.active or b.hit.has(boss.serial):
@@ -315,18 +324,32 @@ func _boss_step(dt: float) -> void:
 			return
 	match boss.contact(player.x, player.z):
 		1:
-			_hurt_player(int(rules.t("boss_contact_damage")), "boss", "boss", boss.x)
-			_push_event(Events.Kind.BOSS_CONTACT, {"damage": rules.t("boss_contact_damage")})
+			var hit: int = boss.row["contact_damage"]
+			_hurt_player(hit, "boss", boss.row["id"], boss.x)
+			_push_event(Events.Kind.BOSS_CONTACT, {"damage": hit})
 			boss.push_back()
 		2:
 			boss.wrap_around()
 			_push_event(Events.Kind.BOSS_WRAPPED, {"wave": boss.wave})
 
 
+## Debug and replay: fight the boss with bosses.tsv id `id` right now (as its first appearance). Returns false
+## for an unknown id or when a boss is already on.
+func start_boss_now(id: String) -> bool:
+	if boss.active:
+		return false
+	for i in rules.bosses.size():
+		if rules.bosses[i]["id"] == id:
+			boss.wave = i  # _start_boss fights wave + 1, which is this row
+			_start_boss()
+			return true
+	return false
+
+
 func _start_boss() -> void:
 	boss.activate(boss.wave + 1)
 	enemies.pause_spawning()
-	_push_event(Events.Kind.BOSS_STARTED, {"wave": boss.wave, "hp": boss.hp})
+	_push_event(Events.Kind.BOSS_STARTED, {"wave": boss.wave, "hp": boss.hp, "boss": boss.row["id"], "name": boss.row["name"]})
 
 
 func _boss_defeated() -> void:
@@ -542,6 +565,10 @@ func state_hash() -> int:
 	for t in towers.pool:
 		if t.active:
 			parts.append_array([t.serial, t.type_id, t.x, t.time_left])
-	parts.append_array([boss.active, boss.wave, boss.hp, boss.max_hp, boss.x, boss.z, boss.speed, enemies.manual_interval])
+	parts.append_array([boss.active, boss.wave, boss.hp, boss.max_hp, boss.x, boss.z, boss.speed, enemies.manual_interval,
+		boss.row.get("id", ""), boss.phase, boss.summon_timer, boss.shoot_timer, boss.hold_left, boss.strafe_centre])
+	for sh in boss.shots:
+		if sh.active:
+			parts.append_array([sh.x, sh.z, sh.vx, sh.vz, sh.damage])
 	parts.append_array([xp, level, choices, pending_levels, player.perk_stacks, player.mods])
 	return hash(parts)

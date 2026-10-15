@@ -6,7 +6,7 @@ extends RefCounted
 ## kinds: "player", "enemy", "boss", "weapon", "tower", "reward", "ice", "trap"
 ## ids:   enemy/weapon/tower ids from data/*.tsv; reward ids from rewards.tsv; "" for player/boss/ice
 
-const KINDS := ["player", "enemy", "boss", "weapon", "tower", "reward", "ice", "trap"]
+const KINDS := ["player", "enemy", "boss", "boss_shot", "weapon", "tower", "reward", "ice", "trap"]
 
 
 ## A new, independent node tree each call (callers pool them).

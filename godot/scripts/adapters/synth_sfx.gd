@@ -9,7 +9,7 @@ const K = Events.Kind
 
 const HANDLED := [K.FIRED, K.ENEMY_HIT, K.ENEMY_KILLED, K.PLAYER_HURT, K.ICE_HIT, K.ICE_SHATTERED, K.PICKUP,
 	K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_DEFEATED, K.GAME_OVER, K.LEVEL_UP, K.PERK_TAKEN, K.EXPLOSION, K.CRIT,
-	K.TRAP_HIT, K.TRAP_DESTROYED, K.TRAP_TRIGGERED, K.UPGRADE_LOST]
+	K.TRAP_HIT, K.TRAP_DESTROYED, K.TRAP_TRIGGERED, K.UPGRADE_LOST, K.BOSS_SUMMONED, K.BOSS_SHOT]
 
 const RATE := 22050
 const VOICES := 14
@@ -111,8 +111,10 @@ func handle(events: Array) -> void:
 				name = "crit"
 			K.EXPLOSION:
 				name = "explode"
-			K.BOSS_STARTED:
+			K.BOSS_STARTED, K.BOSS_SUMMONED:
 				name = "boss"
+			K.BOSS_SHOT:
+				name = "shot_rocket"
 			K.GAME_OVER:
 				name = "game_over"
 		if name == "" or not _clips.has(name):

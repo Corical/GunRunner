@@ -17,6 +17,12 @@ func _sim(seed_value := 1, tweak := {}) -> Sim:
 	var rules := Loader.load_rules()
 	assert(rules.ok(), "rules failed: %s" % [rules.errors])
 	for key in tweak:
+		if key.begins_with("boss."):  # a bosses.tsv column, set on every boss
+			var col: String = key.trim_prefix("boss.")
+			for row in rules.bosses:
+				assert(row.has(col), "unknown boss column " + col)
+				row[col] = tweak[key]
+			continue
 		assert(rules.tuning.has(key), "unknown tweak " + key)
 		rules.tuning[key] = float(tweak[key])
 	var logger := GLog.new()
@@ -249,7 +255,7 @@ func test_crit_event_matches_damage_dealt_and_only_on_crits() -> void:
 
 
 func test_railgun_hits_boss_once_per_bullet() -> void:
-	var s := _quiet({"boss_steer_speed": 0})
+	var s := _quiet({"boss.steer": 0.0})
 	s._start_boss()
 	s.boss.z = 12.0
 	var hp_before := s.boss.hp
@@ -312,7 +318,7 @@ func test_boss_cannot_be_dodged_forever_from_the_road_edge() -> void:
 
 
 func test_dodged_boss_wraps_round_without_damage() -> void:
-	var s := _quiet({"boss_steer_speed": 0})
+	var s := _quiet({"boss.steer": 0.0})
 	s._start_boss()
 	s.player.x = 7.0
 	var hp := s.player.hp
@@ -326,7 +332,7 @@ func test_dodged_boss_wraps_round_without_damage() -> void:
 
 
 func test_boss_contact_hurts_once_and_pushes_back() -> void:
-	var s := _quiet({"boss_steer_speed": 0})
+	var s := _quiet({"boss.steer": 0.0})
 	s._start_boss()
 	s.boss.x = s.player.x
 	s.boss.z = s.player.z + 3.9
@@ -339,7 +345,7 @@ func test_boss_contact_hurts_once_and_pushes_back() -> void:
 
 
 func test_boss_killed_by_first_of_several_bullets_in_one_step() -> void:
-	var s := _quiet({"boss_steer_speed": 0})
+	var s := _quiet({"boss.steer": 0.0})
 	s._start_boss()
 	s.boss.hp = 1
 	s.boss.z = 1.0
@@ -368,7 +374,146 @@ func test_boss_starts_once_and_not_again_while_active() -> void:
 func test_boss_hp_grows_per_wave() -> void:
 	var s := _quiet()
 	s.boss.activate(2)
-	eq(s.boss.max_hp, 90)
+	eq(s.boss.row["id"], "summoner", "wave 2 is the second boss in bosses.tsv")
+	eq(s.boss.max_hp, 72, "(50 + 20 x 2) x 0.8")
+	s.boss.activate(5)
+	eq(s.boss.row["id"], "brute", "after the last boss the order starts again")
+	eq(s.boss.max_hp, 150, "...with more hp: (50 + 20 x 5) x 1.0")
+
+
+# ---------- boss types ----------
+
+## Puts the boss of `id` on the road at its hold distance, with huge hp so the test decides when it dies.
+func _boss_fight(id: String, tweak := {}) -> Sim:
+	var s := _quiet(tweak)
+	var wave := 1
+	for i in s.rules.bosses.size():
+		if s.rules.bosses[i]["id"] == id:
+			wave = i + 1
+	s.boss.activate(wave)
+	s.boss.hp = 1000000
+	s.boss.max_hp = 1000000
+	return s
+
+
+func test_holding_boss_stops_at_its_distance_and_never_touches_you() -> void:
+	for id in ["summoner", "gunner"]:
+		var s := _boss_fight(id, {"boss.shoot_every": 0.0, "boss.summon_every": 0.0, "boss.hold_seconds": 1000.0})
+		var ev := _run(s, 60 * 30)
+		var hold: float = s.boss.row["hold_z"]
+		ok(is_equal_approx(s.boss.z, s.player.z + hold), "%s holds at %.1f, is at %.2f" % [id, hold, s.boss.z - s.player.z])
+		eq(_of(ev, K.BOSS_CONTACT).size(), 0, id + " never reaches you")
+		eq(_of(ev, K.BOSS_WRAPPED).size(), 0, id + " never passes you")
+
+
+## A holder you cannot kill must not be an endless fight (a bot farmed a Summoner's minions for 20 minutes):
+## once hold_seconds run out it stops calling and shooting and walks into you.
+func test_holder_runs_out_of_patience_and_charges() -> void:
+	for id in ["summoner", "gunner"]:
+		var s := _boss_fight(id, {"boss.hold_seconds": 5.0})
+		s.player.x = 0.0
+		var contacts := 0
+		var charging := false
+		var calls_while_charging := 0
+		for i in 60 * 40:
+			s.step({})
+			for e in s.events:
+				if e["kind"] == K.BOSS_CONTACT:
+					contacts += 1
+				if charging and e["kind"] in [K.BOSS_SUMMONED, K.BOSS_SHOT]:
+					calls_while_charging += 1
+			charging = charging or not s.boss.holds()
+		ok(charging, id + " started charging")
+		ok(contacts >= 1, id + " reached you after its patience ran out")
+		eq(calls_while_charging, 0, id + " stops summoning and shooting once it charges")
+
+
+func test_charging_boss_still_reaches_you() -> void:
+	var s := _boss_fight("juggernaut")
+	s.player.x = 0.0
+	var ev := _run(s, 60 * 30)
+	ok(_of(ev, K.BOSS_CONTACT).size() >= 1, "the juggernaut walks into you")
+	for e in _of(ev, K.PLAYER_HURT):
+		eq(e["amount"], 4, "juggernaut hits for its own contact_damage")
+		eq(e["by"], "juggernaut")
+
+
+func test_summoner_calls_minions_on_its_timer_only_once_in_position() -> void:
+	var s := _boss_fight("summoner")
+	var every: float = s.boss.row["summon_every"]
+	var travel: float = (s.boss.z - s.player.z - s.boss.row["hold_z"]) / s.boss.row["speed"]
+	var ev := _run(s, int(60 * (travel + every * 3.5)))
+	var calls := _of(ev, K.BOSS_SUMMONED)
+	eq(calls.size(), 3, "three calls in 3.5 periods after arriving")
+	var spawned := _of(ev, K.ENEMY_SPAWNED)
+	eq(spawned.size(), 3 * int(s.boss.row["summon_count"]))
+	for e in spawned:
+		eq(e["enemy"], s.boss.row["summon_enemy"])
+		ok(absf(e["x"]) <= s.rules.t("road_width") / 2.0, "minion on the road")
+
+
+func test_summons_with_a_full_enemy_pool_place_none_and_say_so() -> void:
+	var s := _boss_fight("summoner")
+	for e in s.enemies.pool:
+		s.enemies._activate(e, "basic", 0.0, 500.0)  # far away, never reaches the player in this test
+		e.slow_mult = 0.0
+	var ev := _run(s, 60 * 20)
+	var calls := _of(ev, K.BOSS_SUMMONED)
+	ok(calls.size() >= 1, "it tried")
+	for c in calls:
+		eq(c["count"], 0, "nothing placed")
+
+
+func test_gunner_shot_hits_a_player_who_stands_still() -> void:
+	var s := _boss_fight("gunner", {"boss.strafe": 0.0})
+	s.player.hp = 10
+	s.player.max_hp = 10
+	var ev := _run(s, 60 * 20)
+	var shots := _of(ev, K.BOSS_SHOT).size()
+	var hits := 0
+	for e in _of(ev, K.PLAYER_HURT):
+		eq(e["by"], "gunner_shot")
+		hits += 1
+	ok(shots >= 2, "it fired (%d)" % shots)
+	ok(hits >= 1, "standing still gets you shot (%d hits from %d shots)" % [hits, shots])
+
+
+func test_gunner_shot_misses_a_player_who_steps_aside() -> void:
+	var s := _boss_fight("gunner", {"boss.strafe": 0.0, "boss.shoot_every": 100.0})
+	s.boss.shoot_timer = 0.0  # fire on the first step it is in position, then not again in this test
+	var fired := false
+	var hurt := 0
+	for i in 60 * 20:
+		s.step({})
+		for e in s.events:
+			if e["kind"] == K.BOSS_SHOT:
+				fired = true
+				s.player.x = 3.0  # step 3 m aside right after the shot leaves
+			if e["kind"] == K.PLAYER_HURT:
+				hurt += 1
+	ok(fired, "it fired")
+	eq(hurt, 0, "a 3 m step clears the shot")
+
+
+func test_shots_vanish_when_the_boss_dies() -> void:
+	var s := _boss_fight("gunner", {"boss.strafe": 0.0})
+	for i in 60 * 20:
+		s.step({})
+		var flying := false
+		for sh in s.boss.shots:
+			flying = flying or sh.active
+		if flying:
+			break
+	var any := false
+	for sh in s.boss.shots:
+		any = any or sh.active
+	ok(any, "a shot is in the air")
+	s.boss.hp = 1
+	_shoot(s, "railgun", s.boss.x, s.boss.z - 6.0)
+	_run(s, 30)
+	ok(not s.boss.active, "boss down")
+	for sh in s.boss.shots:
+		ok(not sh.active, "no shot outlives its boss")
 
 
 # ---------- same-step order (sim.gd header) ----------
@@ -723,7 +868,7 @@ func test_upgrade_rate_per_second_and_none_during_boss() -> void:
 	ok(halves.size() >= 460 and halves.size() <= 692, "10 sim-minutes of pairs: %d halves, expect 576 +- 116" % halves.size())
 	eq(halves.size() % 2, 0, "pickups only ever come in twos")
 
-	var b := _quiet({"upgrade_spawn_per_second": 0.48, "boss_steer_speed": 0})
+	var b := _quiet({"upgrade_spawn_per_second": 0.48, "boss.steer": 0.0})
 	b._start_boss()
 	b.boss.hp = 1000000
 	b.boss.max_hp = 1000000

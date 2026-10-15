@@ -14,6 +14,8 @@ const TABLES := {
 	"weapon_looks": ["id", "kick_ms", "kick_amp", "muzzle_color", "muzzle_sparks", "muzzle_smoke", "bullet_stretch",
 		"bullet_arc", "bullet_grow", "smoke_trail", "model_length", "model_radius"],
 	"traps": ["id", "name", "effect", "amount", "seconds", "weight", "label", "color"],
+	"bosses": ["id", "name", "color", "hp_mult", "speed", "steer", "contact_dx", "contact_damage", "hold_z", "hold_seconds", "strafe",
+		"summon_every", "summon_count", "summon_enemy", "shoot_every", "shot_speed", "shot_damage"],
 }
 
 const REWARD_KINDS := ["weapon", "tower", "heal", "armor", "maxhp", "frenzy", "speed"]
@@ -32,8 +34,8 @@ const TUNING_KEYS := [
 	"upgrade_pool", "upgrade_despawn_z", "upgrade_radius", "pickup_dx", "pickup_dz", "heal_amount", "armor_amount",
 	"maxhp_amount", "frenzy_seconds", "frenzy_damage_mult", "speed_buff_seconds", "speed_buff_rate_mult", "tower_z",
 	"tower_pool", "boss_interval", "boss_base_hp", "boss_hp_per_wave", "boss_spawn_z", "boss_radius",
-	"boss_speed_full_hp", "boss_speed_bonus_at_zero_hp", "boss_contact_dx", "boss_contact_player_radius",
-	"boss_contact_damage", "boss_pushback", "boss_score_per_wave", "boss_steer_speed",
+	"boss_speed_bonus_at_zero_hp", "boss_contact_player_radius", "boss_pushback", "boss_score_per_wave",
+	"boss_shot_radius", "boss_shot_pool",
 	"trap_spawn_per_second", "trap_hp", "trap_pool", "trap_sway_amplitude", "trap_sway_speed", "upgrade_sway_amplitude",
 	"upgrade_sway_speed", "upgrade_pair_chance",
 ]
@@ -49,7 +51,7 @@ const TUNING_MIN := {
 	"spawn_interval_min": 0.05, "wave_size_max": 1.0, "wave_size_metres": 1.0, "spawn_tries": 1.0,
 	"burn_tick": 0.05, "poison_tick": 0.05, "bullet_speed": 0.01, "bullet_pool": 1.0, "bullet_hit_radius": 0.01,
 	"upgrade_ice_hp": 1.0, "upgrade_speed": 0.01, "upgrade_pool": 1.0, "upgrade_radius": 0.01, "tower_pool": 1.0,
-	"boss_interval": 1.0, "boss_base_hp": 1.0, "boss_radius": 0.01, "xp_base": 1.0, "xp_growth": 1.0,
+	"boss_interval": 1.0, "boss_base_hp": 1.0, "boss_radius": 0.01, "boss_shot_radius": 0.01, "boss_shot_pool": 1.0, "xp_base": 1.0, "xp_growth": 1.0,
 	"trap_hp": 1.0, "trap_pool": 1.0, "frenzy_damage_mult": 1.0, "speed_buff_rate_mult": 0.01,
 }
 
@@ -65,6 +67,16 @@ var tuning := {}         ## id -> float
 var perks: Array[Dictionary] = []  ## rows in table order (roll order)
 var traps: Array[Dictionary] = []  ## rows in roll order
 var trap_by_id := {}  ## id -> row
+var bosses: Array = []  ## bosses.tsv rows in order; wave n fights bosses[(n - 1) % size]
+
+
+## Half the road an enemy may use, read from raw tuning rows (the bosses table is checked before tuning is built).
+static func tuning_half_road(tables: Dictionary) -> float:
+	var v := {"road_width": 0.0, "enemy_road_margin": 0.0}
+	for r in tables.get("tuning", []):
+		if v.has(r["id"]):
+			v[r["id"]] = float(r["value"])
+	return v["road_width"] / 2.0 - v["enemy_road_margin"]
 var weapon_looks := {}  ## weapon id -> presentation row (weapon_looks.tsv; the sim never reads it)
 const TRAP_EFFECTS := ["fire_rate_mult", "no_crit"]
 
@@ -160,6 +172,27 @@ func _build(tables: Dictionary) -> void:
 		var key: String = row["weapon"] + "|" + row["enemy"]
 		if effectiveness.has(key): errors.append("effectiveness: pair %s listed twice" % key)
 		effectiveness[key] = row["multiplier"]
+
+	for row in tables["bosses"]:
+		bosses.append(row)
+		var id: String = row["id"]
+		if row["hp_mult"] <= 0.0: errors.append("boss %s: hp_mult must be > 0" % id)
+		if row["speed"] <= 0.0: errors.append("boss %s: speed must be > 0 (it has to reach you or its hold_z)" % id)
+		if row["hold_z"] > 0.0 and row["hold_seconds"] <= 0.0:
+			errors.append("boss %s: holds, so hold_seconds must be > 0 (or a boss you cannot kill is never-ending)" % id)
+		for col in ["steer", "contact_dx", "hold_z", "hold_seconds", "strafe", "summon_every", "shoot_every", "shot_speed"]:
+			if row[col] < 0.0: errors.append("boss %s: %s must not be negative" % [id, col])
+		if row["contact_damage"] < 0 or row["summon_count"] < 0 or row["shot_damage"] < 0:
+			errors.append("boss %s: contact_damage, summon_count and shot_damage must not be negative" % id)
+		if row["summon_every"] > 0.0 and row["summon_count"] < 1: errors.append("boss %s: summons nothing (summon_count 0)" % id)
+		if row["summon_every"] > 0.0 and not enemies.has(row["summon_enemy"]):
+			errors.append("boss %s: summon_enemy '%s' is not an enemy" % [id, row["summon_enemy"]])
+		if row["shoot_every"] > 0.0 and (row["shot_speed"] <= 0.0 or row["shot_damage"] < 1):
+			errors.append("boss %s: shoots, so shot_speed must be > 0 and shot_damage >= 1" % id)
+		if row["strafe"] > 0.0 and row["hold_z"] <= 0.0: errors.append("boss %s: strafe only works while holding (hold_z 0)" % id)
+		if row["steer"] <= 0.0: errors.append("boss %s: steer must be > 0 (a charger that cannot follow you wraps round forever)" % id)
+		if row["strafe"] > tuning_half_road(tables): errors.append("boss %s: strafe %s goes off the road" % [id, row["strafe"]])
+		if not Color.html_is_valid(row["color"]): errors.append("boss %s: color '%s' is not a colour" % [id, row["color"]])
 
 	var reward_total := 0
 	for row in tables["rewards"]:

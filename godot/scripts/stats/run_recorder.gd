@@ -34,6 +34,11 @@ func start_weapon(id: String) -> void:
 	_write({"type": "start_weapon", "weapon": id})
 
 
+## Debug start (--boss=): this boss fight begins before the first step. Replay applies it first.
+func start_boss(id: String) -> void:
+	_write({"type": "start_boss", "boss": id})
+
+
 ## Debug start (--tower=): a tower placed at x 0 before the first step. Replay applies it first.
 func start_tower(id: String) -> void:
 	_write({"type": "start_tower", "tower": id})

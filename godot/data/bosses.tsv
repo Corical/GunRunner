@@ -1,0 +1,16 @@
+#schema 1
+# Bosses take turns by wave in row order (wave 1 = first row), then repeat with more HP. 15 Oct 2026: every boss
+# was the same fight ("very the same shit over and over") and it killed Corne in all three of his runs.
+# hp = (boss_base_hp + boss_hp_per_wave * wave) * hp_mult. speed: m/s toward the player (+ boss_speed_bonus_at_zero_hp
+# as it loses health). steer: m/s sideways toward the player's x. contact_dx / contact_damage: how wide it hits, how hard.
+# hold_z: stops this far ahead of the player and fights from there (0 = charges through). hold_seconds: then it
+# runs out of patience and charges (a bot farmed a Summoner for 20 minutes on 15 Oct). strafe: metres it slides
+# side to side while holding (0 = none). summon_*: calls summon_count summon_enemy every summon_every s (0 = never).
+# shoot_*: fires one slow shot at where you are every shoot_every s (0 = never); you dodge it.
+# The first row's numbers are the old single boss (Boss.ts + plan D13).
+id	name	color	hp_mult	speed	steer	contact_dx	contact_damage	hold_z	hold_seconds	strafe	summon_every	summon_count	summon_enemy	shoot_every	shot_speed	shot_damage
+string	string	string	float	float	float	float	int	float	float	float	float	int	string	float	float	int
+brute	BRUTE	#DC2626	1.0	5	3	4	3	0	0	0	0	0	basic	0	0	0
+summoner	SUMMONER	#7C3AED	0.8	5	1.5	4	3	30	20	0	3.0	3	fast	0	0	0
+gunner	GUNNER	#F59E0B	0.8	5	2	4	3	32	20	4.5	0	0	basic	1.6	16	1
+juggernaut	JUGGERNAUT	#475569	1.8	3.5	1.2	6	4	0	0	0	0	0	basic	0	0	0

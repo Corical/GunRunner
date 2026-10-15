@@ -81,6 +81,10 @@ static func replay(path: String, sim_logger: GLog) -> Result:
 					r.errors.append("line %d: unknown start tower %s" % [i + 1, e.get("tower")])
 					return r
 				sim.towers.deploy(str(e["tower"]), 0.0, func(_k, _f): pass)
+			"start_boss":
+				if not sim.start_boss_now(str(e.get("boss", ""))):
+					r.errors.append("line %d: cannot start boss %s" % [i + 1, e.get("boss")])
+					return r
 			"end":
 				end = e
 	var last_tick: int = int(end["t"]) if not end.is_empty() else (int(checks.keys().max()) if not checks.is_empty() else 0)

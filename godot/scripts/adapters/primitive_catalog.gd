@@ -29,7 +29,9 @@ func make(kind: String, id: String) -> Node3D:
 		"enemy":
 			_enemy(root, id)
 		"boss":
-			_boss(root)
+			_boss(root, id)
+		"boss_shot":
+			_part(root, _sphere(0.45), _mat("#FBBF24", 1.0, 2.5), Vector3(0, 1.2, 0))
 		"weapon":
 			_weapon(root, id)
 		"tower":
@@ -111,10 +113,20 @@ func _enemy(root: Node3D, id: String) -> void:
 			_part(root, _box(Vector3.ONE), _mat("#FF00FF"), Vector3(0, 0.5, 0))
 
 
-func _boss(root: Node3D) -> void:
-	var red := _mat("#DC2626", 1.0, 0.3)
-	_part(root, _box(Vector3(4.0, 3.5, 3.0)), red, Vector3(0, 1.75, 0))
-	_part(root, _box(Vector3(2.4, 1.6, 2.0)), red, Vector3(0, 4.3, 0))
+## One stand-in body per boss, in its bosses.tsv colour. The Juggernaut is built wider (it hits wider).
+func _boss(root: Node3D, id: String) -> void:
+	var row: Dictionary = {}
+	for r in _rules.bosses:
+		if r["id"] == id:
+			row = r
+	var body := _mat(row.get("color", "#DC2626"), 1.0, 0.3)
+	var wide: float = float(row.get("contact_dx", 4.0)) / 4.0
+	_part(root, _box(Vector3(4.0 * wide, 3.5, 3.0)), body, Vector3(0, 1.75, 0))
+	_part(root, _box(Vector3(2.4, 1.6, 2.0)), body, Vector3(0, 4.3, 0))
+	if float(row.get("shoot_every", 0.0)) > 0.0:
+		_part(root, _cylinder(0.35, 0.35, 2.0), _mat("#1F2937"), Vector3(0, 2.2, -2.0), Vector3(PI / 2, 0, 0))
+	if float(row.get("summon_every", 0.0)) > 0.0:
+		_part(root, _torus(1.6, 2.0), _mat("#C4B5FD", 1.0, 1.5), Vector3(0, 6.2, 0))
 	_part(root, _cylinder(0.0, 0.3, 1.2), _mat("#FDE68A"), Vector3(-0.9, 5.5, 0))
 	_part(root, _cylinder(0.0, 0.3, 1.2), _mat("#FDE68A"), Vector3(0.9, 5.5, 0))
 	_part(root, _sphere(0.25), _mat("#FBBF24", 1.0, 2.0), Vector3(-0.5, 4.5, -1.0))

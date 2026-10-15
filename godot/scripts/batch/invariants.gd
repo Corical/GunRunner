@@ -61,6 +61,12 @@ func check_step(s: Sim) -> void:
 		_fail(s, "xp=%d level=%d choices=%d pending=%d" % [s.xp, s.level, s.choices.size(), s.pending_levels])
 	if s.boss.active and (s.boss.hp <= 0 or s.boss.hp > s.boss.max_hp):
 		_fail(s, "boss hp=%d/%d" % [s.boss.hp, s.boss.max_hp])
+	# A holding boss never comes closer than its hold distance; no shot outlives its boss.
+	if s.boss.active and s.boss.holds() and s.boss.z < p.z + float(s.boss.row["hold_z"]) - 1e-6:
+		_fail(s, "boss %s at z=%f inside hold_z" % [s.boss.row["id"], s.boss.z])
+	for sh in s.boss.shots:
+		if sh.active and not s.boss.active:
+			_fail(s, "boss shot alive after the boss")
 	for ev in s.events:
 		if ev["kind"] == Events.Kind.GAME_OVER:
 			game_over_events += 1

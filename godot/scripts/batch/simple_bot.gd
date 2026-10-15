@@ -17,6 +17,14 @@ func decide(s: Sim) -> float:
 	if s.boss.active and s.boss.z - p.z < DODGE_AHEAD + 4.0 and absf(s.boss.x - p.x) < 5.0:
 		return _away_from(s.boss.x, p.x, half)
 
+	# 1b. Dodge a boss shot about to land on us (where it will be when it reaches our z).
+	for sh in s.boss.shots:
+		if not sh.active or sh.z < p.z or sh.z - p.z > DODGE_AHEAD:
+			continue
+		var land_x: float = sh.x + sh.vx * (sh.z - p.z) / -sh.vz
+		if absf(land_x - p.x) < s.rules.t("boss_shot_radius") + 0.8:
+			return _away_from(land_x, p.x, half)
+
 	# 2. Dodge the nearest enemy that would hit us.
 	var threat = null
 	for e in s.enemies.pool:

@@ -57,6 +57,19 @@ func test_reward_must_reference_real_weapon_or_tower() -> void:
 	_expect_error(func(t): _row(t, "rewards", "heal")["kind"] = "potion", "unknown kind 'potion'")
 
 
+func test_bosses_validated() -> void:
+	_expect_error(func(t): _row(t, "bosses", "summoner")["summon_enemy"] = "dragon", "boss summoner: summon_enemy 'dragon' is not an enemy")
+	_expect_error(func(t): _row(t, "bosses", "summoner")["summon_count"] = 0, "boss summoner: summons nothing")
+	_expect_error(func(t): _row(t, "bosses", "gunner")["shot_speed"] = 0.0, "boss gunner: shoots, so shot_speed")
+	_expect_error(func(t): _row(t, "bosses", "gunner")["steer"] = 0.0, "boss gunner: steer must be > 0")
+	_expect_error(func(t): _row(t, "bosses", "gunner")["strafe"] = 40.0, "boss gunner: strafe 40.0 goes off the road")
+	_expect_error(func(t): _row(t, "bosses", "brute")["strafe"] = 2.0, "boss brute: strafe only works while holding")
+	_expect_error(func(t): _row(t, "bosses", "juggernaut")["hp_mult"] = 0.0, "boss juggernaut: hp_mult must be > 0")
+	_expect_error(func(t): _row(t, "bosses", "brute")["speed"] = 0.0, "boss brute: speed must be > 0")
+	_expect_error(func(t): t["bosses"] = [], "table 'bosses' is empty")
+	_expect_error(func(t): _row(t, "bosses", "summoner")["hold_seconds"] = 0.0, "boss summoner: holds, so hold_seconds must be > 0")
+
+
 ## Every pickup must say what it is: a blank name or a broken colour would put an unreadable pickup on the road.
 func test_reward_needs_label_and_colour() -> void:
 	_expect_error(func(t): _row(t, "rewards", "rocket")["label"] = "  ", "reward rocket: label is empty")

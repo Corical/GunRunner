@@ -71,14 +71,14 @@ func build(stand_in_art: bool) -> void:
 	var boss_bar := UiKit.bar(Vector2(_boss_bar_width, 18), Color("#DC2626"))
 	_boss_box.add_child(boss_bar[0])
 	_boss_fill = boss_bar[1]
-	UiKit.pin(_boss_box, Control.PRESET_CENTER_TOP, 16, 64)
+	UiKit.pin(_boss_box, Control.PRESET_CENTER_TOP, 16, 86)  # below the HP block (top 12, ~70 tall)
 
 	_combo = UiKit.label("x99 COMBO", 34, Color("#FBBF24"), true)
 	_combo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_combo.add_theme_constant_override("outline_size", 6)
 	_combo.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	root.add_child(_combo)
-	UiKit.pin(_combo, Control.PRESET_CENTER_TOP, 16, 124)
+	UiKit.pin(_combo, Control.PRESET_CENTER_TOP, 16, 150)
 	_combo.text = ""
 
 	var bottom := VBoxContainer.new()
@@ -184,5 +184,5 @@ func update(s: Sim, speed := 1.0) -> void:
 	_debuffs.text = "   ".join(debuffs)
 	_boss_box.visible = s.boss.active
 	if s.boss.active:
-		_boss_name.text = "BOSS WAVE %d" % s.boss.wave
+		_boss_name.text = "%s - WAVE %d" % [s.boss.row["name"], s.boss.wave]
 		_boss_fill.size.x = (_boss_bar_width - 4.0) * float(s.boss.hp) / s.boss.max_hp

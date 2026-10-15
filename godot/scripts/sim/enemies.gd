@@ -158,6 +158,24 @@ func _spawn_wave(distance: float, emit: Callable) -> void:
 	_log.debug("spawn", "wave", {"distance": distance, "band": band["id"], "size": wave_size, "placed": placed, "next_in": spawn_interval})
 
 
+## A boss calls in `count` minions in a row centred on x, spread `spacing` apart, kept on the road. Works while
+## wave spawning is paused. Returns how many it placed (fewer when the pool is full).
+func summon(type_id: String, count: int, x: float, z: float, spacing: float, distance: float, emit: Callable) -> int:
+	var half := _half_road()
+	var placed := 0
+	for i in count:
+		var e := _inactive()
+		if e == null:
+			exhausted_count += 1
+			_log.info("spawn", "pool_full", {"pool": pool.size(), "wanted": count, "placed": placed, "by": "boss"})
+			break
+		var ex := clampf(x + (i - (count - 1) / 2.0) * spacing, -half, half)
+		_activate(e, type_id, ex, z, distance)
+		placed += 1
+		emit.call(Events.Kind.ENEMY_SPAWNED, {"serial": e.serial, "enemy": type_id, "x": ex, "z": z})
+	return placed
+
+
 func _activate(e: Enemy, type_id: String, x: float, z: float, distance := 0.0) -> void:
 	e.serial = _next_serial
 	_next_serial += 1

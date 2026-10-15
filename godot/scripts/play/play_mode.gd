@@ -53,6 +53,7 @@ var _seed_base := 0
 var _games := 0
 var _debug_weapon := ""  ## --weapon=grenade: start runs with this weapon (testing weapon feel); recorded in the header
 var _debug_tower := ""  ## --tower=fire: a tower on the road at the start (testing status visuals); recorded
+var _debug_boss := ""  ## --boss=gunner: that boss fight starts at once (testing bosses); recorded
 var _demo_fx := false  ## --demo-fx: 50% crits and the damage flash held on, to screenshot the effects
 
 # Telemetry: one line per second of frame time, GPU time and sim steps (find what makes it slow).
@@ -76,6 +77,7 @@ func start(rules: Rules, logger: GLog, args: Dictionary) -> void:
 	_seed_base = int(args.get("seed", Time.get_unix_time_from_system()))
 	_debug_weapon = str(args.get("weapon", ""))
 	_debug_tower = str(args.get("tower", ""))
+	_debug_boss = str(args.get("boss", ""))
 	_demo_fx = args.has("demo-fx")
 	_controls = BotControls.new() if args.has("bot") else HumanControls.new()
 	_settings_store = ConfigSettings.new()
@@ -189,6 +191,8 @@ func _start_game() -> void:
 	if _debug_weapon != "" and _rules.weapons.has(_debug_weapon):
 		_sim.player.set_weapon(_debug_weapon)
 		_recorder.start_weapon(_debug_weapon)
+	if _debug_boss != "" and _sim.start_boss_now(_debug_boss):
+		_recorder.start_boss(_debug_boss)
 	if _debug_tower != "" and _rules.towers.has(_debug_tower):
 		_sim.towers.deploy(_debug_tower, 0.0, func(_k, _f): pass)
 		_recorder.start_tower(_debug_tower)

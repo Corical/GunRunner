@@ -53,6 +53,8 @@ var _reward_rows := {}  ## reward id -> rewards.tsv row (label, color), filled o
 var _traps: Array[Slot] = []
 var _towers: Array[Slot] = []
 var _boss: Node3D
+var _boss_bodies := {}               ## boss id -> its model under _boss
+var _boss_shots: Array[Node3D] = []  ## one per sim.boss.shots slot
 var _bullets: MultiMeshInstance3D
 var _flash_mat: StandardMaterial3D
 var _burn_mat: StandardMaterial3D
@@ -107,10 +109,20 @@ func setup(catalog: ModelCatalog, sim: Sim) -> void:
 		_traps.append(_new_slot(true, _bar_fill_mat))
 	for i in sim.towers.pool.size():
 		_towers.append(_new_slot(false, null))
-	_boss = catalog.make("boss", "")
+	_boss = Node3D.new()  # holds one prebuilt body per bosses.tsv row; only the current fight's is shown
 	_boss.visible = false
 	_boss.add_child(_blob(4.5))
+	for row in sim.rules.bosses:
+		var body := catalog.make("boss", row["id"])
+		body.visible = false
+		_boss.add_child(body)
+		_boss_bodies[row["id"]] = body
 	add_child(_boss)
+	for i in sim.boss.shots.size():
+		var shot := catalog.make("boss_shot", "")
+		shot.visible = false
+		add_child(shot)
+		_boss_shots.append(shot)
 	_bullets_build(sim.bullets.pool.size())
 	_prewarm(sim)
 	bind(sim)
@@ -362,8 +374,15 @@ func _sync_towers() -> void:
 func _sync_boss(alpha: float) -> void:
 	var b := _sim.boss
 	_boss.visible = b.active
+	for i in _boss_shots.size():
+		var sh = b.shots[i]
+		_boss_shots[i].visible = b.active and sh.active
+		if _boss_shots[i].visible:
+			_boss_shots[i].position = WorldView.view_pos(lerpf(sh.prev_x, sh.x, alpha), lerpf(sh.prev_z, sh.z, alpha))
 	if not b.active:
 		return
+	for id in _boss_bodies:
+		_boss_bodies[id].visible = id == b.row["id"]
 	var x := lerpf(b.prev_x, b.x, alpha) + sin(_t * 1.5) * 0.5
 	_boss.position = WorldView.view_pos(x, lerpf(b.prev_z, b.z, alpha), absf(sin(_t * 2.0)) * 0.3)
 

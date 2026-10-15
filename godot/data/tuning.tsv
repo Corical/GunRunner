@@ -63,14 +63,10 @@ boss_base_hp	50	Config.ts BOSS_BASE_HP
 boss_hp_per_wave	20	Config.ts BOSS_HP_SCALE_PER_WAVE
 boss_spawn_z	75	ours: was 120, follows enemy_spawn_distance
 boss_radius	3	Boss.ts getCollisionRadius
-boss_speed_full_hp	5	Boss.ts update
 boss_speed_bonus_at_zero_hp	4	Boss.ts update
-boss_contact_dx	4	Boss.ts checkPlayerContact
 boss_contact_player_radius	1.0	GameManager.ts step 7
-boss_contact_damage	3	GameManager.ts step 7
 boss_pushback	8	GameManager.ts step 7
 boss_score_per_wave	500	GameManager.ts onBossDefeated
-boss_steer_speed	3	ours: plan D13, boss follows the player's x so the road edge is not a safe spot (tune in play)
 enemy_hp_per_100m	0.12	ours: enemies +12% hp per 100 m, rounded up (Babylon never raised hp)
 xp_base	300	ours: was 100; 15 Oct phone run hit level 8 in 40 s and 21 levels in 10.6 min (Corne: "happens too often")
 xp_growth	1.5	ours: was 1.35; each level needs 50% more xp
@@ -82,3 +78,5 @@ trap_sway_speed	1.4	ours: radians per second, about one full weave every 4.5 s
 upgrade_sway_amplitude	1.2	ours: boosters drift gently too (Corne 19:31, side-to-side); 0 = Babylon straight line
 upgrade_sway_speed	1.0	ours: radians per second
 upgrade_pair_chance	0.8	ours: share of drops that come as a pick-one pair (15 Oct: "very the same shit over and over")
+boss_shot_radius	0.9	ours: how close a Gunner shot must pass to hit you (a dodge of ~1.5 m clears it)
+boss_shot_pool	16	ours: Gunner shots in flight at once

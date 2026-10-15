@@ -13,7 +13,7 @@ const K = Events.Kind
 const HANDLED := [K.FIRED, K.ENEMY_HIT, K.ENEMY_KILLED, K.PLAYER_HURT, K.COMBO_BROKEN, K.ICE_HIT, K.ICE_SHATTERED,
 	K.PICKUP, K.TOWER_DEPLOYED, K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_WRAPPED, K.BOSS_DEFEATED,
 	K.GAME_OVER, K.POOL_EXHAUSTED, K.LEVEL_UP, K.PERK_TAKEN, K.EXPLOSION, K.CRIT, K.TRAP_HIT, K.TRAP_DESTROYED,
-	K.TRAP_TRIGGERED, K.UPGRADE_LOST]
+	K.TRAP_TRIGGERED, K.UPGRADE_LOST, K.BOSS_SUMMONED, K.BOSS_SHOT]
 
 const EMITTERS := 72  ## rocket trails add ~60 short-lived puffs per second
 const LABELS := 40
@@ -132,7 +132,13 @@ func handle(events: Array) -> void:
 				_burst(ev, 0.0, 1.0, Color(_rules.towers[ev["tower"]]["color"]), 24, 0.6, 5.0)
 			K.BOSS_STARTED:
 				shake(0.8, 0.6)
-				_text({"x": 0.0, "z": 20.0}, "BOSS INCOMING!", Color("#F87171"), 5.0, 2.0, true)
+				var colour := Color(_rules.bosses[(int(ev["wave"]) - 1) % _rules.bosses.size()]["color"]).lightened(0.25)
+				_text({"x": 0.0, "z": 20.0}, "%s INCOMING!" % ev["name"], colour, 5.0, 2.0, true)
+			K.BOSS_SUMMONED:
+				_burst(ev, 0.0, 1.5, Color("#A78BFA"), 30, 0.6, 6.0)
+				_text(ev, "SUMMON!", Color("#C4B5FD"), 2.2, 1.0)
+			K.BOSS_SHOT:
+				_burst(ev, 0.0, 3.0, Color("#FBBF24"), 10, 0.3, 5.0)
 			K.BOSS_HIT:
 				_burst(ev, 0.0, 2.0, Color("#FCA5A5"), 6, 0.3, 4.0)
 			K.BOSS_CONTACT:

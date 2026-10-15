@@ -83,6 +83,7 @@ func test_corrupt_lines_are_reported_not_crashed_on() -> void:
 	var cases := {
 		"{\"type\":\"start_weapon\",\"weapon\":\"bazooka\"}": "unknown start weapon",
 		"{\"type\":\"start_tower\",\"tower\":\"lava\"}": "unknown start tower",
+		"{\"type\":\"start_boss\",\"boss\":\"dragon\"}": "cannot start boss dragon",
 		"{\"type\":\"in\",\"t\":3,\"move\":\"left\"}": "move is not a number",
 	}
 	for bad in cases:
@@ -94,6 +95,33 @@ func test_corrupt_lines_are_reported_not_crashed_on() -> void:
 		var r := Replay.replay(path, _quiet_log())
 		ok(not r.ok, "corrupt line accepted: " + bad)
 		ok(r.errors.size() == 1 and r.errors[0].contains(cases[bad]), "%s -> %s" % [bad, r.errors])
+
+
+## --boss=gunner runs start mid-fight; the recording must carry that or every checkpoint after it diverges.
+func test_run_started_on_a_boss_replays_exactly() -> void:
+	var path := DIR.path_join("boss_start.jsonl")
+	var s := Sim.new(Loader.load_rules(), 77, _quiet_log())
+	var rec := RunRecorder.new(path, 77, RunRecorder.data_fingerprint(), 0.0)
+	ok(s.start_boss_now("gunner"), "gunner fight started")
+	rec.start_boss("gunner")
+	var bot := Bot.new()
+	for i in 1800:
+		var inp := Sim.quantize_input(bot.input(s), not s.choices.is_empty())
+		rec.input(s.tick, inp)
+		s.step(inp)
+		rec.after_step(s)
+		if s.over:
+			break
+	rec.finish(s)
+	var r := Replay.replay(path, _quiet_log())
+	eq(r.errors, PackedStringArray())
+	ok(r.ok, "replay verified")
+	eq(r.sim.state_hash(), s.state_hash(), "identical final state")
+	var t := Sim.new(Loader.load_rules(), 1, _quiet_log())
+	ok(t.start_boss_now("brute"), "first boss starts")
+	eq(t.start_boss_now("gunner"), false, "no second boss over a live one")
+	eq(t.boss.row["id"], "brute")
+	eq(t.start_boss_now("dragon"), false, "unknown id")
 
 
 func test_truncated_run_replays_to_last_checkpoint_with_a_warning() -> void:
