@@ -40,6 +40,7 @@ var score := 0
 var kills := 0
 var combo := 0
 var over := false
+var first_weapon_given := false  ## the guaranteed early weapon pair is on the road (_give_first_weapons)
 ## Level-ups: kills give xp (enemy base score). While `choices` is not empty the game waits for a pick:
 ## step() does nothing until its input carries {"pick": index}.
 var xp := 0
@@ -122,6 +123,8 @@ func step(input: Dictionary) -> void:
 		_splash(b, b.x, b.z, null)  # grenade/rocket reached the end of its range: it explodes there
 	if boss.active:
 		_boss_step(dt)
+	if not first_weapon_given and not boss.active and tick * STEP >= rules.t("first_weapon_seconds") and _drop_lane_clear():
+		_give_first_weapons()
 	if not boss.active and rng.next_float() < rules.t("upgrade_spawn_per_second") * dt and _drop_lane_clear():
 		if rng.next_float() < rules.t("upgrade_pair_chance"):
 			upgrades.spawn_pair(_emit)
@@ -333,6 +336,24 @@ func _boss_step(dt: float) -> void:
 			_push_event(Events.Kind.BOSS_WRAPPED, {"wave": boss.wave})
 
 
+## Every run gets an early pick-one pair of two different weapons (rolled with the sim rng, so replays match):
+## with weapons at 33% of drops, 3 of Corne's 5 PC runs on 15 Oct ended still holding the pistol.
+func _give_first_weapons() -> void:
+	var guns: Array = []
+	for row in rules.rewards:
+		if row["kind"] == "weapon":
+			guns.append(row["id"])
+	if guns.size() < 2:
+		first_weapon_given = true
+		return
+	var a: String = guns[rng.range_int(0, guns.size() - 1)]
+	var b := a
+	while b == a:
+		b = guns[rng.range_int(0, guns.size() - 1)]
+	if upgrades.spawn_pair(_emit, [a, b]):
+		first_weapon_given = true
+
+
 ## True when the newest pickup or trap has moved at least drop_min_gap metres down the road, so a new one cannot
 ## land on top of it (Corne, 15 Oct: "they spawn all over, they on top of each other").
 func _drop_lane_clear() -> bool:
@@ -482,7 +503,7 @@ func _enemies_vs_player() -> void:
 	var reach_z := player.z + rules.t("enemy_hit_player_radius")
 	var hits := 0
 	for e in enemies.pool:
-		if not e.active or e.z > reach_z:
+		if not e.active or e.z > reach_z + e.radius:  # same reach + body as sideways (it was the bare reach)
 			continue
 		if absf(e.x - player.x) >= rules.t("enemy_hit_player_radius") + e.radius:
 			continue
@@ -558,7 +579,7 @@ static func quantize_input(inp: Dictionary, choosing := false) -> Dictionary:
 
 ## Everything that affects future steps, hashed. Equal hashes = equal games.
 func state_hash() -> int:
-	var parts: Array = [tick, distance, score, kills, combo, over, rng.state(),
+	var parts: Array = [tick, distance, score, kills, combo, over, first_weapon_given, rng.state(),
 		player.x, player.vx, player.hp, player.max_hp, player.armor, player.weapon_id, player.fire_timer,
 		player.frenzy_timer, player.speed_timer, player.trap_left,
 		enemies.spawn_timer, enemies.spawn_interval, enemies.spawning_paused]

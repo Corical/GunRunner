@@ -40,7 +40,7 @@ bullet_pool	120	BulletManager.ts POOL_SIZE
 bullet_spread_speed	8	Bullet.ts activate velocity
 bullet_hit_radius	1.2	Config.ts BULLET_HIT_RADIUS
 splash_max_victims	5	CollisionSystem.ts MAX_SPLASH
-enemy_hit_player_radius	1.5	Config.ts ENEMY_HIT_PLAYER_RADIUS
+enemy_hit_player_radius	0.8	ours: was 1.5 (Config.ts); with real models a 2.1 m reach hit from visibly 2 m away (15 Oct PC runs)
 upgrade_spawn_per_second	0.36	ours: was 0.48 (Config.ts FROZEN_SPAWN_CHANCE 0.008 x 60, plan D1); pick-one pairs crowded the road at 0.48
 upgrade_ice_hp	8	Config.ts FROZEN_ICE_HP
 upgrade_speed	6	Config.ts FROZEN_SPEED
@@ -81,3 +81,4 @@ upgrade_pair_chance	0.8	ours: share of drops that come as a pick-one pair (15 Oc
 boss_shot_radius	0.9	ours: how close a Gunner shot must pass to hit you (a dodge of ~1.5 m clears it)
 boss_shot_pool	16	ours: Gunner shots in flight at once
 drop_min_gap	20	ours: a new pickup or trap waits until the last one is this far down the road (15 Oct: they stacked)
+first_weapon_seconds	6	ours: a pick-one pair of two weapons arrives this early in every run (15 Oct: 3 of 5 runs died still holding the pistol)

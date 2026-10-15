@@ -917,6 +917,47 @@ func test_ice_stops_even_a_railgun_bullet() -> void:
 	ok(not b.active, "bullet stopped by ice despite penetration 4")
 
 
+# ---------- hit reach ----------
+
+## 15 Oct PC runs: "zombie at x=0.6, you at x=2.7 -> hit". With real models that is a visible 2 m gap.
+func test_enemy_passing_beside_you_misses_and_one_brushing_you_hits() -> void:
+	for case in [[1.8, 0], [1.2, 1]]:
+		var s := _quiet()
+		s.player.x = 0.0
+		var e = _place(s, "basic", case[0], s.player.z + 6.0)
+		e.slow_mult = 1.0
+		var ev := _run(s, 120)
+		eq(_of(ev, K.PLAYER_HURT).size(), case[1], "basic enemy passing %.1f m to the side" % case[0])
+
+
+# ---------- first weapon ----------
+
+## Three of five PC runs on 15 Oct died at 200-340 m without ever seeing a gun. Every seed must offer two
+## different weapons early, even with random drops switched off.
+func test_every_run_is_offered_two_different_weapons_early() -> void:
+	for seed_value in 25:
+		var s := _sim(seed_value, {"upgrade_spawn_per_second": 0, "trap_spawn_per_second": 0})
+		var offered := []
+		for i in int(60 * (s.rules.t("first_weapon_seconds") + 1.0)):
+			s.step({})
+			for e in s.events:
+				if e["kind"] == K.UPGRADE_SPAWNED:
+					offered.append(e["reward"])
+		eq(offered.size(), 2, "seed %d: one pair" % seed_value)
+		if offered.size() == 2:
+			ok(offered[0] != offered[1], "seed %d: two different guns %s" % [seed_value, offered])
+			for id in offered:
+				ok(s.rules.weapons.has(id), "seed %d: %s is a weapon" % [seed_value, id])
+		ok(s.first_weapon_given, "given once")
+		var more := 0
+		for i in 600:
+			s.step({})
+			for e in s.events:
+				if e["kind"] == K.UPGRADE_SPAWNED:
+					more += 1
+		eq(more, 0, "seed %d: only once per run" % seed_value)
+
+
 # ---------- drop spacing ----------
 
 ## At absurd drop rates every step wants a pickup and a trap. None may appear while an older one is still within
