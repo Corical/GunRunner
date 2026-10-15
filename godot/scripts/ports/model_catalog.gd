@@ -16,12 +16,6 @@ func make(kind: String, id: String) -> Node3D:
 	return Node3D.new()
 
 
-## Where bullets leave a weapon model, in the model's local space.
-func muzzle(weapon_id: String) -> Vector3:
-	push_error("ModelCatalog.muzzle not implemented by %s" % get_script().resource_path)
-	assert(false)
-	return Vector3.ZERO
-
 
 ## True when this catalog draws stand-ins, so the HUD can say so.
 func is_stand_in() -> bool:

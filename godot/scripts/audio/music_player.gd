@@ -39,6 +39,19 @@ func moods() -> PackedStringArray:
 	return out
 
 
+const Events = preload("res://scripts/sim/events.gd")
+const HANDLED := [Events.Kind.BOSS_STARTED, Events.Kind.BOSS_DEFEATED]
+
+
+## Presenter entry point: boss music on and off.
+func handle(events: Array) -> void:
+	for ev in events:
+		if ev["kind"] == Events.Kind.BOSS_STARTED:
+			set_boss(true)
+		elif ev["kind"] == Events.Kind.BOSS_DEFEATED:
+			set_boss(false)
+
+
 func set_mood(mood: String) -> void:
 	_mood = mood
 	_refresh()

@@ -45,9 +45,6 @@ func make(kind: String, id: String) -> Node3D:
 	return root
 
 
-func muzzle(weapon_id: String) -> Vector3:
-	return Vector3(0, 0, -_weapon_length(weapon_id) * 0.5)
-
 
 # ---------- builders ----------
 

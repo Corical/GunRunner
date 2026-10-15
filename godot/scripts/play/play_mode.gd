@@ -43,6 +43,7 @@ var _juice: Node3D
 var _sfx: Node
 var _haptics: Node
 var _music: Node
+var _presenters: Array = []  ## juice, sfx, haptics, hud, music - all have handle(events)
 var _frame_events: Array = []
 var _recorder: RunRecorder
 var _level_ui: CanvasLayer
@@ -131,6 +132,7 @@ func start(rules: Rules, logger: GLog, args: Dictionary) -> void:
 	_music.set_mood(str(_settings.get("music", "Off")))
 
 	_hud = Hud.new()
+	_presenters = [_juice, _sfx, _haptics, _hud, _music]
 	add_child(_hud)
 	_hud.build(catalog.is_stand_in())
 	_hud.update(_sim, _clock.speed)
@@ -263,22 +265,14 @@ func _process(delta: float) -> void:
 			_recorder.after_step(_sim)
 			_frame_events.append_array(_sim.events)
 			for ev in _sim.events:
-				if ev["kind"] == Events.Kind.PLAYER_HURT:
-					_hud.flash_hurt(0.6)
-				elif ev["kind"] == Events.Kind.BOSS_CONTACT:
-					_hud.flash_hurt(1.0)
-				if ev["kind"] == Events.Kind.BOSS_STARTED:
-					_music.set_boss(true)
-				elif ev["kind"] == Events.Kind.BOSS_DEFEATED:
-					_music.set_boss(false)
 				if ev["kind"] == Events.Kind.GAME_OVER:
 					_game_over()
 			if _sim.over:
 				break
 	var view_dt := delta if state == State.PLAYING else 0.0
-	_juice.handle(_frame_events)
-	_sfx.handle(_frame_events)
-	_haptics.handle(_frame_events)
+	# Every presenter gets the frame's events the same way (Fable #21): a new one is one line in _presenters.
+	for p in _presenters:
+		p.handle(_frame_events)
 	_frame_events.clear()
 	# A level-up card stops the sim, so interpolating would make everything jitter behind it (Fable #10).
 	var alpha := _clock.alpha() if state == State.PLAYING and _sim.choices.is_empty() else 1.0

@@ -11,6 +11,9 @@ const GLog = preload("res://scripts/log/logger.gd")
 const Sinks = preload("res://scripts/log/sinks.gd")
 const Bot = preload("res://scripts/batch/simple_bot.gd")
 const K = Events.Kind
+## Every presenter play_mode feeds events to (play_mode._presenters). Each declares HANDLED.
+const PRESENTERS := [Juice, SynthSfx, preload("res://scripts/adapters/device_haptics.gd"),
+	preload("res://scripts/ui/hud.gd"), preload("res://scripts/audio/music_player.gd")]
 
 ## Events no presenter needs to show; each is logged by the sim or read from state instead.
 const IGNORED := {
@@ -26,7 +29,9 @@ const IGNORED := {
 
 func test_every_event_kind_is_handled_or_ignored() -> void:
 	for kind in K.values():
-		var handled: bool = Juice.HANDLED.has(kind) or SynthSfx.HANDLED.has(kind) or IGNORED.has(kind)
+		var handled: bool = IGNORED.has(kind)
+		for presenter in PRESENTERS:
+			handled = handled or presenter.HANDLED.has(kind)
 		ok(handled, "%s has no presenter and is not in IGNORED" % Events.kind_name(kind))
 
 
@@ -46,7 +51,8 @@ func test_every_weapon_has_a_sound_and_a_haptic_kick() -> void:
 
 func test_ignored_kinds_are_not_also_handled() -> void:
 	for kind in IGNORED:
-		ok(not Juice.HANDLED.has(kind) and not SynthSfx.HANDLED.has(kind), "%s is both ignored and handled" % Events.kind_name(kind))
+		for presenter in PRESENTERS:
+			ok(not presenter.HANDLED.has(kind), "%s is both ignored and handled" % Events.kind_name(kind))
 
 
 ## Regression: PICKUP and UPGRADE_SPAWNED used a "kind" field for the reward type, which _push_event then

@@ -133,6 +133,19 @@ func _build_vignette(root: Control) -> void:
 	root.add_child(_vignette)
 
 
+const Events = preload("res://scripts/sim/events.gd")
+const HANDLED := [Events.Kind.PLAYER_HURT, Events.Kind.BOSS_CONTACT]
+
+
+## Presenter entry point (same shape as Juice/SynthSfx/DeviceHaptics): the damage flash.
+func handle(events: Array) -> void:
+	for ev in events:
+		if ev["kind"] == Events.Kind.PLAYER_HURT:
+			flash_hurt(0.6)
+		elif ev["kind"] == Events.Kind.BOSS_CONTACT:
+			flash_hurt(1.0)
+
+
 ## strength 0..1 (enemy hit 0.6, boss hit 1.0).
 func flash_hurt(strength: float) -> void:
 	if hurt_flash_enabled:
