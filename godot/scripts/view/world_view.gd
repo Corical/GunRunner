@@ -15,7 +15,11 @@ const TREE_START_Z := -30.0
 var camera: Camera3D
 
 var _dashes: MultiMeshInstance3D
-var _trees: Array[Node3D] = []
+const TREE_COUNT := 60
+var _trunks: MultiMeshInstance3D
+var _leaves: MultiMeshInstance3D
+var _tree_x: Array[float] = []
+var _tree_scale: Array[float] = []
 var _tree_base_z: Array[float] = []
 var _road_width := 15.0
 
@@ -48,12 +52,17 @@ func scroll(distance: float) -> void:
 		for side in 2:
 			var x := (-2.5 if side == 0 else 2.5)
 			_dashes.multimesh.set_instance_transform(i * 2 + side, Transform3D(Basis(), Vector3(x, 0.02, z)))
+	if _trunks == null:
+		return
 	var tree_offset := fmod(distance, TREE_SPAN)
-	for i in _trees.size():
+	for i in _tree_base_z.size():
 		var z := _tree_base_z[i] - tree_offset
 		if z < TREE_START_Z:
 			z += TREE_SPAN
-		_trees[i].position.z = z
+		var sc := _tree_scale[i]
+		var basis := Basis().scaled(Vector3(sc, sc, sc))
+		_trunks.multimesh.set_instance_transform(i, Transform3D(basis, Vector3(_tree_x[i], 1.0 * sc, z)))
+		_leaves.multimesh.set_instance_transform(i, Transform3D(basis, Vector3(_tree_x[i], 3.2 * sc, z)))
 
 
 func _environment(glow: bool, fog: bool) -> void:
@@ -177,25 +186,29 @@ func _trees_build(view_seed: int) -> void:
 	leaf_mesh.bottom_radius = 1.25
 	leaf_mesh.height = 3.0
 	leaf_mesh.radial_segments = 6
-	for i in 60:
-		var tree := Node3D.new()
+	# Two instanced batches (all trunks, all leaves) instead of 60 trees x 2 meshes = 120 draw calls (Fable #12).
+	for i in TREE_COUNT:
 		var side := -1.0 if i % 2 == 0 else 1.0
-		tree.position = Vector3(side * rng.randf_range(_road_width / 2.0 + 3.0, 40.0), 0, 0)
-		var s := rng.randf_range(0.8, 1.5)
-		tree.scale = Vector3(s, s, s)
-		var trunk := MeshInstance3D.new()
-		trunk.mesh = trunk_mesh
-		trunk.material_override = trunk_mat
-		trunk.position.y = 1.0
-		tree.add_child(trunk)
-		var leaves := MeshInstance3D.new()
-		leaves.mesh = leaf_mesh
-		leaves.material_override = leaf_mat
-		leaves.position.y = 3.2
-		tree.add_child(leaves)
-		add_child(tree)
-		_trees.append(tree)
+		_tree_x.append(side * rng.randf_range(_road_width / 2.0 + 3.0, 40.0))
+		_tree_scale.append(rng.randf_range(0.8, 1.5))
 		_tree_base_z.append(TREE_START_Z + rng.randf() * TREE_SPAN)
+	_trunks = _batch(trunk_mesh, trunk_mat)
+	_leaves = _batch(leaf_mesh, leaf_mat)
+	scroll(0.0)
+
+
+func _batch(mesh: Mesh, mat: Material) -> MultiMeshInstance3D:
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = mesh
+	mm.instance_count = TREE_COUNT
+	var mmi := MultiMeshInstance3D.new()
+	mmi.multimesh = mm
+	mmi.material_override = mat
+	# Instances move every frame; a fixed box covering the whole tree strip keeps culling correct and cheap.
+	mmi.custom_aabb = AABB(Vector3(-45, -1, TREE_START_Z - 5), Vector3(90, 12, TREE_SPAN + 10))
+	add_child(mmi)
+	return mmi
 
 
 func _plane(size: Vector2, colour: Color, pos: Vector3) -> void:
