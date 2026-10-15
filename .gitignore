@@ -4,3 +4,19 @@ dist/
 # AI notes (repo-scoped, never committed)
 .local/
 .playwright-mcp/
+
+# Godot port
+.godot/
+build/
+*.apk
+*.aab
+*.idsig
+export_presets.cfg
+*.keystore
+*.jks
+shots/
+godot/.check-output.txt
+godot/.check-run.log
+tools/.env
+tools/.env.*
+__pycache__/
