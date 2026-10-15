@@ -25,6 +25,10 @@ var _sim: Sim
 var _catalog: ModelCatalog
 var _t := 0.0
 
+## Telemetry: models built since last read, and the time spent building them.
+var models_built := 0
+var build_usec := 0
+
 var _player: Node3D
 var _player_weapon: Node3D
 var _player_weapon_id := ""
@@ -193,9 +197,12 @@ func _show_model(s: Slot, kind: String, id: String) -> void:
 	if s.current != "" and s.models.has(s.current):
 		s.models[s.current].visible = false
 	if not s.models.has(id):
+		var started := Time.get_ticks_usec()
 		var m := _catalog.make(kind, id)
 		s.root.add_child(m)
 		s.models[id] = m
+		models_built += 1
+		build_usec += Time.get_ticks_usec() - started
 	s.models[id].visible = true
 	s.current = id
 

@@ -55,16 +55,18 @@ func build(stand_in_art: bool) -> void:
 	weapon_pill.add_child(_weapon)
 	UiKit.pin(weapon_pill, Control.PRESET_TOP_RIGHT, 16)
 
+	# Boss bar sits above the HP bar, not top-centre: the far end of the road at the top of the screen is
+	# where the boss and enemies appear, and Babylon's top-centre bar covered them.
 	_boss_box = VBoxContainer.new()
 	_boss_box.visible = false
 	root.add_child(_boss_box)
-	_boss_name = UiKit.label("BOSS", 20, Color("#FCA5A5"), true)
+	_boss_name = UiKit.label("BOSS", 18, Color("#FCA5A5"), true)
 	_boss_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_boss_box.add_child(_boss_name)
 	var boss_bar := UiKit.bar(Vector2(_boss_bar_width, 18), Color("#DC2626"))
 	_boss_box.add_child(boss_bar[0])
 	_boss_fill = boss_bar[1]
-	UiKit.pin(_boss_box, Control.PRESET_CENTER_TOP, 18)
+	UiKit.pin(_boss_box, Control.PRESET_CENTER_BOTTOM, 20, -96)
 
 	_combo = UiKit.label("x99 COMBO", 34, Color("#FBBF24"), true)
 	_combo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

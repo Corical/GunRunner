@@ -193,8 +193,16 @@ func _telemetry(delta: float) -> void:
 		_logger.info("perf", "second", {
 			"fps": _tm_frames / _tm_elapsed, "frame_avg_ms": _tm_elapsed * 1000.0 / _tm_frames,
 			"frame_max_ms": _tm_frame_ms[-1], "gpu_avg_ms": _tm_gpu_ms / _tm_frames,
+			"cpu_render_ms": RenderingServer.viewport_get_measured_render_time_cpu(get_viewport().get_viewport_rid()),
+			"process_ms": Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
 			"steps": _tm_steps, "tick": _sim.tick if _sim != null else 0, "dropped": _clock.dropped_steps,
+			"models_built": _actors.models_built, "build_ms": _actors.build_usec / 1000.0,
+			"objects": Performance.get_monitor(Performance.OBJECT_COUNT), "nodes": Performance.get_monitor(Performance.OBJECT_NODE_COUNT),
+			"static_mb": Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0,
+			"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		})
+		_actors.models_built = 0
+		_actors.build_usec = 0
 		_tm_frames = 0
 		_tm_steps = 0
 		_tm_elapsed = 0.0
@@ -204,7 +212,8 @@ func _telemetry(delta: float) -> void:
 		var t: float = _shot_times.pop_front()
 		var path := _shots_dir.path_join("shot-%05.1fs.png" % t)
 		var err := get_viewport().get_texture().get_image().save_png(path)
-		_logger.info("shots", "saved", {"path": path, "error": err, "tick": _sim.tick if _sim != null else 0})
+		_logger.info("shots", "saved", {"path": path, "error": err, "tick": _sim.tick if _sim != null else 0,
+			"player_x": _sim.player.x if _sim != null else 0.0})
 	if _run_seconds > 0.0 and _wall >= _run_seconds:
 		_report_and_quit()
 
