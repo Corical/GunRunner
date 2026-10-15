@@ -19,6 +19,7 @@ class Slot:
 	var bar_bg: MeshInstance3D
 	var bar_fill: MeshInstance3D
 	var extra: Node3D      ## ice block for upgrades
+	var label: Label3D     ## upgrades: what the pickup is (rewards.tsv label/color)
 	var status := ""       ## "", "burn", "poison": overlay currently applied
 
 
@@ -45,6 +46,7 @@ var _blob_mat: StandardMaterial3D
 var _player_weapon_id := ""
 var _enemies: Array[Slot] = []
 var _upgrades: Array[Slot] = []
+var _reward_rows := {}  ## reward id -> rewards.tsv row (label, color), filled on first use
 var _traps: Array[Slot] = []
 var _towers: Array[Slot] = []
 var _boss: Node3D
@@ -90,6 +92,8 @@ func setup(catalog: ModelCatalog, sim: Sim) -> void:
 		var s := _new_slot(true, _ice_bar_mat)
 		s.extra = catalog.make("ice", "")
 		s.root.add_child(s.extra)
+		s.label = _pickup_label()
+		s.root.add_child(s.label)
 		_upgrades.append(s)
 	for i in sim.traps.pool.size():
 		_traps.append(_new_slot(true, _bar_fill_mat))
@@ -278,10 +282,20 @@ func _sync_upgrades(alpha: float) -> void:
 		if not u.active:
 			s.root.visible = false
 			continue
+		if s.current != u.reward_id:
+			var row: Dictionary = _reward_row(u.reward_id)
+			s.label.text = row["label"]
+			s.label.modulate = Color(row["color"])
 		_show_model(s, "reward", u.reward_id)
 		s.root.visible = true
 		s.root.position = WorldView.view_pos(lerpf(u.prev_x, u.x, alpha), lerpf(u.prev_z, u.z, alpha))
 		s.extra.visible = not u.thawed
+		# Near pickups read loudest; far ones shrink and fade so a row of them on the horizon doesn't overlap.
+		var far: float = _sim.rules.t("enemy_spawn_distance") + _sim.rules.t("enemy_spawn_jitter")
+		var near := clampf(inverse_lerp(far, 25.0, u.z - _sim.rules.t("player_z")), 0.0, 1.0)
+		s.label.scale = Vector3.ONE * lerpf(0.5, 1.0, near)
+		s.label.modulate.a = lerpf(0.45, 1.0, near)
+		s.label.outline_modulate.a = 0.85 * s.label.modulate.a
 		var reward: Node3D = s.models[u.reward_id]
 		if u.thawed:
 			reward.position.y = 0.3 + sin(_t * 5.0) * 0.25
@@ -369,6 +383,29 @@ func _blob(radius: float) -> MeshInstance3D:
 	mi.position.y = 0.03
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mi
+
+
+## Name above a frozen pickup: always faces the camera, drawn over the ice, outlined so it reads on the road.
+func _pickup_label() -> Label3D:
+	var l := Label3D.new()
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.no_depth_test = true
+	l.fixed_size = true  # same size on screen at any distance: you decide which pickup to go for while it is far
+	l.font_size = 64
+	l.pixel_size = 0.0009
+	l.outline_size = 16
+	l.outline_modulate = Color(0, 0, 0, 0.85)
+	l.position = Vector3(0, 3.4, 0)
+	l.render_priority = 2
+	l.outline_render_priority = 1
+	return l
+
+
+func _reward_row(id: String) -> Dictionary:
+	if _reward_rows.is_empty():
+		for row in _sim.rules.rewards:
+			_reward_rows[row["id"]] = row
+	return _reward_rows[id]
 
 
 func _new_slot(with_bar: bool, fill_mat: StandardMaterial3D) -> Slot:

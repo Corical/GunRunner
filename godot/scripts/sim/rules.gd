@@ -7,7 +7,7 @@ const TABLES := {
 	"enemies": ["id", "name", "hp", "speed", "color", "size", "score", "switches_lanes"],
 	"towers": ["id", "name", "color", "duration", "radius", "burn_damage", "slow_multiplier", "poison_duration", "poison_damage"],
 	"effectiveness": ["id", "weapon", "enemy", "multiplier"],
-	"rewards": ["id", "kind", "weight"],
+	"rewards": ["id", "kind", "weight", "label", "color"],
 	"spawns": ["id", "start"],
 	"tuning": ["id", "value", "source"],
 	"perks": ["id", "name", "desc", "stat", "amount", "max_stacks", "weight"],
@@ -167,6 +167,8 @@ func _build(tables: Dictionary) -> void:
 		if not REWARD_KINDS.has(row["kind"]): errors.append("reward %s: unknown kind '%s'" % [row["id"], row["kind"]])
 		if row["kind"] == "weapon" and not weapons.has(row["id"]): errors.append("reward %s: no such weapon" % row["id"])
 		if row["kind"] == "tower" and not towers.has(row["id"]): errors.append("reward %s: no such tower" % row["id"])
+		if String(row["label"]).strip_edges() == "": errors.append("reward %s: label is empty" % row["id"])
+		if not Color.html_is_valid(row["color"]): errors.append("reward %s: color '%s' is not a colour" % [row["id"], row["color"]])
 	if reward_total != 100:
 		errors.append("rewards: weights sum to %d, must be 100" % reward_total)
 

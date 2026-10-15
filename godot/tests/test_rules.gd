@@ -57,6 +57,13 @@ func test_reward_must_reference_real_weapon_or_tower() -> void:
 	_expect_error(func(t): _row(t, "rewards", "heal")["kind"] = "potion", "unknown kind 'potion'")
 
 
+## Every pickup must say what it is: a blank name or a broken colour would put an unreadable pickup on the road.
+func test_reward_needs_label_and_colour() -> void:
+	_expect_error(func(t): _row(t, "rewards", "rocket")["label"] = "  ", "reward rocket: label is empty")
+	_expect_error(func(t): _row(t, "rewards", "heal")["color"] = "greenish", "reward heal: color 'greenish' is not a colour")
+	_expect_error(func(t): t["rewards"][0].erase("label"), "table 'rewards' missing column 'label'")
+
+
 func test_effectiveness_must_reference_real_ids() -> void:
 	_expect_error(func(t): _row(t, "effectiveness", "laser-shielded")["enemy"] = "ghost", "unknown enemy 'ghost'")
 	_expect_error(func(t): _row(t, "effectiveness", "laser-shielded")["weapon"] = "sword", "unknown weapon 'sword'")
