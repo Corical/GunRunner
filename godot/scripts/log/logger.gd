@@ -24,6 +24,13 @@ func add_sink(sink: Object) -> void:
 	_sinks.append(sink)
 
 
+## Asks every sink that buffers (the file sink) to write out what it has.
+func flush() -> void:
+	for sink in _sinks:
+		if sink.has_method("flush"):
+			sink.flush()
+
+
 func debug(area: String, event: String, fields := {}) -> void:
 	_emit(Level.DEBUG, area, event, fields)
 

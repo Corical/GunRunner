@@ -101,9 +101,12 @@ func _lights(shadows: bool) -> void:
 
 ## Chase camera, lower and closer than Babylon's (0, 18, -22): characters read bigger, the road runs to the
 ## horizon. All "ours", set by eye.
-const CAM_HEIGHT := 11.0
-const CAM_BACK := -15.0
-const CAM_LOOK_Z := 20.0
+## Placed relative to the player (z = -8). test_camera.gd projects the player through this camera and fails
+## if it leaves the lower part of the screen - the 15 Oct 17:01 build put it 38 deg below centre with a
+## 30 deg half-view, so it was off screen on every device.
+const CAM_HEIGHT := 8.5
+const CAM_BACK := -17.5
+const CAM_LOOK_Z := 12.0
 const CAM_FOV := 60.0
 const CAM_FOLLOW := 0.5       ## share of the player's sideways position the camera follows
 const CAM_FOLLOW_RATE := 6.0  ## higher = snappier follow

@@ -225,6 +225,8 @@ func _telemetry(delta: float) -> void:
 		})
 		_actors.models_built = 0
 		_actors.build_usec = 0
+		# Write the log out every second: on Android the app is killed, not closed, and the buffer was lost.
+		_logger.flush()
 		_tm_frames = 0
 		_tm_steps = 0
 		_tm_elapsed = 0.0

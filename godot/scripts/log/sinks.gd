@@ -43,6 +43,10 @@ class File:
 		if _file != null:
 			_file.store_line(line)
 
+	func flush() -> void:
+		if _file != null:
+			_file.flush()
+
 	func close() -> void:
 		if _file != null:
 			_file.flush()
