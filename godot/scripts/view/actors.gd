@@ -242,7 +242,8 @@ func _sync_bullets(alpha: float) -> void:
 	for b in _sim.bullets.pool:
 		if not b.active:
 			continue
-		var size: float = _sim.rules.weapons[b.weapon_id]["bullet_size"]
+		var look: Array = _bullet_look(b.weapon_id)
+		var size: float = look[0]
 		var z := lerpf(b.prev_z, b.z, alpha)
 		var t := clampf((z - b.start_z) / maxf(1.0, b.max_range), 0.0, 1.0)  # 0 at the muzzle, 1 at max range
 		var y := 1.0
@@ -264,9 +265,19 @@ func _sync_bullets(alpha: float) -> void:
 			juice.trail(b.serial, pos, _t)
 		var s := size * grow
 		mm.set_instance_transform(n, Transform3D(Basis().scaled(Vector3(s, s, s * stretch)), pos))
-		mm.set_instance_color(n, Color(_sim.rules.weapons[b.weapon_id]["bullet_color"]))
+		mm.set_instance_color(n, look[1])
 		n += 1
 	mm.visible_instance_count = n
+
+
+var _bullet_looks := {}  ## weapon id -> [size, Color]; parsed once, not per bullet per frame (Fable #13)
+
+
+func _bullet_look(weapon_id: String) -> Array:
+	if not _bullet_looks.has(weapon_id):
+		var w: Dictionary = _sim.rules.weapons[weapon_id]
+		_bullet_looks[weapon_id] = [float(w["bullet_size"]), Color(w["bullet_color"])]
+	return _bullet_looks[weapon_id]
 
 
 func _sync_upgrades(alpha: float) -> void:

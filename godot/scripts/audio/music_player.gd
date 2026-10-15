@@ -84,6 +84,7 @@ func _refresh() -> void:
 	var stream = load(file)
 	if stream == null:
 		push_warning("music: cannot load %s" % file)
+		_current = ""  # try again on the next change instead of staying silent
 		return
 	if stream is AudioStreamOggVorbis:
 		(stream as AudioStreamOggVorbis).loop = true

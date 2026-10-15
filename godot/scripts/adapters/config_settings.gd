@@ -12,7 +12,10 @@ func _init(file_path := "user://settings.cfg") -> void:
 func load_settings() -> Dictionary:
 	var out := DEFAULTS.duplicate()
 	var cfg := ConfigFile.new()
-	if cfg.load(path) != OK:
+	var err := cfg.load(path)
+	if err != OK:
+		if FileAccess.file_exists(path):
+			push_warning("settings: %s exists but cannot be read (error %d) - using defaults" % [path, err])
 		return out
 	out["speed"] = clampf(float(cfg.get_value("game", "speed", out["speed"])), 0.3, 3.0)
 	var interval := float(cfg.get_value("game", "spawn_interval", out["spawn_interval"]))
