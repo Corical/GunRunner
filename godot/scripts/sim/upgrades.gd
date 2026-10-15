@@ -20,6 +20,8 @@ class Upgrade:
 	var prev_z := 0.0
 	var ice_hp := 0
 	var thawed := false
+	var centre_x := 0.0  ## the drift swings around this
+	var phase := 0.0
 
 
 var pool: Array[Upgrade] = []
@@ -47,13 +49,16 @@ func spawn(reward_id: String, emit: Callable) -> bool:
 		_log.info("upgrades", "pool_full", {"pool": pool.size(), "wanted": reward_id if reward_id != "" else "roll"})
 		return false
 	var reward := _roll() if reward_id == "" else _reward_row(reward_id)
-	var half := _rules.t("road_width") / 2.0 - _rules.t("enemy_road_margin")
+	var amp := _rules.t("upgrade_sway_amplitude")
+	var half := maxf(0.0, _rules.t("road_width") / 2.0 - _rules.t("enemy_road_margin") - amp)
 	u.serial = _next_serial
 	_next_serial += 1
 	u.active = true
 	u.reward_id = reward["id"]
 	u.kind = reward["kind"]
-	u.x = _rng.range_float(-half, half)
+	u.centre_x = _rng.range_float(-half, half)
+	u.phase = _rng.next_float() * TAU
+	u.x = u.centre_x + amp * sin(u.phase)
 	u.z = _rules.t("enemy_spawn_distance") + _rng.next_float() * _rules.t("enemy_spawn_jitter")
 	u.prev_x = u.x
 	u.prev_z = u.z
@@ -73,6 +78,8 @@ func update(dt: float, emit: Callable) -> void:
 		u.prev_x = u.x
 		u.prev_z = u.z
 		u.z -= speed * dt
+		u.phase += _rules.t("upgrade_sway_speed") * dt
+		u.x = u.centre_x + _rules.t("upgrade_sway_amplitude") * sin(u.phase)
 		if u.z < despawn:
 			u.active = false
 			_log.info("upgrades", "expired", {"serial": u.serial, "reward": u.reward_id, "thawed": u.thawed})

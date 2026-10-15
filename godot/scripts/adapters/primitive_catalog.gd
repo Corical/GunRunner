@@ -35,6 +35,8 @@ func make(kind: String, id: String) -> Node3D:
 			_reward(root, id)
 		"ice":
 			_part(root, _box(Vector3(2.0, 2.0, 2.0)), _mat("#67E8F9", 0.55, 0.3), Vector3(0, 1.0, 0))
+		"trap":
+			_trap(root, id)
 		_:
 			push_error("PrimitiveCatalog: unknown kind '%s'" % kind)
 	return root
@@ -45,6 +47,20 @@ func muzzle(weapon_id: String) -> Vector3:
 
 
 # ---------- builders ----------
+
+## Booby trap stand-in: dark spiked ball over a glowing ring on the road (Corne: "something reddish around
+## it"). Jammer red, Jinx purple. Look is not decided yet - mechanics first.
+func _trap(root: Node3D, id: String) -> void:
+	var hue := "#C026D3" if id == "jinx" else "#DC2626"
+	var spikes := _mat(hue, 1.0, 0.6)
+	_part(root, _sphere(0.55), _mat("#1F1F1F", 1.0, 0.0), Vector3(0, 0.8, 0))
+	var dirs := [Vector3.UP, Vector3.DOWN, Vector3.LEFT, Vector3.RIGHT, Vector3.FORWARD, Vector3.BACK]
+	for d in dirs:
+		var spike := _part(root, _cylinder(0.0, 0.18, 0.5), spikes, Vector3(0, 0.8, 0) + d * 0.7)
+		spike.look_at_from_position(spike.position, spike.position + d, Vector3.FORWARD if absf(d.y) > 0.5 else Vector3.UP)
+		spike.rotate_object_local(Vector3.RIGHT, -PI / 2.0)
+	_part(root, _torus(1.0, 1.35), _mat(hue, 0.7, 1.2), Vector3(0, 0.05, 0))
+
 
 func _player(root: Node3D) -> void:
 	var blue := _mat("#3B82F6")

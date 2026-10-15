@@ -12,7 +12,8 @@ const K = Events.Kind
 ## Every event kind this presenter reacts to (test_events checks every kind is handled somewhere).
 const HANDLED := [K.FIRED, K.ENEMY_HIT, K.ENEMY_KILLED, K.PLAYER_HURT, K.COMBO_BROKEN, K.ICE_HIT, K.ICE_SHATTERED,
 	K.PICKUP, K.TOWER_DEPLOYED, K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_WRAPPED, K.BOSS_DEFEATED,
-	K.GAME_OVER, K.POOL_EXHAUSTED, K.LEVEL_UP, K.PERK_TAKEN, K.EXPLOSION, K.CRIT]
+	K.GAME_OVER, K.POOL_EXHAUSTED, K.LEVEL_UP, K.PERK_TAKEN, K.EXPLOSION, K.CRIT, K.TRAP_HIT, K.TRAP_DESTROYED,
+	K.TRAP_TRIGGERED]
 
 const EMITTERS := 72  ## rocket trails add ~60 short-lived puffs per second
 const LABELS := 40
@@ -142,6 +143,15 @@ func handle(events: Array) -> void:
 				_text(ev, "BOSS DEFEATED! +%d" % ev["score_gain"], Color("#FBBF24"), 5.0, 2.0, true)
 			K.GAME_OVER:
 				shake(1.0, 0.8)
+			K.TRAP_HIT:
+				_burst(ev, 0.0, 0.8, Color("#F87171"), 5, 0.3, 4.0)
+			K.TRAP_DESTROYED:
+				_burst(ev, 0.0, 0.8, Color("#7F1D1D"), 26, 0.6, 7.0)
+				_text(ev, "CLEARED", Color("#FCA5A5"), 1.8, 1.0)
+			K.TRAP_TRIGGERED:
+				_burst(ev, 0.0, 1.0, Color("#DC2626"), 30, 0.7, 6.0)
+				_text(ev, "JAMMED!" if ev["effect"] == "fire_rate_mult" else "JINXED!", Color("#EF4444"), 2.6, 1.6, true)
+				shake(0.35, 0.25)
 			K.CRIT:
 				# Corne 19:23: "a little smoke wherever you critical strike, with a number popping up".
 				var at := WorldView.view_pos(float(ev["x"]), float(ev["z"]), 1.4)

@@ -45,6 +45,7 @@ var _blob_mat: StandardMaterial3D
 var _player_weapon_id := ""
 var _enemies: Array[Slot] = []
 var _upgrades: Array[Slot] = []
+var _traps: Array[Slot] = []
 var _towers: Array[Slot] = []
 var _boss: Node3D
 var _bullets: MultiMeshInstance3D
@@ -90,6 +91,8 @@ func setup(catalog: ModelCatalog, sim: Sim) -> void:
 		s.extra = catalog.make("ice", "")
 		s.root.add_child(s.extra)
 		_upgrades.append(s)
+	for i in sim.traps.pool.size():
+		_traps.append(_new_slot(true, _bar_fill_mat))
 	for i in sim.towers.pool.size():
 		_towers.append(_new_slot(false, null))
 	_boss = catalog.make("boss", "")
@@ -112,10 +115,13 @@ func _prewarm(sim: Sim) -> void:
 	for s in _upgrades:
 		for row in sim.rules.rewards:
 			_show_model(s, "reward", row["id"])
+	for s in _traps:
+		for row in sim.rules.traps:
+			_show_model(s, "trap", row["id"])
 	for s in _towers:
 		for id in sim.rules.towers:
 			_show_model(s, "tower", id)
-	for s in _enemies + _upgrades + _towers:
+	for s in _enemies + _upgrades + _towers + _traps:
 		s.models[s.current].visible = false
 		s.current = ""
 	prewarm_ms = (Time.get_ticks_usec() - started) / 1000.0
@@ -130,7 +136,7 @@ func bind(sim: Sim) -> void:
 	for i in _flash_left.keys():
 		_set_overlay(_enemies[i], null)
 	_flash_left.clear()
-	for s in _enemies + _upgrades + _towers:
+	for s in _enemies + _upgrades + _towers + _traps:
 		s.root.visible = false
 	_boss.visible = false
 
@@ -167,6 +173,7 @@ func sync(alpha: float, view_dt: float) -> void:
 	_sync_enemies(alpha)
 	_sync_bullets(alpha)
 	_sync_upgrades(alpha)
+	_sync_traps(alpha)
 	_sync_towers()
 	_sync_boss(alpha)
 
@@ -282,6 +289,21 @@ func _sync_upgrades(alpha: float) -> void:
 			reward.rotation.y = 0.0
 		var full := int(_sim.rules.t("upgrade_ice_hp"))
 		_set_bar(s, float(u.ice_hp) / full, not u.thawed, 2.6)
+
+
+func _sync_traps(alpha: float) -> void:
+	for i in _traps.size():
+		var t = _sim.traps.pool[i]
+		var s := _traps[i]
+		if not t.active:
+			s.root.visible = false
+			continue
+		_show_model(s, "trap", t.trap_id)
+		s.root.visible = true
+		s.root.position = WorldView.view_pos(lerpf(t.prev_x, t.x, alpha), lerpf(t.prev_z, t.z, alpha))
+		s.models[t.trap_id].rotation.y = _t * 1.5
+		var full := int(_sim.rules.t("trap_hp"))
+		_set_bar(s, float(t.hp) / full, t.hp < full, 2.0)
 
 
 func _sync_towers() -> void:

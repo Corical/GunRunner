@@ -27,7 +27,7 @@ func _sim(seed_value := 1, tweak := {}) -> Sim:
 
 ## No spawning, no upgrades, no boss, no auto-fire, can't die: only what the test places exists.
 func _quiet(tweak := {}, seed_value := 1) -> Sim:
-	var t := {"upgrade_spawn_per_second": 0, "boss_interval": 1e9}
+	var t := {"upgrade_spawn_per_second": 0, "trap_spawn_per_second": 0, "boss_interval": 1e9}
 	t.merge(tweak, true)
 	var s := _sim(seed_value, t)
 	s.enemies.pause_spawning()

@@ -8,12 +8,13 @@ const Events = preload("res://scripts/sim/events.gd")
 const K = Events.Kind
 
 const HANDLED := [K.FIRED, K.ENEMY_HIT, K.ENEMY_KILLED, K.PLAYER_HURT, K.ICE_HIT, K.ICE_SHATTERED, K.PICKUP,
-	K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_DEFEATED, K.GAME_OVER, K.LEVEL_UP, K.PERK_TAKEN, K.EXPLOSION, K.CRIT]
+	K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_DEFEATED, K.GAME_OVER, K.LEVEL_UP, K.PERK_TAKEN, K.EXPLOSION, K.CRIT,
+	K.TRAP_HIT, K.TRAP_DESTROYED, K.TRAP_TRIGGERED]
 
 const RATE := 22050
 const VOICES := 14
 const PER_FRAME := {"hit": 2, "kill": 2, "hurt": 1, "ice_crack": 1, "ice_shatter": 1, "pickup": 1, "buff": 1,
-	"level": 1, "boss": 1, "game_over": 1, "explode": 2, "crit": 1}
+	"level": 1, "boss": 1, "game_over": 1, "explode": 2, "crit": 1, "trap": 1, "trap_break": 1}
 
 var muted := false
 var _clips := {}
@@ -47,6 +48,8 @@ func _ready() -> void:
 	_clips["game_over"] = _tone([440.0, 392.0, 349.0, 294.0], 0.15, 0.4, "triangle")
 	_clips["explode"] = _mix(_sweep(90.0, 40.0, 0.4, 0.6, "sine"), _noise(0.32, 0.45))
 	_clips["crit"] = _mix(_sweep(2600.0, 700.0, 0.07, 0.3, "saw"), _noise(0.05, 0.2))
+	_clips["trap"] = _mix(_sweep(420.0, 110.0, 0.35, 0.45, "saw"), _sweep(300.0, 80.0, 0.35, 0.25, "square"))
+	_clips["trap_break"] = _mix(_sweep(500.0, 120.0, 0.12, 0.3, "square"), _noise(0.1, 0.25))
 	for i in VOICES:
 		var p := AudioStreamPlayer.new()
 		p.bus = "SFX"
@@ -92,6 +95,12 @@ func handle(events: Array) -> void:
 				name = "buff"
 			K.LEVEL_UP:
 				name = "level"
+			K.TRAP_HIT:
+				name = "hit"
+			K.TRAP_DESTROYED:
+				name = "trap_break"
+			K.TRAP_TRIGGERED:
+				name = "trap"
 			K.CRIT:
 				name = "crit"
 			K.EXPLOSION:

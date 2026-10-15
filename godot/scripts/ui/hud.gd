@@ -18,6 +18,7 @@ var _hp_text: Label
 var _hp_fill: ColorRect
 var _hp_bar_width := 250.0
 var _buffs: Label
+var _debuffs: Label  ## trap effects, in red
 var _stand_in: Label
 var _speed: Label
 var _level: Label
@@ -86,6 +87,9 @@ func build(stand_in_art: bool) -> void:
 	_buffs = UiKit.label("", 14, Color("#FDE68A"), true)
 	_buffs.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	bottom.add_child(_buffs)
+	_debuffs = UiKit.label("", 14, Color("#F87171"), true)
+	_debuffs.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	bottom.add_child(_debuffs)
 	_hp_text = UiKit.label("HP 5/5", 16, Color.WHITE, true)
 	_hp_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	bottom.add_child(_hp_text)
@@ -160,6 +164,12 @@ func update(s: Sim, speed := 1.0) -> void:
 	if p.speed_timer > 0.0:
 		buffs.append("FIRE RATE %ds" % ceili(p.speed_timer))
 	_buffs.text = "   ".join(buffs)
+	var debuffs := PackedStringArray()
+	if p.jam_timer > 0.0:
+		debuffs.append("JAMMED %ds" % ceili(p.jam_timer))
+	if p.jinx_timer > 0.0:
+		debuffs.append("JINXED - NO CRITS %ds" % ceili(p.jinx_timer))
+	_debuffs.text = "   ".join(debuffs)
 	_boss_box.visible = s.boss.active
 	if s.boss.active:
 		_boss_name.text = "BOSS WAVE %d" % s.boss.wave

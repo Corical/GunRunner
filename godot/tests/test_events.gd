@@ -18,6 +18,8 @@ const IGNORED := {
 	K.ENEMY_ESCAPED: "an enemy leaving the road needs no feedback",
 	K.UPGRADE_SPAWNED: "drawn from sim state; logged",
 	K.UPGRADE_EXPIRED: "drawn from sim state; logged",
+	K.TRAP_SPAWNED: "drawn from sim state; logged",
+	K.TRAP_EXPIRED: "a trap that passes harmlessly needs no feedback; logged",
 	K.TOWER_EXPIRED: "tower blinks before it goes (actors); logged",
 }
 

@@ -1,0 +1,10 @@
+#schema 1
+# Booby traps on the lane (Corne 15 Oct 2026: "something that slows your firing, or cancels out your critical
+# attack percentage for a limited time"). Touch one and its effect runs for `seconds`; shoot it to 0 hp first
+# and it is destroyed harmlessly. Values are ours, first guesses - tune from run logs.
+# effect: fire_rate_mult (fire rate x amount) | no_crit (crit chance 0, amount unused).
+# weight: integer roll weight, must sum to 100.
+id	name	effect	amount	seconds	weight
+string	string	string	float	float	int
+jammer	Jammer	fire_rate_mult	0.5	6	55
+jinx	Jinx	no_crit	0	8	45

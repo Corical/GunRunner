@@ -8,7 +8,8 @@ const Events = preload("res://scripts/sim/events.gd")
 const K = Events.Kind
 
 const HANDLED := [K.FIRED, K.ENEMY_KILLED, K.PLAYER_HURT, K.EXPLOSION, K.PICKUP, K.PERK_TAKEN, K.LEVEL_UP,
-	K.BOSS_STARTED, K.BOSS_CONTACT, K.BOSS_DEFEATED, K.ICE_SHATTERED, K.GAME_OVER, K.CRIT]
+	K.BOSS_STARTED, K.BOSS_CONTACT, K.BOSS_DEFEATED, K.ICE_SHATTERED, K.GAME_OVER, K.CRIT, K.TRAP_DESTROYED,
+	K.TRAP_TRIGGERED]
 
 ## weapon -> [ms, amplitude] on firing; 0 ms = no kick (fast guns would buzz constantly).
 const FIRE := {
@@ -47,6 +48,10 @@ func handle(events: Array) -> void:
 				_buzz(10, 0.3)
 			K.ICE_SHATTERED:
 				_buzz(18, 0.4)
+			K.TRAP_DESTROYED:
+				_buzz(20, 0.45)
+			K.TRAP_TRIGGERED:
+				_train(2, 70, 110, 0.85)
 			K.CRIT:
 				_buzz(25, 0.6)
 			K.EXPLOSION:

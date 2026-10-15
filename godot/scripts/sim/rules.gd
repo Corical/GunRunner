@@ -11,6 +11,7 @@ const TABLES := {
 	"spawns": ["id", "start"],
 	"tuning": ["id", "value", "source"],
 	"perks": ["id", "name", "desc", "stat", "amount", "max_stacks", "weight"],
+	"traps": ["id", "name", "effect", "amount", "seconds", "weight"],
 }
 
 const REWARD_KINDS := ["weapon", "tower", "heal", "armor", "maxhp", "frenzy", "speed"]
@@ -31,6 +32,8 @@ const TUNING_KEYS := [
 	"tower_pool", "boss_interval", "boss_base_hp", "boss_hp_per_wave", "boss_spawn_z", "boss_radius",
 	"boss_speed_full_hp", "boss_speed_bonus_at_zero_hp", "boss_contact_dx", "boss_contact_player_radius",
 	"boss_contact_damage", "boss_pushback", "boss_score_per_wave", "boss_steer_speed",
+	"trap_spawn_per_second", "trap_hp", "trap_pool", "trap_sway_amplitude", "trap_sway_speed", "upgrade_sway_amplitude",
+	"upgrade_sway_speed",
 ]
 
 var errors: PackedStringArray = []
@@ -43,6 +46,8 @@ var rewards: Array[Dictionary] = []     ## rows in roll order
 var spawn_bands: Array[Dictionary] = [] ## {id, start, weights: Array of [enemy_id, weight]} ascending by start
 var tuning := {}         ## id -> float
 var perks: Array[Dictionary] = []  ## rows in table order (roll order)
+var traps: Array[Dictionary] = []  ## rows in roll order
+const TRAP_EFFECTS := ["fire_rate_mult", "no_crit"]
 
 ## Player modifiers a perk may add to (player.gd reads each one).
 const PERK_STATS := ["damage_mult", "fire_rate_mult", "range_mult", "pierce_add", "extra_bullets", "bullet_speed_mult",
@@ -89,6 +94,17 @@ func _build(tables: Dictionary) -> void:
 		if row["max_stacks"] < 1: errors.append("perk %s: max_stacks must be >= 1" % row["id"])
 		if row["weight"] < 1: errors.append("perk %s: weight must be >= 1" % row["id"])
 		if row["amount"] <= 0.0: errors.append("perk %s: amount must be > 0" % row["id"])
+	var trap_total := 0
+	for row in tables["traps"]:
+		traps.append(row)
+		trap_total += row["weight"]
+		if not TRAP_EFFECTS.has(row["effect"]): errors.append("trap %s: unknown effect '%s'" % [row["id"], row["effect"]])
+		if row["seconds"] <= 0.0: errors.append("trap %s: seconds must be > 0" % row["id"])
+		if row["weight"] <= 0: errors.append("trap %s: weight must be > 0" % row["id"])
+		if row["effect"] == "fire_rate_mult" and (row["amount"] <= 0.0 or row["amount"] >= 1.0):
+			errors.append("trap %s: fire_rate_mult amount must be between 0 and 1 (a trap slows, never speeds)" % row["id"])
+	if trap_total != 100:
+		errors.append("traps: weights sum to %d, must be 100" % trap_total)
 	for row in tables["weapons"]:
 		weapons[row["id"]] = row
 		if row["fire_rate"] <= 0.0: errors.append("weapon %s: fire_rate must be > 0" % row["id"])

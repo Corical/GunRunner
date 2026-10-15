@@ -28,6 +28,11 @@ enum Kind {
 	LEVEL_UP,         ## level, choices (perk ids) - the game waits for a pick
 	PERK_TAKEN,       ## perk, stacks, level
 	EXPLOSION,        ## x, z, radius, weapon, impact (false = detonated at the end of its range)
+	TRAP_SPAWNED,     ## serial, trap, x, z
+	TRAP_HIT,         ## serial, x, z, amount, hp
+	TRAP_DESTROYED,   ## serial, trap, x, z (shot to pieces: no effect)
+	TRAP_TRIGGERED,   ## serial, trap, effect, seconds, x, z (the player touched it)
+	TRAP_EXPIRED,     ## serial, trap (left the road behind the player)
 	CRIT,             ## x, z, amount, enemy (Lucky Shot doubled this hit)
 }
 

@@ -9,7 +9,8 @@ extends RefCounted
 ##   7 bullets hit enemies (swept, pool order, splash, penetration)
 ##   8 boss moves, bullets hit boss, boss touches player
 ##   9 maybe spawn an upgrade (not during a boss), upgrades move
-##  10 bullets hit ice          11 thawed rewards picked up
+##  10 bullets hit ice; maybe spawn a trap (not during a boss), traps move, bullets hit traps, traps touched
+##  11 thawed rewards picked up
 ##  12 enemies reaching the player hurt them and break the combo
 ##  13 boss trigger             14 distance grows          15 game over
 ## Consequences, each tested in test_sim.gd:
@@ -27,6 +28,7 @@ const Bullets = preload("res://scripts/sim/bullets.gd")
 const Enemies = preload("res://scripts/sim/enemies.gd")
 const Towers = preload("res://scripts/sim/towers.gd")
 const Upgrades = preload("res://scripts/sim/upgrades.gd")
+const Traps = preload("res://scripts/sim/traps.gd")
 const Boss = preload("res://scripts/sim/boss.gd")
 
 const STEP := 1.0 / 60.0
@@ -52,6 +54,7 @@ var bullets: Bullets
 var enemies: Enemies
 var towers: Towers
 var upgrades: Upgrades
+var traps: Traps
 var boss: Boss
 
 var _log: GLog
@@ -69,6 +72,7 @@ func _init(game_rules: Rules, seed_value: int, logger: GLog) -> void:
 	enemies = Enemies.new(rules, rng, logger)
 	towers = Towers.new(rules, logger)
 	upgrades = Upgrades.new(rules, rng, logger)
+	traps = Traps.new(rules, rng, logger)
 	boss = Boss.new(rules, logger)
 	_emit = _push_event
 	_damage = damage_enemy
@@ -121,6 +125,11 @@ func step(input: Dictionary) -> void:
 		upgrades.spawn("", _emit)
 	upgrades.update(dt, _emit)
 	_bullets_vs_ice()
+	if not boss.active and rng.next_float() < rules.t("trap_spawn_per_second") * dt:
+		traps.spawn("", _emit)
+	traps.update(dt, _emit)
+	_bullets_vs_traps()
+	_trap_contact()
 	_pickups()
 	_enemies_vs_player()
 	if not boss.active and distance >= (boss.wave + 1) * rules.t("boss_interval"):
@@ -221,7 +230,7 @@ func _bullets_vs_enemies() -> void:
 			var hx := e.x
 			var hz := e.z
 			var dmg := effective_damage(b.damage, b.weapon_id, e.type_id)
-			if player.mods["crit_chance"] > 0.0 and rng.next_float() < player.mods["crit_chance"]:
+			if player.crit_chance() > 0.0 and rng.next_float() < player.crit_chance():
 				dmg *= 2
 				_push_event(Events.Kind.CRIT, {"x": e.x, "z": e.z, "amount": dmg, "enemy": e.type_id})
 			damage_enemy(e, dmg, "bullet", b.weapon_id)
@@ -311,6 +320,42 @@ func _bullets_vs_ice() -> void:
 			break
 
 
+## A trap stops the bullet that hits it (like ice). Shot to 0 hp it is gone, harmlessly.
+func _bullets_vs_traps() -> void:
+	var reach := rules.t("bullet_hit_radius") + rules.t("upgrade_radius")
+	for b in bullets.pool:
+		if not b.active:
+			continue
+		for t in traps.pool:
+			if not t.active:
+				continue
+			if not Collision.swept_hit(b.prev_x, b.prev_z, b.x, b.z, t.prev_x, t.prev_z, t.x, t.z, reach):
+				continue
+			b.active = false
+			if traps.hit(t, b.damage):
+				_log.info("traps", "destroyed", {"serial": t.serial, "trap": t.trap_id})
+				_push_event(Events.Kind.TRAP_DESTROYED, {"serial": t.serial, "trap": t.trap_id, "x": t.x, "z": t.z})
+			else:
+				_push_event(Events.Kind.TRAP_HIT, {"serial": t.serial, "x": t.x, "z": t.z, "amount": b.damage, "hp": t.hp})
+			break
+
+
+## Touching a trap sets off its debuff. Same reach as a pickup, but Magnet does not widen it: Magnet pulls
+## rewards toward you, it should never pull traps into you.
+func _trap_contact() -> void:
+	for t in traps.pool:
+		if not t.active:
+			continue
+		if absf(t.x - player.x) >= rules.t("pickup_dx") or absf(t.z - player.z) >= rules.t("pickup_dz"):
+			continue
+		t.active = false
+		var row := traps.row_for(t.trap_id)
+		player.apply_trap(row)
+		_log.info("traps", "triggered", {"serial": t.serial, "trap": t.trap_id, "effect": row["effect"], "seconds": row["seconds"]})
+		_push_event(Events.Kind.TRAP_TRIGGERED, {"serial": t.serial, "trap": t.trap_id, "effect": row["effect"],
+			"seconds": row["seconds"], "x": t.x, "z": t.z})
+
+
 func _pickups() -> void:
 	for u in upgrades.pool:
 		if not u.active or not u.thawed:
@@ -375,7 +420,7 @@ func _game_over() -> void:
 	_log.info("sim", "game_over", {
 		"score": score, "distance": distance, "kills": kills, "ticks": tick,
 		"bullet_pool_full": bullets.exhausted_count, "enemy_pool_full": enemies.exhausted_count,
-		"tower_pool_full": towers.exhausted_count, "upgrade_pool_full": upgrades.exhausted_count,
+		"tower_pool_full": towers.exhausted_count, "upgrade_pool_full": upgrades.exhausted_count, "trap_pool_full": traps.exhausted_count,
 	})
 	_push_event(Events.Kind.GAME_OVER, {"score": score, "distance": distance, "kills": kills})
 
@@ -426,7 +471,8 @@ static func quantize_input(inp: Dictionary, choosing := false) -> Dictionary:
 func state_hash() -> int:
 	var parts: Array = [tick, distance, score, kills, combo, over, rng.state(),
 		player.x, player.vx, player.hp, player.max_hp, player.armor, player.weapon_id, player.fire_timer,
-		player.frenzy_timer, player.speed_timer, enemies.spawn_timer, enemies.spawn_interval, enemies.spawning_paused]
+		player.frenzy_timer, player.speed_timer, player.jam_timer, player.jam_mult, player.jinx_timer,
+		enemies.spawn_timer, enemies.spawn_interval, enemies.spawning_paused]
 	for e in enemies.pool:
 		if e.active:
 			parts.append_array([e.serial, e.type_id, e.x, e.z, e.hp, e.target_x, e.lane_timer, e.slow_mult, e.burning, e.burn_timer, e.poison_timer, e.poison_tick_timer])
@@ -435,7 +481,10 @@ func state_hash() -> int:
 			parts.append_array([b.serial, b.x, b.z, b.damage, b.penetration, b.hit.size()])
 	for u in upgrades.pool:
 		if u.active:
-			parts.append_array([u.serial, u.reward_id, u.x, u.z, u.ice_hp, u.thawed])
+			parts.append_array([u.serial, u.reward_id, u.x, u.z, u.ice_hp, u.thawed, u.phase])
+	for t in traps.pool:
+		if t.active:
+			parts.append_array([t.serial, t.trap_id, t.x, t.z, t.hp, t.phase])
 	for t in towers.pool:
 		if t.active:
 			parts.append_array([t.serial, t.type_id, t.x, t.time_left])

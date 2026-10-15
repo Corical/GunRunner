@@ -74,3 +74,10 @@ boss_steer_speed	3	ours: plan D13, boss follows the player's x so the road edge 
 enemy_hp_per_100m	0.12	ours: enemies +12% hp per 100 m, rounded up (Babylon never raised hp)
 xp_base	300	ours: was 100; 15 Oct phone run hit level 8 in 40 s and 21 levels in 10.6 min (Corne: "happens too often")
 xp_growth	1.5	ours: was 1.35; each level needs 50% more xp
+trap_spawn_per_second	0.12	ours: about one trap every 8 s; boosters are 0.48
+trap_hp	12	ours: a bit tougher than ice (8) so clearing one costs some shots
+trap_pool	3	ours
+trap_sway_amplitude	2.5	ours: traps weave this far either side of their line (road is 15 wide)
+trap_sway_speed	1.4	ours: radians per second, about one full weave every 4.5 s
+upgrade_sway_amplitude	1.2	ours: boosters drift gently too (Corne 19:31, side-to-side); 0 = Babylon straight line
+upgrade_sway_speed	1.0	ours: radians per second

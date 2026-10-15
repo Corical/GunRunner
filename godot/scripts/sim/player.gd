@@ -17,6 +17,9 @@ var weapon_id := Rules.DEFAULT_WEAPON
 var fire_timer := 0.0
 var frenzy_timer := 0.0
 var speed_timer := 0.0
+var jam_timer := 0.0     ## trap: fire rate x jam_mult while > 0
+var jam_mult := 1.0
+var jinx_timer := 0.0    ## trap: no crits while > 0
 ## Level-up perk modifiers, all start at 0 (Rules.PERK_STATS); perk id -> stacks taken.
 var mods := {}
 var perk_stacks := {}
@@ -79,6 +82,10 @@ func update_timers(dt: float) -> void:
 		frenzy_timer -= dt
 	if speed_timer > 0.0:
 		speed_timer -= dt
+	if jam_timer > 0.0:
+		jam_timer -= dt
+	if jinx_timer > 0.0:
+		jinx_timer -= dt
 
 
 func weapon() -> Dictionary:
@@ -92,6 +99,8 @@ func try_fire() -> bool:
 	if speed_timer > 0.0:
 		rate *= _rules.t("speed_buff_rate_mult")
 	rate *= 1.0 + mods["fire_rate_mult"]
+	if jam_timer > 0.0:
+		rate *= jam_mult
 	if fire_timer >= 1.0 / rate:
 		fire_timer = 0.0
 		return true
@@ -150,6 +159,21 @@ func set_weapon(id: String) -> void:
 	weapon_id = id
 	fire_timer = 0.0
 	_log.info("player", "weapon", {"weapon": id})
+
+
+## A trap's effect (traps.tsv row). Touching the same trap kind again restarts its timer, it does not stack.
+func apply_trap(row: Dictionary) -> void:
+	match row["effect"]:
+		"fire_rate_mult":
+			jam_timer = row["seconds"]
+			jam_mult = row["amount"]
+		"no_crit":
+			jinx_timer = row["seconds"]
+
+
+## Crit chance after debuffs (Jinx trap = 0).
+func crit_chance() -> float:
+	return 0.0 if jinx_timer > 0.0 else mods["crit_chance"]
 
 
 func start_frenzy(seconds: float) -> void:
