@@ -5,6 +5,8 @@ const GLog = preload("res://scripts/log/logger.gd")
 const Rules = preload("res://scripts/sim/rules.gd")
 
 var x := 0.0
+## x at the start of the current step, so the view can draw smoothly between steps.
+var prev_x := 0.0
 var z := 0.0
 var hp := 0
 var max_hp := 0

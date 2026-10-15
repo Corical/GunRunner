@@ -78,6 +78,7 @@ func step(input: Dictionary) -> void:
 	_log.tick = tick
 	var dt := STEP
 
+	player.prev_x = player.x
 	player.move(_axis(input.get("move", 0.0)), dt)
 	player.update_timers(dt)
 	if player.try_fire():

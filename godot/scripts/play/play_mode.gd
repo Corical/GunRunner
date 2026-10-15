@@ -1,0 +1,260 @@
+extends Node
+## The windowed game: menus, a sim driven by the frame clock, and the views that draw it.
+## Flags (after --): --seed=N  --bot (the batch bot steers)  --autostart (skip the start screen)
+## Keys follow the Babylon build: Enter/Space start, Space pauses and resumes, Enter restarts, ↑/↓ speed.
+
+const GLog = preload("res://scripts/log/logger.gd")
+const Rules = preload("res://scripts/sim/rules.gd")
+const Sim = preload("res://scripts/sim/sim.gd")
+const Events = preload("res://scripts/sim/events.gd")
+const FrameClock = preload("res://scripts/sim/frame_clock.gd")
+const PrimitiveCatalog = preload("res://scripts/adapters/primitive_catalog.gd")
+const KeyboardControls = preload("res://scripts/adapters/keyboard_controls.gd")
+const BotControls = preload("res://scripts/adapters/bot_controls.gd")
+const ConfigSettings = preload("res://scripts/adapters/config_settings.gd")
+const WorldView = preload("res://scripts/view/world_view.gd")
+const Actors = preload("res://scripts/view/actors.gd")
+const Hud = preload("res://scripts/ui/hud.gd")
+const Menus = preload("res://scripts/ui/menus.gd")
+const UiKit = preload("res://scripts/ui/ui_kit.gd")
+
+enum State { MENU, PLAYING, PAUSED, OVER }
+
+var state := State.MENU
+
+var _rules: Rules
+var _logger: GLog
+var _sim: Sim
+var _clock := FrameClock.new()
+var _controls: Object
+var _settings_store: Object
+var _settings := {}
+var _world: Node3D
+var _actors: Node3D
+var _hud: CanvasLayer
+var _menus: CanvasLayer
+var _seed_base := 0
+var _games := 0
+
+# Telemetry: one line per second of frame time, GPU time and sim steps (find what makes it slow).
+var _tm_frames := 0
+var _tm_steps := 0
+var _tm_elapsed := 0.0
+var _tm_gpu_ms := 0.0
+var _tm_frame_ms: Array[float] = []
+var _all_frame_ms: Array[float] = []
+var _run_seconds := 0.0
+var _wall := 0.0
+# --shots=1,8,20 --shots-dir=C:/x : save the window as PNG at those seconds (cheap check without Movie Maker).
+var _shot_times: Array[float] = []
+var _shots_dir := ""
+
+
+func start(rules: Rules, logger: GLog, args: Dictionary) -> void:
+	_rules = rules
+	_logger = logger
+	_seed_base = int(args.get("seed", Time.get_unix_time_from_system()))
+	_controls = BotControls.new() if args.has("bot") else KeyboardControls.new()
+	_settings_store = ConfigSettings.new()
+	_settings = _settings_store.load_settings()
+	_clock.set_speed(_settings["speed"])
+	if args.has("speed"):
+		# Measurement runs: override for this run only, the saved settings file is left alone.
+		_clock.set_speed(float(args["speed"]))
+
+	var catalog := PrimitiveCatalog.new(rules)
+	_world = WorldView.new()
+	add_child(_world)
+	var view_options := {
+		"shadows": args.has("shadows"), "glow": not args.has("no-glow"),
+		"fog": not args.has("no-fog"), "trees": not args.has("no-trees"),
+	}
+	_world.build(rules.t("road_width"), 12345, view_options)
+	_run_seconds = float(args.get("run-seconds", 0))
+	if args.has("shots"):
+		for t in str(args["shots"]).split(","):
+			_shot_times.append(float(t))
+		_shots_dir = str(args.get("shots-dir", "user://shots"))
+		DirAccess.make_dir_recursive_absolute(_shots_dir)
+	RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
+	_logger.info("perf", "setup", {
+		"gpu": RenderingServer.get_video_adapter_name(), "renderer": RenderingServer.get_current_rendering_method(),
+		"window": str(DisplayServer.window_get_size()), "vsync": DisplayServer.window_get_vsync_mode(),
+		"shadows": view_options["shadows"], "glow": view_options["glow"], "fog": view_options["fog"], "trees": view_options["trees"],
+	})
+
+	_sim = _new_sim()
+	_actors = Actors.new()
+	add_child(_actors)
+	_actors.setup(catalog, _sim)
+
+	_hud = Hud.new()
+	add_child(_hud)
+	_hud.build(catalog.is_stand_in())
+	_hud.update(_sim, _clock.speed)
+
+	_menus = Menus.new()
+	add_child(_menus)
+	_menus.build(rules, _settings)
+	_menus.start_pressed.connect(_start_game)
+	_menus.restart_pressed.connect(_start_game)
+	_menus.resume_pressed.connect(_resume)
+	_menus.pause_pressed.connect(_pause)
+	_menus.settings_changed.connect(_on_settings)
+
+	_logger.info("play", "ready", {
+		"controls": _controls.name(), "saved_speed": _settings["speed"], "speed": _clock.speed,
+		"spawn_interval": _settings["spawn_interval"], "settings_file": ProjectSettings.globalize_path(_settings_store.path),
+	})
+	if args.has("autostart"):
+		_start_game()
+
+
+func _new_sim() -> Sim:
+	var s := Sim.new(_rules, _seed_base + _games, _logger)
+	if _settings.get("spawn_interval", 0.0) > 0.0:
+		s.enemies.set_manual_interval(_settings["spawn_interval"])
+	return s
+
+
+func _start_game() -> void:
+	_sim = _new_sim()
+	_games += 1
+	_clock.reset()
+	_actors.bind(_sim)
+	_menus.show_playing()
+	get_viewport().gui_release_focus()
+	state = State.PLAYING
+	_logger.info("play", "game_start", {"seed": _seed_base + _games - 1, "game": _games})
+
+
+func _pause() -> void:
+	if state != State.PLAYING:
+		return
+	state = State.PAUSED
+	_clock.paused = true
+	_menus.show_pause()
+	_logger.info("play", "paused", {"tick": _sim.tick})
+
+
+func _resume() -> void:
+	if state != State.PAUSED:
+		return
+	state = State.PLAYING
+	_clock.paused = false
+	_menus.show_playing()
+	get_viewport().gui_release_focus()
+
+
+func _game_over() -> void:
+	state = State.OVER
+	_menus.show_game_over(UiKit.thousands(_sim.score), int(_sim.distance), _sim.kills)
+
+
+func _on_settings(settings: Dictionary, source: String) -> void:
+	_logger.info("settings", "changed", {
+		"source": source, "speed": settings["speed"], "spawn_interval": settings["spawn_interval"],
+		"was_speed": _settings.get("speed", 1.0), "state": State.keys()[state],
+	})
+	_settings = settings
+	_clock.set_speed(settings["speed"])
+	if _sim != null:
+		_sim.enemies.set_manual_interval(settings["spawn_interval"])
+	_settings_store.save_settings(settings)
+
+
+func _process(delta: float) -> void:
+	_telemetry(delta)
+	if state == State.PLAYING:
+		var steps := _clock.advance(delta)
+		_tm_steps += steps
+		for i in steps:
+			_sim.step({"move": _controls.move_axis(_sim)})
+			for ev in _sim.events:
+				if ev["kind"] == Events.Kind.GAME_OVER:
+					_game_over()
+			if _sim.over:
+				break
+	var alpha := _clock.alpha() if state == State.PLAYING else 1.0
+	_world.scroll(_sim.distance - (1.0 - alpha) * _rules.t("game_speed") * FrameClock.STEP)
+	_actors.sync(alpha, delta if state == State.PLAYING else 0.0)
+	_hud.update(_sim, _clock.speed)
+
+
+func _telemetry(delta: float) -> void:
+	_wall += delta
+	_tm_frames += 1
+	_tm_elapsed += delta
+	_tm_frame_ms.append(delta * 1000.0)
+	_all_frame_ms.append(delta * 1000.0)
+	_tm_gpu_ms += RenderingServer.viewport_get_measured_render_time_gpu(get_viewport().get_viewport_rid())
+	if _tm_elapsed >= 1.0:
+		_tm_frame_ms.sort()
+		_logger.info("perf", "second", {
+			"fps": _tm_frames / _tm_elapsed, "frame_avg_ms": _tm_elapsed * 1000.0 / _tm_frames,
+			"frame_max_ms": _tm_frame_ms[-1], "gpu_avg_ms": _tm_gpu_ms / _tm_frames,
+			"steps": _tm_steps, "tick": _sim.tick if _sim != null else 0, "dropped": _clock.dropped_steps,
+		})
+		_tm_frames = 0
+		_tm_steps = 0
+		_tm_elapsed = 0.0
+		_tm_gpu_ms = 0.0
+		_tm_frame_ms.clear()
+	if not _shot_times.is_empty() and _wall >= _shot_times[0]:
+		var t: float = _shot_times.pop_front()
+		var path := _shots_dir.path_join("shot-%05.1fs.png" % t)
+		var err := get_viewport().get_texture().get_image().save_png(path)
+		_logger.info("shots", "saved", {"path": path, "error": err, "tick": _sim.tick if _sim != null else 0})
+	if _run_seconds > 0.0 and _wall >= _run_seconds:
+		_report_and_quit()
+
+
+## Same measures as .local/baseline-babylon.md, first 10 frames dropped.
+func _report_and_quit() -> void:
+	_run_seconds = 0.0
+	var f := _all_frame_ms.slice(10)
+	f.sort()
+	var total := 0.0
+	for x in f:
+		total += x
+	var worst := f.slice(int(f.size() * 0.99))
+	var worst_total := 0.0
+	for x in worst:
+		worst_total += x
+	_logger.info("perf", "summary", {
+		"frames": f.size(), "avg_ms": total / f.size(), "p50_ms": f[f.size() / 2], "p99_ms": f[int(f.size() * 0.99)],
+		"worst1pct_avg_ms": worst_total / worst.size(), "max_ms": f[-1],
+		"over_33ms": f.filter(func(x): return x > 33.4).size(), "tick": _sim.tick, "dropped": _clock.dropped_steps,
+	})
+	get_tree().quit(0)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	var key := event as InputEventKey
+	if key == null or not key.pressed or key.echo:
+		return
+	match key.physical_keycode:
+		KEY_ENTER, KEY_KP_ENTER:
+			_on_confirm()
+		KEY_SPACE:
+			if state == State.PLAYING:
+				_pause()
+			else:
+				_on_confirm()
+		KEY_ESCAPE:
+			_pause()
+		KEY_UP:
+			_menus.change_speed(0.1, "key_up")
+		KEY_DOWN:
+			_menus.change_speed(-0.1, "key_down")
+		_:
+			return
+	get_viewport().set_input_as_handled()
+
+
+func _on_confirm() -> void:
+	match state:
+		State.MENU, State.OVER:
+			_start_game()
+		State.PAUSED:
+			_resume()

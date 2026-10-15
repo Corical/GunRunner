@@ -1,0 +1,257 @@
+extends Node3D
+## Draws everything the sim has in play: player, enemies, bullets, frozen upgrades, towers, boss.
+## Reads sim state every frame and draws it between the last two sim steps (alpha), so motion is smooth
+## on any refresh rate. One view slot per sim pool slot; models come from the ModelCatalog port and are
+## built once per slot per type, then reused.
+
+const Sim = preload("res://scripts/sim/sim.gd")
+const ModelCatalog = preload("res://scripts/ports/model_catalog.gd")
+const WorldView = preload("res://scripts/view/world_view.gd")
+
+const BAR_WIDTH := 1.4
+
+
+class Slot:
+	extends RefCounted
+	var root: Node3D
+	var models := {}       ## id -> Node3D
+	var current := ""
+	var bar_bg: MeshInstance3D
+	var bar_fill: MeshInstance3D
+	var extra: Node3D      ## ice block for upgrades
+
+
+var _sim: Sim
+var _catalog: ModelCatalog
+var _t := 0.0
+
+var _player: Node3D
+var _player_weapon: Node3D
+var _player_weapon_id := ""
+var _enemies: Array[Slot] = []
+var _upgrades: Array[Slot] = []
+var _towers: Array[Slot] = []
+var _boss: Node3D
+var _bullets: MultiMeshInstance3D
+var _bar_bg_mat: StandardMaterial3D
+var _bar_fill_mat: StandardMaterial3D
+var _ice_bar_mat: StandardMaterial3D
+
+
+func setup(catalog: ModelCatalog, sim: Sim) -> void:
+	_catalog = catalog
+	_bar_bg_mat = _bar_mat(Color(0.1, 0.1, 0.1, 0.8))
+	_bar_fill_mat = _bar_mat(Color("#EF4444"))
+	_ice_bar_mat = _bar_mat(Color("#67E8F9"))
+	_player = catalog.make("player", "")
+	_player.rotation.y = PI  # face the enemies
+	add_child(_player)
+	for i in sim.enemies.pool.size():
+		_enemies.append(_new_slot(true, _bar_fill_mat))
+	for i in sim.upgrades.pool.size():
+		var s := _new_slot(true, _ice_bar_mat)
+		s.extra = catalog.make("ice", "")
+		s.root.add_child(s.extra)
+		_upgrades.append(s)
+	for i in sim.towers.pool.size():
+		_towers.append(_new_slot(false, null))
+	_boss = catalog.make("boss", "")
+	_boss.visible = false
+	add_child(_boss)
+	_bullets_build(sim.bullets.pool.size())
+	bind(sim)
+
+
+## Point the views at a new game (restart). Hides everything until the sim says it is active.
+func bind(sim: Sim) -> void:
+	_sim = sim
+	_player_weapon_id = ""
+	for s in _enemies + _upgrades + _towers:
+		s.root.visible = false
+	_boss.visible = false
+
+
+func sync(alpha: float, view_dt: float) -> void:
+	_t += view_dt
+	_sync_player(alpha)
+	_sync_enemies(alpha)
+	_sync_bullets(alpha)
+	_sync_upgrades(alpha)
+	_sync_towers()
+	_sync_boss(alpha)
+
+
+func _sync_player(alpha: float) -> void:
+	var p := _sim.player
+	_player.position = WorldView.view_pos(lerpf(p.prev_x, p.x, alpha), p.z)
+	if p.weapon_id != _player_weapon_id:
+		if _player_weapon != null:
+			_player_weapon.queue_free()
+		_player_weapon = _catalog.make("weapon", p.weapon_id)
+		_player_weapon.position = Vector3(-0.45, 1.0, -0.4)  # in the player's (turned-around) hands
+		_player.add_child(_player_weapon)
+		_player_weapon_id = p.weapon_id
+
+
+func _sync_enemies(alpha: float) -> void:
+	for i in _enemies.size():
+		var e = _sim.enemies.pool[i]
+		var s := _enemies[i]
+		if not e.active:
+			s.root.visible = false
+			continue
+		_show_model(s, "enemy", e.type_id)
+		s.root.visible = true
+		s.root.position = WorldView.view_pos(lerpf(e.prev_x, e.x, alpha), lerpf(e.prev_z, e.z, alpha))
+		_set_bar(s, float(e.hp) / e.max_hp, e.max_hp > 1, float(e.row["size"]) * 1.4 + 1.0)
+
+
+func _sync_bullets(alpha: float) -> void:
+	var mm := _bullets.multimesh
+	var n := 0
+	for b in _sim.bullets.pool:
+		if not b.active:
+			continue
+		var size: float = _sim.rules.weapons[b.weapon_id]["bullet_size"]
+		var pos := WorldView.view_pos(lerpf(b.prev_x, b.x, alpha), lerpf(b.prev_z, b.z, alpha), 1.0)
+		mm.set_instance_transform(n, Transform3D(Basis().scaled(Vector3(size, size, size * 2.5)), pos))
+		mm.set_instance_color(n, Color(_sim.rules.weapons[b.weapon_id]["bullet_color"]))
+		n += 1
+	mm.visible_instance_count = n
+
+
+func _sync_upgrades(alpha: float) -> void:
+	for i in _upgrades.size():
+		var u = _sim.upgrades.pool[i]
+		var s := _upgrades[i]
+		if not u.active:
+			s.root.visible = false
+			continue
+		_show_model(s, "reward", u.reward_id)
+		s.root.visible = true
+		s.root.position = WorldView.view_pos(lerpf(u.prev_x, u.x, alpha), lerpf(u.prev_z, u.z, alpha))
+		s.extra.visible = not u.thawed
+		var reward: Node3D = s.models[u.reward_id]
+		if u.thawed:
+			reward.position.y = 0.3 + sin(_t * 5.0) * 0.25
+			reward.rotation.y = _t * 2.0
+		else:
+			reward.position.y = 0.0
+			reward.rotation.y = 0.0
+		var full := int(_sim.rules.t("upgrade_ice_hp"))
+		_set_bar(s, float(u.ice_hp) / full, not u.thawed, 2.6)
+
+
+func _sync_towers() -> void:
+	for i in _towers.size():
+		var t = _sim.towers.pool[i]
+		var s := _towers[i]
+		if not t.active:
+			s.root.visible = false
+			continue
+		_show_model(s, "tower", t.type_id)
+		s.root.position = WorldView.view_pos(t.x, t.z)
+		# Blink in the last 3 seconds so the player sees it is about to go.
+		s.root.visible = t.time_left > 3.0 or fmod(_t, 0.4) < 0.25
+		var model: Node3D = s.models[t.type_id]
+		var top := model.get_node_or_null("Top") as Node3D
+		if top != null:
+			top.rotation.y = _t * 2.0
+		var disc := model.get_node_or_null("Range") as Node3D
+		if disc != null:
+			var pulse := 1.0 + sin(_t * 3.0) * 0.03
+			disc.scale = Vector3(pulse, 1.0, pulse)
+
+
+func _sync_boss(alpha: float) -> void:
+	var b := _sim.boss
+	_boss.visible = b.active
+	if not b.active:
+		return
+	var x := lerpf(b.prev_x, b.x, alpha) + sin(_t * 1.5) * 0.5
+	_boss.position = WorldView.view_pos(x, lerpf(b.prev_z, b.z, alpha), absf(sin(_t * 2.0)) * 0.3)
+
+
+# ---------- helpers ----------
+
+func _new_slot(with_bar: bool, fill_mat: StandardMaterial3D) -> Slot:
+	var s := Slot.new()
+	s.root = Node3D.new()
+	s.root.visible = false
+	add_child(s.root)
+	if with_bar:
+		s.bar_bg = _bar_quad(Vector2(BAR_WIDTH + 0.1, 0.18), Vector3.ZERO, _bar_bg_mat)
+		s.bar_fill = _bar_quad(Vector2(BAR_WIDTH, 0.12), Vector3(BAR_WIDTH / 2.0, 0, 0), fill_mat)
+		s.root.add_child(s.bar_bg)
+		s.root.add_child(s.bar_fill)
+	return s
+
+
+func _show_model(s: Slot, kind: String, id: String) -> void:
+	if s.current == id:
+		return
+	if s.current != "" and s.models.has(s.current):
+		s.models[s.current].visible = false
+	if not s.models.has(id):
+		var m := _catalog.make(kind, id)
+		s.root.add_child(m)
+		s.models[id] = m
+	s.models[id].visible = true
+	s.current = id
+
+
+## The fill quad grows from its left edge. Screen-left is world +x (camera looks down +z).
+func _set_bar(s: Slot, ratio: float, show: bool, height: float) -> void:
+	s.bar_bg.visible = show
+	s.bar_fill.visible = show
+	if not show:
+		return
+	s.bar_bg.position = Vector3(0, height, 0)
+	s.bar_fill.position = Vector3(BAR_WIDTH / 2.0, height, -0.01)
+	s.bar_fill.scale = Vector3(clampf(ratio, 0.0, 1.0), 1, 1)
+
+
+func _bar_quad(size: Vector2, offset: Vector3, mat: Material) -> MeshInstance3D:
+	var q := QuadMesh.new()
+	q.size = size
+	q.center_offset = offset
+	var mi := MeshInstance3D.new()
+	mi.mesh = q
+	mi.material_override = mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
+
+static func _bar_mat(colour: Color) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = colour
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	m.billboard_keep_scale = true  # the fill bar shrinks by scale
+	m.no_depth_test = true
+	m.render_priority = 10
+	if colour.a < 1.0:
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	return m
+
+
+func _bullets_build(count: int) -> void:
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	var sphere := SphereMesh.new()
+	sphere.radius = 1.0
+	sphere.height = 2.0
+	sphere.radial_segments = 8
+	sphere.rings = 4
+	mm.mesh = sphere
+	mm.instance_count = count
+	mm.visible_instance_count = 0
+	_bullets = MultiMeshInstance3D.new()
+	_bullets.multimesh = mm
+	var m := StandardMaterial3D.new()
+	m.vertex_color_use_as_albedo = true
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_bullets.material_override = m
+	_bullets.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_bullets)

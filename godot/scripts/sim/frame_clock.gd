@@ -30,5 +30,15 @@ func advance(real_dt: float) -> int:
 	return n
 
 
+## How far between the last step and the next one the frame is, 0..1, for drawing in-between positions.
+func alpha() -> float:
+	return clampf(_acc / STEP, 0.0, 1.0)
+
+
+func reset() -> void:
+	_acc = 0.0
+	dropped_steps = 0
+
+
 func set_speed(multiplier: float) -> void:
 	speed = clampf(multiplier, 0.3, 3.0)
