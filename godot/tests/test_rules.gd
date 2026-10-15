@@ -99,7 +99,7 @@ func test_every_range_rule_names_a_real_key() -> void:
 func test_every_weapon_needs_a_look_row() -> void:
 	_expect_error(func(t): t["weapon_looks"] = t["weapon_looks"].filter(func(r): return r["id"] != "laser"),
 		"weapon laser: no row in weapon_looks.tsv")
-	_expect_error(func(t): t["weapon_looks"].append(_row(t, "weapon_looks", "pistol").merged({"id": "bazooka"})),
+	_expect_error(func(t): t["weapon_looks"].append(_row(t, "weapon_looks", "pistol").merged({"id": "bazooka"}, true)),
 		"weapon_looks bazooka: no such weapon")
 
 
