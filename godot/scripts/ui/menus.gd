@@ -46,6 +46,8 @@ func set_music_options(moods: PackedStringArray, tracks: Array) -> void:
 	for t in tracks:
 		lines.append("[b]%s[/b] - %s  (%s, %s)\n[url=%s]%s[/url]" % [t["title"], t["artist"], t["mood"], t["licence"], t["source_url"], t["source_url"]])
 	lines.append("")
+	lines.append("[b]MODELS[/b]\n[b]Blaster Kit[/b] (weapons) - Kenney  (CC0)\n[url=https://kenney.nl/assets/blaster-kit]https://kenney.nl/assets/blaster-kit[/url]")
+	lines.append("")
 	lines.append("[b]GAME[/b]\nMade with Godot Engine (MIT licence) - godotengine.org")
 	var text: RichTextLabel = _credits_panel.get_node("Text")
 	text.text = "\n".join(lines)

@@ -3,6 +3,9 @@ extends RefCounted
 
 var failures: PackedStringArray = []
 var current := ""
+## Engine/script errors this test deliberately causes (push_error on a bad file). The runner fails the test if the
+## count differs either way, so it also proves the error is really reported.
+var expected_errors := 0
 
 
 func eq(actual: Variant, expected: Variant, note := "") -> void:

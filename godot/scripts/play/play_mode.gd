@@ -9,6 +9,8 @@ const Sim = preload("res://scripts/sim/sim.gd")
 const Events = preload("res://scripts/sim/events.gd")
 const FrameClock = preload("res://scripts/sim/frame_clock.gd")
 const PrimitiveCatalog = preload("res://scripts/adapters/primitive_catalog.gd")
+const GltfCatalog = preload("res://scripts/adapters/gltf_catalog.gd")
+const ModelCatalog = preload("res://scripts/ports/model_catalog.gd")
 const HumanControls = preload("res://scripts/adapters/human_controls.gd")
 const BotControls = preload("res://scripts/adapters/bot_controls.gd")
 const ConfigSettings = preload("res://scripts/adapters/config_settings.gd")
@@ -87,7 +89,9 @@ func start(rules: Rules, logger: GLog, args: Dictionary) -> void:
 		# Measurement runs: override for this run only, the saved settings file is left alone.
 		_clock.set_speed(float(args["speed"]))
 
-	var catalog := PrimitiveCatalog.new(rules)
+	# Real weapon models over the stand-ins; --stand-ins draws primitives only (to compare, or rule models out).
+	var catalog: ModelCatalog = PrimitiveCatalog.new(rules) if args.has("stand-ins") \
+		else GltfCatalog.new(rules, PrimitiveCatalog.new(rules))
 	_world = WorldView.new()
 	add_child(_world)
 	var view_options := {

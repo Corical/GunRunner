@@ -157,10 +157,7 @@ func _reward(root: Node3D, id: String) -> void:
 	if _rules.weapons.has(id):
 		var w := Node3D.new()
 		_weapon(w, id)
-		w.scale = Vector3.ONE * 1.4
-		w.position = Vector3(0, 1.0, 0)
-		w.rotation = Vector3(0, PI / 2, 0)
-		root.add_child(w)
+		pose_frozen_weapon(root, w)
 		return
 	if _rules.towers.has(id):
 		_part(root, _cylinder(0.25, 0.35, 0.8), _mat("#4B5563"), Vector3(0, 0.6, 0))
@@ -182,6 +179,15 @@ func _reward(root: Node3D, id: String) -> void:
 			_part(root, _cylinder(0.12, 0.12, 0.6), _mat("#FBBF24", 1.0, 0.8), Vector3(0, 1.0, 0.35), Vector3(PI / 2, 0, 0))
 		_:
 			_part(root, _box(Vector3.ONE * 0.6), _mat("#FF00FF"), Vector3(0, 1.0, 0))
+
+
+## A weapon inside a frozen pickup: bigger, raised into the ice block, turned side-on so its shape reads.
+## Shared with GltfCatalog so a real model sits in the ice exactly like a stand-in.
+static func pose_frozen_weapon(root: Node3D, gun: Node3D) -> void:
+	gun.scale = Vector3.ONE * 1.4
+	gun.position = Vector3(0, 1.0, 0)
+	gun.rotation = Vector3(0, PI / 2, 0)
+	root.add_child(gun)
 
 
 # ---------- helpers ----------

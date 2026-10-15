@@ -47,8 +47,9 @@ func _initialize() -> void:
 			instance.current = test_name
 			var errors_before := counter.errors
 			instance.call(test_name)
-			if counter.errors > errors_before:
-				instance.failures.append("%s: raised %d engine/script error(s), last: %s" % [test_name, counter.errors - errors_before, counter.last])
+			var raised := counter.errors - errors_before
+			if raised != int(instance.expected_errors):
+				instance.failures.append("%s: raised %d engine/script error(s), expected %d, last: %s" % [test_name, raised, instance.expected_errors, counter.last])
 			run += 1
 			if instance.failures.is_empty():
 				print("ok   %s::%s" % [file, test_name])

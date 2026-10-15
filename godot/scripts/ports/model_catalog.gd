@@ -3,8 +3,8 @@ extends RefCounted
 ## stand-in built from primitives or an imported glTF. Every model's origin is on the ground at its centre,
 ## facing the player (toward -z).
 ##
-## kinds: "player", "enemy", "boss", "weapon", "tower", "reward", "ice", "trap"
-## ids:   enemy/weapon/tower ids from data/*.tsv; reward ids from rewards.tsv; "" for player/boss/ice
+## kinds: KINDS below
+## ids:   enemy/weapon/tower/trap/boss ids from data/*.tsv; reward ids from rewards.tsv; "" for player/ice/boss_shot
 
 const KINDS := ["player", "enemy", "boss", "boss_shot", "weapon", "tower", "reward", "ice", "trap"]
 

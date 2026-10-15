@@ -12,7 +12,7 @@ const TABLES := {
 	"tuning": ["id", "value", "source"],
 	"perks": ["id", "name", "desc", "stat", "amount", "max_stacks", "weight"],
 	"weapon_looks": ["id", "kick_ms", "kick_amp", "muzzle_color", "muzzle_sparks", "muzzle_smoke", "bullet_stretch",
-		"bullet_arc", "bullet_grow", "smoke_trail", "model_length", "model_radius"],
+		"bullet_arc", "bullet_grow", "smoke_trail", "model_length", "model_radius", "model", "model_scale", "model_yaw"],
 	"traps": ["id", "name", "effect", "amount", "seconds", "weight", "label", "color"],
 	"bosses": ["id", "name", "color", "hp_mult", "speed", "steer", "contact_dx", "contact_damage", "hold_z", "hold_seconds", "strafe",
 		"summon_every", "summon_count", "summon_enemy", "shoot_every", "shot_speed", "shot_damage"],
