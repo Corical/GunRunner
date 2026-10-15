@@ -54,6 +54,42 @@ func test_every_character_loads_animates_and_wears_its_colour_ring() -> void:
 		n.free()
 
 
+## Sideways half-width of what is drawn (the colour ring at the feet is a marker, not body).
+func _half_width(n: Node, parent := Transform3D.IDENTITY) -> float:
+	var xf := parent
+	if n is Node3D:
+		xf = parent * (n as Node3D).transform
+	var half := 0.0
+	if n is MeshInstance3D and not ((n as MeshInstance3D).mesh is TorusMesh):
+		var box: AABB = xf * (n as MeshInstance3D).get_aabb()
+		half = maxf(absf(box.position.x), absf(box.end.x))
+	for c in n.get_children():
+		half = maxf(half, _half_width(c, xf))
+	return half
+
+
+## 16 Oct: a 6 m boss hit width hit Corne from 3.5 m past the juggernaut's body, so it could not be dodged; 15 Oct
+## the same for enemies at 2 m. Sideways, a hit must land where the bodies touch, give or take 0.35 m.
+func test_sideways_hit_reach_matches_the_drawn_bodies() -> void:
+	var rules := Loader.load_rules()
+	var cat := _catalog(rules)
+	var p := cat.make("player", "")
+	var player_half := _half_width(p)
+	p.free()
+	ok(player_half > 0.3, "player is drawn (%.2f m)" % player_half)
+	var cases: Array = []
+	for id in rules.enemies:
+		var reach: float = rules.t("enemy_hit_player_radius") + float(rules.enemies[id]["size"]) * rules.t("enemy_radius_per_size")
+		cases.append(["enemy", id, reach])
+	for b in rules.bosses:
+		cases.append(["boss", b["id"], float(b["contact_dx"])])
+	for c in cases:
+		var n := cat.make(c[0], c[1])
+		var touch := _half_width(n) + player_half
+		n.free()
+		ok(absf(c[2] - touch) <= 0.35, "%s %s hits %.2f m to the side, bodies touch at %.2f m" % [c[0], c[1], c[2], touch])
+
+
 func test_unknown_animation_is_reported_not_silent() -> void:
 	var rules := Loader.load_rules()
 	rules.character_looks["fast"] = rules.character_looks["fast"].duplicate()

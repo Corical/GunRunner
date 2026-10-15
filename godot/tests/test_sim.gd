@@ -331,6 +331,34 @@ func test_dodged_boss_wraps_round_without_damage() -> void:
 	ok(s.boss.active, "fight still on")
 
 
+## A juggernaut coming straight at you, dodged late: it is 6 m away when you start moving to the edge.
+## Returns how often the boss hurt you before it went past (or 40 s ran out).
+func _late_dodge_hits(contact_dx: float, dodge: bool) -> int:
+	var s := _quiet({"boss.contact_dx": contact_dx})
+	ok(s.start_boss_now("juggernaut"), "juggernaut row exists")
+	s.boss.hp = 1000000
+	s.boss.max_hp = 1000000
+	s.player.x = 0.0
+	s.boss.x = 0.0
+	var hits := 0
+	for i in 60 * 40:  # it spawns ~83 m out at 3.5 m/s: ~24 s to arrive
+		var move := 1.0 if dodge and s.boss.z - s.player.z < 6.0 else 0.0
+		s.step({"move": move})
+		for e in s.events:
+			if e["kind"] == K.PLAYER_HURT and e["source"] == "boss":
+				hits += 1
+			if e["kind"] == K.BOSS_WRAPPED:
+				return hits
+	return hits
+
+
+## 16 Oct: the juggernaut hit Corne 4 times in 4.4 s standing in line, and at 6 m wide moving could not save him.
+func test_juggernaut_hits_you_in_line_and_a_late_sidestep_dodges_it() -> void:
+	ok(_late_dodge_hits(2.5, false) >= 1, "standing in its path gets you hit")
+	eq(_late_dodge_hits(2.5, true), 0, "moving away when it is 6 m out clears it")
+	ok(_late_dodge_hits(6.0, true) >= 1, "the old 6 m width caught the same dodge (this test can tell)")
+
+
 func test_boss_contact_hurts_once_and_pushes_back() -> void:
 	var s := _quiet({"boss.steer": 0.0})
 	s._start_boss()
@@ -956,6 +984,57 @@ func test_every_run_is_offered_two_different_weapons_early() -> void:
 				if e["kind"] == K.UPGRADE_SPAWNED:
 					more += 1
 		eq(more, 0, "seed %d: only once per run" % seed_value)
+
+
+## 16 Oct run 1: a speed/heal pair landed 2.3 s before the gun pair, in the same two lanes, and its ice ate every
+## pistol shot until both guns had passed. At absurd drop rates nothing - pickup or trap - may beat the gun pair onto
+## the road, the pair wears thin ice, and later drops wear the normal ice.
+func test_gun_pair_is_the_first_drop_and_wears_thin_ice() -> void:
+	for seed_value in 25:
+		var s := _sim(seed_value, {"upgrade_spawn_per_second": 10, "trap_spawn_per_second": 10, "upgrade_pool": 40, "trap_pool": 40})
+		var first: Array = []
+		var later_ice: Array = []
+		for i in 60 * 20:
+			s.step({})
+			for e in s.events:
+				if e["kind"] == K.TRAP_SPAWNED and first.size() < 2:
+					first.append("trap")
+				elif e["kind"] == K.UPGRADE_SPAWNED:
+					var u = s.upgrades.pool.filter(func(x): return x.active and x.serial == e["serial"])[0]
+					if first.size() < 2:
+						first.append(e["reward"])
+						eq(u.ice_hp, int(s.rules.t("first_weapon_ice_hp")), "seed %d: gun pair ice" % seed_value)
+					else:
+						later_ice.append(u.ice_hp)
+		eq(first.size(), 2, "seed %d: %s" % [seed_value, first])
+		for id in first:
+			ok(s.rules.weapons.has(id), "seed %d: first drops %s must both be guns" % [seed_value, first])
+		ok(later_ice.size() > 0, "seed %d: drops resume after the pair" % seed_value)
+		for hp in later_ice:
+			eq(hp, int(s.rules.t("upgrade_ice_hp")), "seed %d: later drops wear normal ice" % seed_value)
+
+
+## The pistol, standing in line with one half and nothing in the way, frees it while it is still well ahead.
+func test_pistol_frees_the_gun_pair_before_it_arrives() -> void:
+	for seed_value in 10:
+		var s := _sim(seed_value, {"upgrade_spawn_per_second": 0, "trap_spawn_per_second": 0})
+		s.enemies.pause_spawning()
+		var thawed_at := -1.0
+		for i in 60 * 30:
+			var target = null
+			for u in s.upgrades.pool:
+				if u.active and not u.thawed:
+					target = u
+					break
+			if target != null:
+				s.player.x = clampf(target.x, -7.0, 7.0)
+			s.step({})
+			for e in s.events:
+				if e["kind"] == K.ICE_SHATTERED and thawed_at < 0.0:
+					thawed_at = e["z"] - s.player.z
+			if thawed_at >= 0.0:
+				break
+		ok(thawed_at > 20.0, "seed %d: freed with %.1f m to spare (want > 20 m)" % [seed_value, thawed_at])
 
 
 # ---------- drop spacing ----------

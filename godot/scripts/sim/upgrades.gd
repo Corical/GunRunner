@@ -59,8 +59,8 @@ func spawn(reward_id: String, emit: Callable) -> bool:
 
 ## Pick-one pair: two different rewards side by side, one each side of the road, weaving in step so the gap
 ## never closes. Freeing one shatters the other (sim.gd). Falls back to a single when only one slot is free.
-## Rewards forced by a test go in as [left, right]; [] = roll both.
-func spawn_pair(emit: Callable, forced: Array = []) -> bool:
+## Rewards forced by a test go in as [left, right]; [] = roll both. ice_hp < 0 = the usual upgrade_ice_hp.
+func spawn_pair(emit: Callable, forced: Array = [], ice_hp := -1) -> bool:
 	var a := _inactive()
 	if a == null:
 		return spawn("", emit)
@@ -83,6 +83,9 @@ func spawn_pair(emit: Callable, forced: Array = []) -> bool:
 	_place(b, right, offset, phase, z, emit)
 	a.partner = b.serial
 	b.partner = a.serial
+	if ice_hp >= 0:
+		a.ice_hp = ice_hp
+		b.ice_hp = ice_hp
 	return true
 
 

@@ -82,3 +82,4 @@ boss_shot_radius	0.9	ours: how close a Gunner shot must pass to hit you (a dodge
 boss_shot_pool	16	ours: Gunner shots in flight at once
 drop_min_gap	20	ours: a new pickup or trap waits until the last one is this far down the road (15 Oct: they stacked)
 first_weapon_seconds	6	ours: a pick-one pair of two weapons arrives this early in every run (15 Oct: 3 of 5 runs died still holding the pistol)
+first_weapon_ice_hp	3	ours: thin ice on that first pair so the pistol frees it (16 Oct: Corne's SMG/grenade passed still frozen)

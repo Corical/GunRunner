@@ -125,14 +125,14 @@ func step(input: Dictionary) -> void:
 		_boss_step(dt)
 	if not first_weapon_given and not boss.active and tick * STEP >= rules.t("first_weapon_seconds") and _drop_lane_clear():
 		_give_first_weapons()
-	if not boss.active and rng.next_float() < rules.t("upgrade_spawn_per_second") * dt and _drop_lane_clear():
+	if first_weapon_given and not boss.active and rng.next_float() < rules.t("upgrade_spawn_per_second") * dt and _drop_lane_clear():
 		if rng.next_float() < rules.t("upgrade_pair_chance"):
 			upgrades.spawn_pair(_emit)
 		else:
 			upgrades.spawn("", _emit)
 	upgrades.update(dt, _emit)
 	_bullets_vs_ice()
-	if not boss.active and rng.next_float() < rules.t("trap_spawn_per_second") * dt and _drop_lane_clear():
+	if first_weapon_given and not boss.active and rng.next_float() < rules.t("trap_spawn_per_second") * dt and _drop_lane_clear():
 		traps.spawn("", _emit)
 	traps.update(dt, _emit)
 	_bullets_vs_traps()
@@ -350,7 +350,7 @@ func _give_first_weapons() -> void:
 	var b := a
 	while b == a:
 		b = guns[rng.range_int(0, guns.size() - 1)]
-	if upgrades.spawn_pair(_emit, [a, b]):
+	if upgrades.spawn_pair(_emit, [a, b], int(rules.t("first_weapon_ice_hp"))):
 		first_weapon_given = true
 
 
