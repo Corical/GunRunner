@@ -132,8 +132,10 @@ func _spawn_wave(distance: float, emit: Callable) -> void:
 	for i in wave_size:
 		var e := _inactive()
 		if e == null:
+			# Expected late in a run: 3 enemies every 0.8 s outlive the 30-slot pool, so the pool caps how many
+			# are on screen (Babylon parity). Counted in the game_over line; INFO, not a warning.
 			exhausted_count += 1
-			_log.warn("spawn", "pool_exhausted", {"pool": pool.size(), "wanted": wave_size, "placed": placed})
+			_log.info("spawn", "pool_full", {"pool": pool.size(), "wanted": wave_size, "placed": placed})
 			break
 		var x := 0.0
 		var tries := 0
