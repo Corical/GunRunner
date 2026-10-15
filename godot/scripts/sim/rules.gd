@@ -18,7 +18,7 @@ const DEFAULT_WEAPON := "pistol"
 ## Every tuning key the sim reads. A key in tuning.tsv that is not here is dead data and an error.
 const TUNING_KEYS := [
 	"game_speed", "road_width", "initial_hp", "max_hp", "player_z", "player_move_speed", "player_road_margin",
-	"player_accel", "player_drag_gain", "player_drag_max_speed",
+	"player_accel", "player_drag_gain", "player_drag_max_speed", "enemy_hp_per_100m",
 	"muzzle_z_offset", "enemy_speed", "enemy_spawn_distance", "enemy_spawn_jitter", "enemy_despawn_z", "enemy_pool",
 	"enemy_road_margin", "enemy_radius_per_size", "spawn_interval", "spawn_interval_min", "spawn_interval_decay",
 	"wave_size_max", "wave_size_metres", "spawn_min_gap", "spawn_tries", "flanker_first_min", "flanker_first_extra",

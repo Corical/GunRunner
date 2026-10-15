@@ -14,10 +14,10 @@ player_drag_gain	14	ours: drag steering, wanted speed = gain x distance to the f
 player_drag_max_speed	26	ours: drag steering may move faster than keys, like touch runners; tune by feel
 muzzle_z_offset	1	Player.ts getMuzzlePosition
 enemy_speed	10	Config.ts ENEMY_SPEED
-enemy_spawn_distance	120	Config.ts ENEMY_SPAWN_DISTANCE
+enemy_spawn_distance	75	ours: was 120 (Config.ts); fights happen in view, not on the horizon (Corne, 15 Oct)
 enemy_spawn_jitter	10	EnemyManager.ts spawnWave z
 enemy_despawn_z	-15	Config.ts ENEMY_DESPAWN_Z
-enemy_pool	30	EnemyManager.ts POOL_SIZE
+enemy_pool	45	ours: was 30, which capped Insane spawn (84 waves dropped in one phone run)
 enemy_road_margin	1	EnemyManager.ts roadHalf
 enemy_radius_per_size	0.6	Enemy.ts getCollisionRadius
 spawn_interval	1.8	Config.ts ENEMY_SPAWN_INTERVAL
@@ -34,7 +34,7 @@ flanker_retarget_extra	2	Enemy.ts update laneSwitchTimer
 flanker_lateral_speed	8	Enemy.ts update
 burn_tick	1.0	Enemy.ts update
 poison_tick	2.0	Enemy.ts update
-bullet_speed	60	Config.ts BULLET_SPEED
+bullet_speed	40	ours: was 60; slower so you see shots travel and land
 bullet_despawn_z	130	Config.ts BULLET_DESPAWN_Z
 bullet_pool	120	BulletManager.ts POOL_SIZE
 bullet_spread_speed	8	Bullet.ts activate velocity
@@ -61,7 +61,7 @@ tower_pool	6	TowerManager.ts POOL_SIZE
 boss_interval	500	Config.ts BOSS_INTERVAL_DISTANCE
 boss_base_hp	50	Config.ts BOSS_BASE_HP
 boss_hp_per_wave	20	Config.ts BOSS_HP_SCALE_PER_WAVE
-boss_spawn_z	120	Boss.ts activate (ENEMY_SPAWN_DISTANCE)
+boss_spawn_z	75	ours: was 120, follows enemy_spawn_distance
 boss_radius	3	Boss.ts getCollisionRadius
 boss_speed_full_hp	5	Boss.ts update
 boss_speed_bonus_at_zero_hp	4	Boss.ts update
@@ -71,3 +71,4 @@ boss_contact_damage	3	GameManager.ts step 7
 boss_pushback	8	GameManager.ts step 7
 boss_score_per_wave	500	GameManager.ts onBossDefeated
 boss_steer_speed	3	ours: plan D13, boss follows the player's x so the road edge is not a safe spot (tune in play)
+enemy_hp_per_100m	0.12	ours: enemies +12% hp per 100 m, rounded up (Babylon never raised hp)

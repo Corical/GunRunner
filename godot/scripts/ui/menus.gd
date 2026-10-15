@@ -37,7 +37,7 @@ func build(rules: Rules, settings: Dictionary) -> void:
 	add_child(root)
 
 	_start = _screen(root, "GUN RUNNER", "Shoot the ice, grab the weapons, survive the bosses.", "LOCK & LOAD", "start_pressed",
-		"← → or A D to move  ·  firing is automatic  ·  Space pauses  ·  ↑ ↓ change speed")
+		"Slide your finger to steer (or ← →)  ·  firing is automatic  ·  Pause top right")
 	_pause = _screen(root, "PAUSED", "", "RESUME", "resume_pressed", "Space or Enter to resume")
 	_over = _screen(root, "GAME OVER", "", "PLAY AGAIN", "restart_pressed", "Enter to play again")
 	_over_stats = _over.get_node("Box/Content/Subtitle")

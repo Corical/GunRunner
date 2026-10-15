@@ -380,11 +380,12 @@ func test_weapon_swap_resets_fire_timer() -> void:
 
 
 func test_fire_rate_matches_the_computed_step_table() -> void:
+	# Steps between shots at 60 Hz, computed independently in Python for the rates in weapons.tsv.
 	var expected := {
-		"pistol": 20, "smg": 8, "shotgun": 31, "laser": 5, "rocket": 40,
-		"minigun": 3, "railgun": 75, "flamethrower": 4, "grenade": 50,
+		"pistol": 20, "smg": 10, "shotgun": 31, "laser": 9, "rocket": 40,
+		"minigun": 5, "railgun": 75, "flamethrower": 8, "grenade": 50,
 	}
-	var buffed := {"laser": 4, "flamethrower": 3, "pistol": 14}
+	var buffed := {"laser": 6, "flamethrower": 5, "pistol": 14, "minigun": 3}
 	for w in expected:
 		eq(_steps_per_shot(w, false), expected[w], w)
 	for w in buffed:
@@ -524,6 +525,22 @@ func test_full_tower_slots_still_use_up_the_pickup() -> void:
 
 # ---------- spawning ----------
 
+func test_enemy_hp_grows_with_distance() -> void:
+	var s := _quiet({"enemy_hp_per_100m": 0.12})
+	var cases := [[1, 0.0, 1], [1, 500.0, 2], [4, 0.0, 4], [4, 500.0, 7], [4, 2000.0, 14], [1, 400.0, 2], [3, -50.0, 3]]
+	for c in cases:
+		eq(s.enemies.hp_at(c[0], c[1]), c[2], "base %d at %.0f m" % [c[0], c[1]])
+	s.distance = 500.0
+	s.enemies.resume_spawning(500.0)
+	var spawned := [0]
+	s.enemies._spawn_wave(500.0, func(_k, _f): spawned[0] += 1)
+	for e in s.enemies.pool:
+		if e.active:
+			eq(e.hp, s.enemies.hp_at(int(e.row["hp"]), 500.0), "spawned %s uses the ramp" % e.type_id)
+			eq(e.max_hp, e.hp, "hp bar full at spawn")
+	ok(spawned[0] > 0, "a wave spawned")
+
+
 func test_band_boundaries() -> void:
 	var s := _quiet()
 	var cases := {0.0: "early", 149.9: "early", 150.0: "mid", 399.99: "mid", 400.0: "late", 800.0: "endgame", 5000.0: "endgame"}
@@ -563,13 +580,15 @@ func test_spawn_gap_mostly_respected() -> void:
 
 func test_full_enemy_pool_skips_and_logs() -> void:
 	var s := _quiet()
-	for i in 30:
+	var pool_size := s.enemies.pool.size()
+	eq(pool_size, int(s.rules.t("enemy_pool")), "pool sized from tuning")
+	for i in pool_size:
 		_place(s, "basic", 0.0, 100.0)
 	var spawned := [0]
 	s.enemies._spawn_wave(1000.0, func(_k, _f): spawned[0] += 1)
 	eq(spawned[0], 0)
 	eq(s.enemies.exhausted_count, 1)
-	eq(s.enemies.active_count(), 30)
+	eq(s.enemies.active_count(), pool_size)
 	# The counter itself works: free one slot and the next wave places exactly one.
 	s.enemies.pool[0].active = false
 	s.enemies._spawn_wave(1000.0, func(_k, _f): spawned[0] += 1)

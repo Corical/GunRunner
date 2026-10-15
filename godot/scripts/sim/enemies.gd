@@ -147,7 +147,7 @@ func _spawn_wave(distance: float, emit: Callable) -> void:
 		used.append(x)
 		var type_id := _roll_type(band)
 		var z := _rules.t("enemy_spawn_distance") + _rng.next_float() * _rules.t("enemy_spawn_jitter")
-		_activate(e, type_id, x, z)
+		_activate(e, type_id, x, z, distance)
 		placed += 1
 		emit.call(Events.Kind.ENEMY_SPAWNED, {"serial": e.serial, "enemy": type_id, "x": x, "z": z})
 	if manual_interval <= 0.0:
@@ -155,13 +155,13 @@ func _spawn_wave(distance: float, emit: Callable) -> void:
 	_log.debug("spawn", "wave", {"distance": distance, "band": band["id"], "size": wave_size, "placed": placed, "next_in": spawn_interval})
 
 
-func _activate(e: Enemy, type_id: String, x: float, z: float) -> void:
+func _activate(e: Enemy, type_id: String, x: float, z: float, distance := 0.0) -> void:
 	e.serial = _next_serial
 	_next_serial += 1
 	e.active = true
 	e.type_id = type_id
 	e.row = _rules.enemies[type_id]
-	e.hp = e.row["hp"]
+	e.hp = hp_at(int(e.row["hp"]), distance)
 	e.max_hp = e.hp
 	e.radius = float(e.row["size"]) * _rules.t("enemy_radius_per_size")
 	e.x = x
@@ -175,6 +175,12 @@ func _activate(e: Enemy, type_id: String, x: float, z: float) -> void:
 	e.burn_timer = 0.0
 	e.poison_timer = 0.0
 	e.poison_tick_timer = 0.0
+
+
+## Enemies get tougher the further you go (Babylon never raised HP, so any upgraded gun one-shot everything):
+## hp = ceil(base x (1 + enemy_hp_per_100m x distance / 100)).
+func hp_at(base: int, distance: float) -> int:
+	return ceili(base * (1.0 + _rules.t("enemy_hp_per_100m") * maxf(0.0, distance) / 100.0) - 1e-9)
 
 
 func _band_for(distance: float) -> Dictionary:
