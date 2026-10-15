@@ -46,5 +46,16 @@ static func swept_entry(
 	return clampf((-half_b - sqrt(maxf(disc, 0.0))) / dd, 0.0, 1.0)
 
 
+## Cheap exact pre-check for swept_hit / swept_entry: false when this step's z or x extents of the two movers are
+## further apart than r, in which case the swept test is false too (both move in straight lines over the step).
+static func extents_overlap(
+	b_prev_x: float, b_prev_z: float, b_x: float, b_z: float,
+	c_prev_x: float, c_prev_z: float, c_x: float, c_z: float, r: float
+) -> bool:
+	if minf(c_prev_z, c_z) - r > maxf(b_prev_z, b_z) or maxf(c_prev_z, c_z) + r < minf(b_prev_z, b_z):
+		return false
+	return not (minf(c_prev_x, c_x) - r > maxf(b_prev_x, b_x) or maxf(c_prev_x, c_x) + r < minf(b_prev_x, b_x))
+
+
 static func dist_sq(ax: float, az: float, bx: float, bz: float) -> float:
 	return (ax - bx) * (ax - bx) + (az - bz) * (az - bz)

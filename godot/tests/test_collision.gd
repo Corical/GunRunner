@@ -30,6 +30,23 @@ func test_swept_entry_agrees_with_swept_hit_and_orders_by_path() -> void:
 	eq(Collision.swept_entry(0, 4, 0, 10, 0, 4, 0, 4, 1.0), 0.0, "starting inside = 0")
 
 
+## The speed-up pre-check may only skip pairs that cannot hit; if it ever says "no" to a real hit, bullets pass
+## through enemies. Also checks the inline copy in sim._bullets_vs_enemies uses the same rule.
+func test_extents_precheck_never_rejects_a_real_hit() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var hits := 0
+	for i in 5000:
+		var v := []
+		for k in 8:
+			v.append(rng.randf_range(-6.0, 6.0))
+		var r := rng.randf_range(0.2, 3.0)
+		if Collision.swept_hit(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], r):
+			hits += 1
+			ok(Collision.extents_overlap(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], r), "case %d: pre-check rejected a hit" % i)
+	ok(hits > 500, "enough real hits sampled (%d)" % hits)
+
+
 func test_edge_and_outside_miss() -> void:
 	ok(not Collision.segment_hits_origin(1.0, -5.0, 1.0, 5.0, 1.0), "exactly on the edge is a miss (strict, Babylon parity)")
 	ok(not Collision.segment_hits_origin(1.5, -5.0, 1.5, 5.0, 1.0), "passes outside")

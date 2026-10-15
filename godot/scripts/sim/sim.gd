@@ -217,6 +217,7 @@ func effective_damage(base: int, weapon_id: String, enemy_id: String) -> int:
 
 
 var _candidates: Array = []  ## [entry t, serial, enemy] for one bullet; reused to avoid per-bullet allocation
+var _live: Array[Enemies.Enemy] = []  ## active enemies this step (reused)
 
 
 static func _nearer(a: Array, b: Array) -> bool:
@@ -225,11 +226,27 @@ static func _nearer(a: Array, b: Array) -> bool:
 
 func _bullets_vs_enemies() -> void:
 	var hit_r := rules.t("bullet_hit_radius")
+	# Live enemies once per step, with each one's z/x extent this step (bench: this loop was 85% of the sim).
+	_live.clear()
+	for e in enemies.pool:
+		if e.active:
+			_live.append(e)
 	for b in bullets.pool:
 		if not b.active:
 			continue
 		_candidates.clear()
-		for e in enemies.pool:
+		var bz0 := minf(b.prev_z, b.z)
+		var bz1 := maxf(b.prev_z, b.z)
+		var bx0 := minf(b.prev_x, b.x)
+		var bx1 := maxf(b.prev_x, b.x)
+		for e in _live:
+			# Exact reject: if this step's z (or x) ranges are further apart than the reach, the swept test is
+			# false too (both move in straight lines over the step), so skipping changes no result.
+			var reach: float = hit_r + e.radius
+			if minf(e.prev_z, e.z) - reach > bz1 or maxf(e.prev_z, e.z) + reach < bz0:
+				continue
+			if minf(e.prev_x, e.x) - reach > bx1 or maxf(e.prev_x, e.x) + reach < bx0:
+				continue
 			if not e.active or b.hit.has(e.serial):
 				continue
 			var at := Collision.swept_entry(b.prev_x, b.prev_z, b.x, b.z, e.prev_x, e.prev_z, e.x, e.z, hit_r + e.radius)
@@ -320,11 +337,15 @@ func _boss_defeated() -> void:
 ## Ice stops any bullet, whatever its penetration (Babylon parity, plan D6).
 func _bullets_vs_ice() -> void:
 	var reach := rules.t("bullet_hit_radius") + rules.t("upgrade_radius")
+	if upgrades.active_count() == 0:
+		return  # most steps: no ice on the road, nothing to test
 	for b in bullets.pool:
 		if not b.active:
 			continue
 		for u in upgrades.pool:
 			if not u.active or u.thawed:
+				continue
+			if not Collision.extents_overlap(b.prev_x, b.prev_z, b.x, b.z, u.prev_x, u.prev_z, u.x, u.z, reach):
 				continue
 			if not Collision.swept_hit(b.prev_x, b.prev_z, b.x, b.z, u.prev_x, u.prev_z, u.x, u.z, reach):
 				continue
@@ -341,11 +362,18 @@ func _bullets_vs_ice() -> void:
 ## A trap stops the bullet that hits it (like ice). Shot to 0 hp it is gone, harmlessly.
 func _bullets_vs_traps() -> void:
 	var reach := rules.t("bullet_hit_radius") + rules.t("upgrade_radius")
+	var any := false
+	for t in traps.pool:
+		any = any or t.active
+	if not any:
+		return  # most steps: no trap on the road
 	for b in bullets.pool:
 		if not b.active:
 			continue
 		for t in traps.pool:
 			if not t.active:
+				continue
+			if not Collision.extents_overlap(b.prev_x, b.prev_z, b.x, b.z, t.prev_x, t.prev_z, t.x, t.z, reach):
 				continue
 			if not Collision.swept_hit(b.prev_x, b.prev_z, b.x, b.z, t.prev_x, t.prev_z, t.x, t.z, reach):
 				continue
