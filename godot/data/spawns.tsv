@@ -1,0 +1,10 @@
+#schema 1
+# Source: src/systems/EnemyManager.ts rollEnemyType. One row per distance band (metres); a band applies from
+# its start until the next band's start. Integer weights out of 100 per row, rolled in column order.
+# Column names after id/start must be enemy ids from enemies.tsv.
+id	start	basic	fast	armored	shielded	bomber	healer	splitter
+string	float	int	int	int	int	int	int	int
+early	0	85	15	0	0	0	0	0
+mid	150	40	15	15	10	10	10	0
+late	400	25	15	15	10	10	10	15
+endgame	800	15	10	15	10	15	15	20

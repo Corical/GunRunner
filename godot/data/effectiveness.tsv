@@ -1,0 +1,20 @@
+#schema 1
+# Source: src/core/Config.ts WEAPON_EFFECTIVENESS. Missing pairs = 1.0. Applies to enemies only, not the boss.
+# Damage dealt = max(1, round(damage * multiplier)).
+id	weapon	enemy	multiplier
+string	string	string	float
+shotgun-basic	shotgun	basic	2.0
+shotgun-fast	shotgun	fast	2.0
+shotgun-armored	shotgun	armored	0.5
+laser-shielded	laser	shielded	2.0
+laser-armored	laser	armored	1.5
+rocket-armored	rocket	armored	2.0
+rocket-healer	rocket	healer	2.0
+flamethrower-basic	flamethrower	basic	1.5
+flamethrower-splitter	flamethrower	splitter	2.0
+flamethrower-armored	flamethrower	armored	0.5
+railgun-armored	railgun	armored	2.0
+railgun-shielded	railgun	shielded	2.0
+railgun-fast	railgun	fast	0.5
+minigun-fast	minigun	fast	1.5
+minigun-shielded	minigun	shielded	0.5

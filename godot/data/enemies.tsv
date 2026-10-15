@@ -1,0 +1,13 @@
+#schema 1
+# Source: src/core/Config.ts ENEMIES. speed is a multiplier of tuning enemy_speed.
+# Collision radius = size * 0.6 (Enemy.ts getCollisionRadius).
+# Healer, Splitter, Bomber and Shielded have NO special behaviour yet (plan D3 / Q2) - only these stats.
+id	name	hp	speed	color	size	score	switches_lanes
+string	string	int	float	string	float	int	bool
+basic	Runner	1	1.0	#EF4444	1.0	10	0
+armored	Tank	4	0.7	#7C3AED	1.4	30	0
+fast	Flanker	1	1.6	#F97316	0.8	20	1
+shielded	Shield	3	0.8	#6B7280	1.2	25	0
+healer	Healer	2	0.6	#22C55E	1.0	35	0
+splitter	Splitter	2	1.0	#EC4899	1.1	40	0
+bomber	Bomber	1	1.3	#854D0E	0.9	30	1

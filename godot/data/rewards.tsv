@@ -1,0 +1,22 @@
+#schema 1
+# Source: src/systems/FrozenUpgradeManager.ts REWARD_WEIGHTS (cumulative thresholds converted to weights).
+# Integer weights out of 100, rolled in row order. kind: weapon | tower | heal | armor | maxhp | frenzy | speed.
+# For weapon/tower rows, id must exist in weapons.tsv / towers.tsv.
+id	kind	weight
+string	string	int
+smg	weapon	8
+shotgun	weapon	8
+laser	weapon	8
+minigun	weapon	6
+flamethrower	weapon	6
+grenade	weapon	6
+heal	heal	8
+armor	armor	6
+maxhp	maxhp	6
+frenzy	frenzy	6
+speed	speed	6
+freeze	tower	6
+fire	tower	6
+poison	tower	6
+rocket	weapon	4
+railgun	weapon	4
