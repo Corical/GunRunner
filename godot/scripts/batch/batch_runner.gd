@@ -37,7 +37,7 @@ static func run(logger: GLog, sim_sink: Object, first_seed: int, runs: int, tick
 		var inv := Invariants.new()
 		var stats := RunStats.new()
 		while not s.over and s.tick < tick_cap:
-			s.step({"move": bot.decide(s)})
+			s.step(bot.input(s))
 			inv.check_step(s)
 			stats.step(s)
 		totals.merge(stats)

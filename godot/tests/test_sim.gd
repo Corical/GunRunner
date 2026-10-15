@@ -664,7 +664,7 @@ func test_ice_stops_even_a_railgun_bullet() -> void:
 # ---------- determinism and structure ----------
 
 func _input_for(tick: int) -> Dictionary:
-	return {"move": sin(tick * 0.013) * 1.3}
+	return {"move": sin(tick * 0.013) * 1.3, "pick": tick % 3}  # pick only read while a level-up is open
 
 
 func test_same_seed_same_state_every_step() -> void:
@@ -678,7 +678,7 @@ func test_same_seed_same_state_every_step() -> void:
 		if a.state_hash() != b.state_hash():
 			fail("diverged at tick %d" % a.tick)
 			return
-	ok(a.kills > 0 and a.distance > 700.0, "the run actually played: kills=%d distance=%.0f" % [a.kills, a.distance])
+	ok(a.kills > 0 and a.distance > 300.0, "the run actually played: kills=%d distance=%.0f" % [a.kills, a.distance])
 	var c := _sim(43)
 	c.player.hp = 1000000
 	for t in 3600:

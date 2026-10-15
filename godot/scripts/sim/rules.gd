@@ -10,6 +10,7 @@ const TABLES := {
 	"rewards": ["id", "kind", "weight"],
 	"spawns": ["id", "start"],
 	"tuning": ["id", "value", "source"],
+	"perks": ["id", "name", "desc", "stat", "amount", "max_stacks", "weight"],
 }
 
 const REWARD_KINDS := ["weapon", "tower", "heal", "armor", "maxhp", "frenzy", "speed"]
@@ -18,7 +19,7 @@ const DEFAULT_WEAPON := "pistol"
 ## Every tuning key the sim reads. A key in tuning.tsv that is not here is dead data and an error.
 const TUNING_KEYS := [
 	"game_speed", "road_width", "initial_hp", "max_hp", "player_z", "player_move_speed", "player_road_margin",
-	"player_accel", "player_drag_gain", "player_drag_max_speed", "enemy_hp_per_100m",
+	"player_accel", "player_drag_gain", "player_drag_max_speed", "enemy_hp_per_100m", "xp_base", "xp_growth",
 	"muzzle_z_offset", "enemy_speed", "enemy_spawn_distance", "enemy_spawn_jitter", "enemy_despawn_z", "enemy_pool",
 	"enemy_road_margin", "enemy_radius_per_size", "spawn_interval", "spawn_interval_min", "spawn_interval_decay",
 	"wave_size_max", "wave_size_metres", "spawn_min_gap", "spawn_tries", "flanker_first_min", "flanker_first_extra",
@@ -41,6 +42,11 @@ var effectiveness := {}  ## "weapon|enemy" -> multiplier
 var rewards: Array[Dictionary] = []     ## rows in roll order
 var spawn_bands: Array[Dictionary] = [] ## {id, start, weights: Array of [enemy_id, weight]} ascending by start
 var tuning := {}         ## id -> float
+var perks: Array[Dictionary] = []  ## rows in table order (roll order)
+
+## Player modifiers a perk may add to (player.gd reads each one).
+const PERK_STATS := ["damage_mult", "fire_rate_mult", "range_mult", "pierce_add", "extra_bullets", "bullet_speed_mult",
+	"max_hp_add", "armor_add", "move_speed_mult", "crit_chance", "tower_duration_mult", "pickup_mult"]
 
 
 func ok() -> bool:
@@ -77,6 +83,12 @@ static func from_tables(tables: Dictionary) -> Object:
 
 
 func _build(tables: Dictionary) -> void:
+	for row in tables["perks"]:
+		perks.append(row)
+		if not PERK_STATS.has(row["stat"]): errors.append("perk %s: unknown stat '%s'" % [row["id"], row["stat"]])
+		if row["max_stacks"] < 1: errors.append("perk %s: max_stacks must be >= 1" % row["id"])
+		if row["weight"] < 1: errors.append("perk %s: weight must be >= 1" % row["id"])
+		if row["amount"] <= 0.0: errors.append("perk %s: amount must be > 0" % row["id"])
 	for row in tables["weapons"]:
 		weapons[row["id"]] = row
 		if row["fire_rate"] <= 0.0: errors.append("weapon %s: fire_rate must be > 0" % row["id"])

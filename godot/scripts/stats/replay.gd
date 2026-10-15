@@ -74,7 +74,9 @@ static func replay(path: String, sim_logger: GLog) -> Result:
 		r.warnings.append("no end line (app closed or killed mid-run): replaying to the last checkpoint, tick %d" % last_tick)
 
 	var inp := {}
+	var guard := 0
 	while sim.tick < last_tick and not sim.over:
+		var pick := -1  # a level-up pick is one-shot: it must not answer a later level-up too
 		for e in by_tick.get(sim.tick, []):
 			if e["type"] == "set":
 				sim.enemies.set_manual_interval(float(e["spawn_interval"]))
@@ -83,7 +85,20 @@ static func replay(path: String, sim_logger: GLog) -> Result:
 				for k in ["move", "target_x"]:
 					if e.has(k):
 						inp[k] = float(e[k])
-		sim.step(inp)
+				if e.has("pick"):
+					pick = int(e["pick"])
+		var step_inp := inp.duplicate()
+		if pick >= 0:
+			step_inp["pick"] = pick
+		var before := sim.tick
+		sim.step(step_inp)
+		if sim.tick == before and not sim.over:
+			guard += 1
+			if guard > 2:
+				r.errors.append("stuck at tick %d: the game waits for a level-up pick the recording does not have" % sim.tick)
+				return r
+			continue
+		guard = 0
 		stats.step(sim)
 		if checks.has(sim.tick):
 			r.checks += 1

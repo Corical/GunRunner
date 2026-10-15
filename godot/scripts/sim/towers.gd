@@ -34,7 +34,8 @@ func _init(rules: Rules, logger: GLog) -> void:
 
 ## Places a tower at the player's x. When every slot is busy the pickup is still used up and nothing is
 ## placed (Babylon parity), logged and announced so the HUD can say so.
-func deploy(type_id: String, x: float, emit: Callable) -> bool:
+## duration_mult: Engineer perk (towers last longer); 1.0 = as in towers.tsv.
+func deploy(type_id: String, x: float, emit: Callable, duration_mult := 1.0) -> bool:
 	var t := _inactive()
 	if t == null:
 		exhausted_count += 1
@@ -48,7 +49,7 @@ func deploy(type_id: String, x: float, emit: Callable) -> bool:
 	t.row = _rules.towers[type_id]
 	t.x = x
 	t.z = _rules.t("tower_z")
-	t.time_left = t.row["duration"]
+	t.time_left = float(t.row["duration"]) * duration_mult
 	_log.info("towers", "deployed", {"serial": t.serial, "tower": type_id, "x": x})
 	emit.call(Events.Kind.TOWER_DEPLOYED, {"serial": t.serial, "tower": type_id, "x": x, "z": t.z})
 	return true

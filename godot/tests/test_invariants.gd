@@ -77,7 +77,7 @@ func test_bot_run_is_clean_and_plays() -> void:
 	var inv := Invariants.new()
 	var bot := Bot.new()
 	while not s.over and s.tick < 36000:
-		s.step({"move": bot.decide(s)})
+		s.step(bot.input(s))
 		inv.check_step(s)
 	inv.check_end(s, 36000)
 	eq(inv.failures, PackedStringArray())

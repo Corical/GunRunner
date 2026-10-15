@@ -53,6 +53,27 @@ func decide(s: Sim) -> float:
 	return _toward(target_x, p.x)
 
 
+## Level-up choice: a fixed preference order (damage and rate first), so bot runs stay deterministic.
+const PERK_PREFERENCE := ["damage", "fire_rate", "multishot", "pierce", "vitality", "crit", "range", "plating",
+	"bullet_speed", "agility", "magnet", "engineer"]
+
+
+## The full step input: steering, plus a pick that the sim only reads while a level-up choice is open.
+func input(s: Sim) -> Dictionary:
+	return {"move": decide(s), "pick": pick(s)}
+
+
+func pick(s: Sim) -> int:
+	var best := 0
+	var best_rank := 999
+	for i in s.choices.size():
+		var rank := PERK_PREFERENCE.find(s.choices[i])
+		if rank >= 0 and rank < best_rank:
+			best_rank = rank
+			best = i
+	return best
+
+
 static func _toward(target: float, x: float) -> float:
 	return clampf((target - x) * 0.6, -1.0, 1.0)
 

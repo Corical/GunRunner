@@ -30,13 +30,13 @@ func _record(path: String, seed_value: int, ticks: int, finish := true) -> Sim:
 	for i in ticks:
 		var inp := {}
 		if i % 400 < 150:
-			inp = {"move": bot.decide(s)}
+			inp = bot.input(s)
 		elif i % 400 < 300:
 			inp = {"target_x": sin(i * 0.0371) * 6.123456789}
 		if i == 900:
 			s.enemies.set_manual_interval(0.6)
 			rec.setting(s.tick, 0.6)
-		inp = Sim.quantize_input(inp)  # as play_mode does: record exactly what the sim gets
+		inp = Sim.quantize_input(inp, not s.choices.is_empty())  # as play_mode does: record exactly what the sim gets
 		rec.input(s.tick, inp)
 		s.step(inp)
 		rec.after_step(s)
@@ -58,7 +58,7 @@ func test_replay_reproduces_the_game_exactly() -> void:
 	eq(r.sim.tick, played.tick)
 	eq(r.sim.state_hash(), played.state_hash(), "identical final state")
 	eq(r.sim.kills, played.kills)
-	ok(played.kills > 20, "the recorded run actually played (%d kills)" % played.kills)
+	ok(played.kills > 10, "the recorded run actually played (%d kills)" % played.kills)
 
 
 func test_tampered_seed_is_caught() -> void:

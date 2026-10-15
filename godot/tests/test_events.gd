@@ -44,7 +44,7 @@ func test_kind_field_is_always_the_event_kind() -> void:
 	var bot := Bot.new()
 	var seen := {}
 	for t in 7200:
-		s.step({"move": bot.decide(s)})
+		s.step(bot.input(s))
 		for ev in s.events:
 			ok(typeof(ev["kind"]) == TYPE_INT and K.values().has(ev["kind"]), "kind overwritten: %s" % [ev])
 			seen[ev["kind"]] = true

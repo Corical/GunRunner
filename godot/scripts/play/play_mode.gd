@@ -20,6 +20,7 @@ const UiKit = preload("res://scripts/ui/ui_kit.gd")
 const Juice = preload("res://scripts/view/juice.gd")
 const SynthSfx = preload("res://scripts/adapters/synth_sfx.gd")
 const RunRecorder = preload("res://scripts/stats/run_recorder.gd")
+const LevelUpUi = preload("res://scripts/ui/level_up_ui.gd")
 
 enum State { MENU, PLAYING, PAUSED, OVER }
 
@@ -40,6 +41,8 @@ var _juice: Node3D
 var _sfx: Node
 var _frame_events: Array = []
 var _recorder: RunRecorder
+var _level_ui: CanvasLayer
+var _pending_pick := -1  ## card tapped this frame; sent once with the next step's input
 var _data_fingerprint := 0
 var _seed_base := 0
 var _games := 0
@@ -117,6 +120,10 @@ func start(rules: Rules, logger: GLog, args: Dictionary) -> void:
 	_menus.resume_pressed.connect(_resume)
 	_menus.pause_pressed.connect(_pause)
 	_menus.settings_changed.connect(_on_settings)
+	_level_ui = LevelUpUi.new()
+	add_child(_level_ui)
+	_level_ui.build(rules)
+	_level_ui.picked.connect(func(i: int): _pending_pick = i)
 
 	_logger.info("play", "ready", {
 		"controls": _controls.name(), "saved_speed": _settings["speed"], "speed": _clock.speed,
@@ -195,7 +202,11 @@ func _process(delta: float) -> void:
 		var steps := _clock.advance(delta)
 		_tm_steps += steps
 		for i in steps:
-			var inp: Dictionary = Sim.quantize_input(_controls.read(_sim))
+			var raw: Dictionary = _controls.read(_sim)
+			if _pending_pick >= 0 and not _sim.choices.is_empty():
+				raw["pick"] = _pending_pick
+				_pending_pick = -1
+			var inp: Dictionary = Sim.quantize_input(raw, not _sim.choices.is_empty())
 			_recorder.input(_sim.tick, inp)
 			_sim.step(inp)
 			_recorder.after_step(_sim)
@@ -217,6 +228,7 @@ func _process(delta: float) -> void:
 	# Game over keeps the last shake/fade running so the death reads; only a pause freezes effects.
 	_juice.update(delta if state != State.PAUSED else 0.0, _world.camera_base)
 	_hud.update(_sim, _clock.speed)
+	_level_ui.show_choices(_sim.choices if state == State.PLAYING else PackedStringArray(), _sim.level, _sim.player.perk_stacks)
 
 
 ## Android sends the app to the background (home button, call) or closes it without a game over: finish the
@@ -253,6 +265,9 @@ func _telemetry(delta: float) -> void:
 		})
 		_actors.models_built = 0
 		_actors.build_usec = 0
+		var dc: Dictionary = _actors.drawn_counts()
+		if dc["active"] != dc["drawn"]:
+			_logger.warn("view", "enemies_not_drawn", dc)
 		# Write the log out every second: on Android the app is killed, not closed, and the buffer was lost.
 		_logger.flush()
 		if _recorder != null:
@@ -310,6 +325,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				_on_confirm()
 		KEY_ESCAPE:
 			_pause()
+		KEY_1, KEY_2, KEY_3:
+			if state == State.PLAYING and not _sim.choices.is_empty():
+				_pending_pick = key.physical_keycode - KEY_1
 		KEY_M:
 			_sfx.set_muted(not _sfx.muted)
 			_logger.info("settings", "mute", {"muted": _sfx.muted})

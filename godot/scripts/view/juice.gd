@@ -12,7 +12,7 @@ const K = Events.Kind
 ## Every event kind this presenter reacts to (test_events checks every kind is handled somewhere).
 const HANDLED := [K.FIRED, K.ENEMY_HIT, K.ENEMY_KILLED, K.PLAYER_HURT, K.COMBO_BROKEN, K.ICE_HIT, K.ICE_SHATTERED,
 	K.PICKUP, K.TOWER_DEPLOYED, K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_WRAPPED, K.BOSS_DEFEATED,
-	K.GAME_OVER, K.POOL_EXHAUSTED]
+	K.GAME_OVER, K.POOL_EXHAUSTED, K.LEVEL_UP, K.PERK_TAKEN]
 
 const EMITTERS := 32
 const LABELS := 40
@@ -142,8 +142,8 @@ func handle(events: Array) -> void:
 				_text(ev, "BOSS DEFEATED! +%d" % ev["score_gain"], Color("#FBBF24"), 5.0, 2.0, true)
 			K.GAME_OVER:
 				shake(1.0, 0.8)
-			K.COMBO_BROKEN, K.POOL_EXHAUSTED:
-				pass  # shown by the HUD / logged; no world effect
+			K.COMBO_BROKEN, K.POOL_EXHAUSTED, K.LEVEL_UP, K.PERK_TAKEN:
+				pass  # shown by the HUD / level-up cards / logged; no world effect
 
 
 ## camera_base: where the camera is without shake this frame (the world view's follow camera).

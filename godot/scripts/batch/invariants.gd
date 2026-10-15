@@ -27,7 +27,7 @@ func check_step(s: Sim) -> void:
 		_fail(s, "negative combo")
 	var p := s.player
 	var half: float = s.rules.t("road_width") / 2.0 - s.rules.t("player_road_margin")
-	if p.hp < 0 or p.hp > p.max_hp or p.max_hp > int(s.rules.t("max_hp")) or p.armor < 0:
+	if p.hp < 0 or p.hp > p.max_hp or p.max_hp > p.max_hp_cap() or p.armor < 0:
 		_fail(s, "player hp=%d max=%d armor=%d" % [p.hp, p.max_hp, p.armor])
 	if absf(p.x) > half + 1e-6:
 		_fail(s, "player off road x=%f" % p.x)

@@ -189,6 +189,26 @@ func _sync_enemies(alpha: float) -> void:
 		_set_bar(s, float(e.hp) / e.max_hp, e.max_hp > 1, float(e.row["size"]) * 1.4 + 1.0)
 
 
+## Telemetry for "invisible enemies" (Corne 17:50): sim enemies active vs enemy models actually shown,
+## and active enemies whose model is not visible this frame. Must match every frame.
+func drawn_counts() -> Dictionary:
+	var active := 0
+	var drawn := 0
+	var hidden_active: PackedStringArray = []
+	for i in _enemies.size():
+		var e = _sim.enemies.pool[i]
+		if not e.active:
+			continue
+		active += 1
+		var s := _enemies[i]
+		var shown: bool = s.root.visible and s.models.has(s.current) and s.models[s.current].visible and s.current == e.type_id
+		if shown:
+			drawn += 1
+		elif hidden_active.size() < 5:
+			hidden_active.append("%s slot%d root=%s current=%s" % [e.type_id, i, s.root.visible, s.current])
+	return {"active": active, "drawn": drawn, "hidden": ";".join(hidden_active)}
+
+
 func _sync_bullets(alpha: float) -> void:
 	var mm := _bullets.multimesh
 	var n := 0

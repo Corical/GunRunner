@@ -17,6 +17,9 @@ var weapon_id := Rules.DEFAULT_WEAPON
 var fire_timer := 0.0
 var frenzy_timer := 0.0
 var speed_timer := 0.0
+## Level-up perk modifiers, all start at 0 (Rules.PERK_STATS); perk id -> stacks taken.
+var mods := {}
+var perk_stacks := {}
 
 var _rules: Rules
 var _log: GLog
@@ -27,6 +30,8 @@ func _init(rules: Rules, logger: GLog) -> void:
 	_rules = rules
 	_log = logger
 	_half_road = rules.t("road_width") / 2.0 - rules.t("player_road_margin")
+	for stat in Rules.PERK_STATS:
+		mods[stat] = 0.0
 	x = 0.0
 	z = rules.t("player_z")
 	hp = int(rules.t("initial_hp"))
@@ -39,10 +44,10 @@ func _init(rules: Rules, logger: GLog) -> void:
 func move(axis: float, target_x: float, dt: float) -> void:
 	var wanted := 0.0
 	if not is_nan(target_x):
-		var max_drag := _rules.t("player_drag_max_speed")
+		var max_drag: float = _rules.t("player_drag_max_speed") * (1.0 + mods["move_speed_mult"])
 		wanted = clampf((clampf(target_x, -_half_road, _half_road) - x) * _rules.t("player_drag_gain"), -max_drag, max_drag)
 	else:
-		wanted = axis * _rules.t("player_move_speed")
+		wanted = axis * _rules.t("player_move_speed") * (1.0 + mods["move_speed_mult"])
 	var dragging := not is_nan(target_x)
 	if dragging and signf(wanted) == signf(vx) and absf(wanted) < absf(vx):
 		# Dragging: speeding up is limited by acceleration, slowing down is not. Wanted speed shrinks with the
@@ -86,6 +91,7 @@ func try_fire() -> bool:
 	var rate: float = weapon()["fire_rate"]
 	if speed_timer > 0.0:
 		rate *= _rules.t("speed_buff_rate_mult")
+	rate *= 1.0 + mods["fire_rate_mult"]
 	if fire_timer >= 1.0 / rate:
 		fire_timer = 0.0
 		return true
@@ -93,10 +99,10 @@ func try_fire() -> bool:
 
 
 func shot_damage() -> int:
-	var base: int = weapon()["damage"]
+	var dmg: float = float(weapon()["damage"]) * (1.0 + mods["damage_mult"])
 	if frenzy_timer > 0.0:
-		return int(ceil(base * _rules.t("frenzy_damage_mult")))
-	return base
+		dmg *= _rules.t("frenzy_damage_mult")
+	return int(ceil(dmg - 1e-9))
 
 
 ## Armour absorbs first. Returns {"absorbed": int, "taken": int}.
@@ -116,8 +122,27 @@ func add_armor(amount: int) -> void:
 	armor += amount
 
 
+## Takes one stack of a perk (row from perks.tsv). Immediate effects (hp, armour) happen here.
+func apply_perk(row: Dictionary) -> void:
+	var stat: String = row["stat"]
+	mods[stat] += float(row["amount"])
+	perk_stacks[row["id"]] = perk_stacks.get(row["id"], 0) + 1
+	match stat:
+		"max_hp_add":
+			max_hp += int(row["amount"])
+			hp = mini(max_hp, hp + int(row["amount"]))
+		"armor_add":
+			armor += int(row["amount"])
+	_log.info("player", "perk", {"perk": row["id"], "stacks": perk_stacks[row["id"]], "stat": stat, "total": mods[stat]})
+
+
+## The max-HP pickup's cap; Vitality perks raise it.
+func max_hp_cap() -> int:
+	return int(_rules.t("max_hp")) + int(mods["max_hp_add"])
+
+
 func add_max_hp(amount: int) -> void:
-	max_hp = mini(int(_rules.t("max_hp")), max_hp + amount)
+	max_hp = mini(max_hp_cap(), max_hp + amount)
 	hp = mini(max_hp, hp + amount)
 
 

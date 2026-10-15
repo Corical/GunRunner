@@ -37,6 +37,12 @@ var score := 0
 var kills := 0
 var combo := 0
 var over := false
+## Level-ups: kills give xp (enemy base score). While `choices` is not empty the game waits for a pick:
+## step() does nothing until its input carries {"pick": index}.
+var xp := 0
+var level := 1
+var choices: PackedStringArray = []
+var pending_levels := 0
 var events: Array[Dictionary] = []
 
 var rules: Rules
@@ -75,6 +81,20 @@ func step(input: Dictionary) -> void:
 	events.clear()
 	if over:
 		return
+	if not choices.is_empty():
+		var pick = input.get("pick", null)
+		if typeof(pick) != TYPE_INT and typeof(pick) != TYPE_FLOAT:
+			return  # waiting for the player to choose; no time passes
+		var i := int(pick)
+		if i < 0 or i >= choices.size():
+			_log.warn("levels", "bad_pick", {"pick": i, "choices": choices.size()})
+			return
+		_take_perk(choices[i])
+		choices.clear()
+		if pending_levels > 0:
+			pending_levels -= 1
+			_offer_perks()
+			return
 	tick += 1
 	_log.tick = tick
 	var dt := STEP
@@ -84,7 +104,7 @@ func step(input: Dictionary) -> void:
 	player.update_timers(dt)
 	if player.try_fire():
 		var w := player.weapon()
-		var fired := bullets.fire(player.x, player.z + rules.t("muzzle_z_offset"), w, player.shot_damage())
+		var fired := bullets.fire(player.x, player.z + rules.t("muzzle_z_offset"), w, player.shot_damage(), player.mods)
 		if fired > 0:
 			_push_event(Events.Kind.FIRED, {"weapon": w["id"], "x": player.x, "z": player.z, "bullets": fired})
 		if fired < int(w["bullet_count"]):
@@ -104,6 +124,7 @@ func step(input: Dictionary) -> void:
 	if not boss.active and distance >= (boss.wave + 1) * rules.t("boss_interval"):
 		_start_boss()
 	distance += dt * rules.t("game_speed")
+	_check_level_up()
 	if not player.alive():
 		_game_over()
 
@@ -123,6 +144,7 @@ func damage_enemy(e: Enemies.Enemy, amount: int, source: String, weapon := "") -
 	var gain: int = int(e.row["score"]) * maxi(1, combo)
 	score += gain
 	kills += 1
+	xp += int(e.row["score"])
 	combo += 1
 	_log.debug("score", "kill", {"enemy": e.type_id, "source": source, "gain": gain, "combo": combo})
 	_push_event(Events.Kind.ENEMY_KILLED, {
@@ -130,6 +152,52 @@ func damage_enemy(e: Enemies.Enemy, amount: int, source: String, weapon := "") -
 		"weapon": weapon, "score_gain": gain, "combo": combo,
 	})
 	return true
+
+
+## xp needed to go from `lvl` to lvl+1.
+func xp_needed(lvl: int) -> int:
+	return int(round(rules.t("xp_base") * pow(rules.t("xp_growth"), lvl - 1)))
+
+
+func _check_level_up() -> void:
+	while xp >= xp_needed(level):
+		xp -= xp_needed(level)
+		level += 1
+		if choices.is_empty():
+			_offer_perks()
+		else:
+			pending_levels += 1
+
+
+## Rolls up to 3 different perks that still have stacks left (weighted, seeded). None left = no pause.
+func _offer_perks() -> void:
+	var pool: Array[Dictionary] = []
+	for row in rules.perks:
+		if player.perk_stacks.get(row["id"], 0) < int(row["max_stacks"]):
+			pool.append(row)
+	choices.clear()
+	while choices.size() < 3 and not pool.is_empty():
+		var total := 0
+		for row in pool:
+			total += int(row["weight"])
+		var roll := rng.range_int(0, total - 1)
+		for j in pool.size():
+			roll -= int(pool[j]["weight"])
+			if roll < 0:
+				choices.append(pool[j]["id"])
+				pool.remove_at(j)
+				break
+	_log.info("levels", "level_up", {"level": level, "choices": ",".join(choices)})
+	_push_event(Events.Kind.LEVEL_UP, {"level": level, "choices": choices.duplicate()})
+
+
+func _take_perk(id: String) -> void:
+	for row in rules.perks:
+		if row["id"] == id:
+			player.apply_perk(row)
+			_push_event(Events.Kind.PERK_TAKEN, {"perk": id, "stacks": player.perk_stacks[id], "level": level})
+			return
+	_log.error("levels", "unknown_perk", {"perk": id})
 
 
 ## Damage after the weapon-vs-enemy table: max(1, round(base * multiplier)).
@@ -150,7 +218,10 @@ func _bullets_vs_enemies() -> void:
 			b.hit[e.serial] = true
 			var hx := e.x
 			var hz := e.z
-			damage_enemy(e, effective_damage(b.damage, b.weapon_id, e.type_id), "bullet", b.weapon_id)
+			var dmg := effective_damage(b.damage, b.weapon_id, e.type_id)
+			if player.mods["crit_chance"] > 0.0 and rng.next_float() < player.mods["crit_chance"]:
+				dmg *= 2
+			damage_enemy(e, dmg, "bullet", b.weapon_id)
 			if b.splash_radius > 0.0:
 				_splash(b, hx, hz, e)
 			if bullets.spend(b):
@@ -239,7 +310,8 @@ func _pickups() -> void:
 	for u in upgrades.pool:
 		if not u.active or not u.thawed:
 			continue
-		if absf(u.x - player.x) >= rules.t("pickup_dx") or absf(u.z - player.z) >= rules.t("pickup_dz"):
+		var reach: float = 1.0 + player.mods["pickup_mult"]
+		if absf(u.x - player.x) >= rules.t("pickup_dx") * reach or absf(u.z - player.z) >= rules.t("pickup_dz") * reach:
 			continue
 		u.active = false
 		_apply_reward(u)
@@ -252,7 +324,7 @@ func _apply_reward(u: Upgrades.Upgrade) -> void:
 		"weapon":
 			player.set_weapon(u.reward_id)
 		"tower":
-			towers.deploy(u.reward_id, player.x, _emit)
+			towers.deploy(u.reward_id, player.x, _emit, 1.0 + player.mods["tower_duration_mult"])
 		"heal":
 			player.heal(int(rules.t("heal_amount")))
 		"armor":
@@ -332,8 +404,12 @@ const INPUT_GRID := 1.0 / 4096.0
 
 
 ## The input exactly as the sim will use it; record this, not the raw controller value.
-static func quantize_input(inp: Dictionary) -> Dictionary:
+## "pick" is kept only while a level-up is open (choosing = true): then a pick is always an input change, so
+## the recorder (which writes changes) always records it, and a replay can treat it as one-shot.
+static func quantize_input(inp: Dictionary, choosing := false) -> Dictionary:
 	var out := {}
+	if choosing and (typeof(inp.get("pick")) == TYPE_INT or typeof(inp.get("pick")) == TYPE_FLOAT):
+		out["pick"] = int(inp["pick"])
 	if inp.has("move"):
 		out["move"] = _axis(inp["move"])
 	if inp.has("target_x") and not is_nan(_target(inp["target_x"])):
@@ -359,4 +435,5 @@ func state_hash() -> int:
 		if t.active:
 			parts.append_array([t.serial, t.type_id, t.x, t.time_left])
 	parts.append_array([boss.active, boss.wave, boss.hp, boss.x, boss.z, boss.speed])
+	parts.append_array([xp, level, choices, pending_levels, player.perk_stacks])
 	return hash(parts)

@@ -20,6 +20,7 @@ var _hp_bar_width := 250.0
 var _buffs: Label
 var _stand_in: Label
 var _speed: Label
+var _level: Label
 
 
 func build(stand_in_art: bool) -> void:
@@ -46,6 +47,8 @@ func build(stand_in_art: bool) -> void:
 	# Shown whenever the game is not at normal speed, so a saved speed can never be silently fast.
 	_speed = UiKit.label("", 16, Color("#FBBF24"), true)
 	info_row.add_child(_speed)
+	_level = UiKit.label("LV 1", 16, Color("#A7F3D0"), true)
+	info_row.add_child(_level)
 	UiKit.pin(top_left, Control.PRESET_TOP_LEFT, 16)
 
 	# Top-right: weapon. Menus put [Pause][Settings] below it.
@@ -101,6 +104,7 @@ func update(s: Sim, speed := 1.0) -> void:
 	_score.text = UiKit.thousands(s.score)
 	_distance.text = "%dm" % int(s.distance)
 	_speed.text = "SPEED %.1fx" % speed if absf(speed - 1.0) > 0.01 else ""
+	_level.text = "LV %d  %d/%d XP" % [s.level, s.xp, s.xp_needed(s.level)]
 	_weapon.text = String(s.rules.weapons[s.player.weapon_id]["name"]).to_upper()
 	_combo.text = "x%d COMBO" % s.combo if s.combo >= 3 else ""
 	var p := s.player

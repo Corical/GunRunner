@@ -72,3 +72,5 @@ boss_pushback	8	GameManager.ts step 7
 boss_score_per_wave	500	GameManager.ts onBossDefeated
 boss_steer_speed	3	ours: plan D13, boss follows the player's x so the road edge is not a safe spot (tune in play)
 enemy_hp_per_100m	0.12	ours: enemies +12% hp per 100 m, rounded up (Babylon never raised hp)
+xp_base	100	ours: xp for level 2 (a Runner gives 10)
+xp_growth	1.35	ours: each level needs 35% more xp

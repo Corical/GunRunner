@@ -7,7 +7,10 @@ var _bot := Bot.new()
 
 
 func read(sim: Object) -> Dictionary:
-	return {"move": _bot.decide(sim)}
+	var inp := {"move": _bot.decide(sim)}
+	if not sim.choices.is_empty():
+		inp["pick"] = _bot.pick(sim)
+	return inp
 
 
 func name() -> String:

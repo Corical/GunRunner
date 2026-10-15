@@ -12,7 +12,7 @@ const Events = preload("res://scripts/sim/events.gd")
 const K = Events.Kind
 
 const HANDLED := [K.FIRED, K.ENEMY_HIT, K.ENEMY_KILLED, K.PLAYER_HURT, K.ICE_HIT, K.ICE_SHATTERED, K.PICKUP,
-	K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_DEFEATED, K.GAME_OVER]
+	K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_DEFEATED, K.GAME_OVER, K.LEVEL_UP, K.PERK_TAKEN]
 
 const RATE := 22050
 const VOICES := 12
@@ -66,7 +66,7 @@ func handle(events: Array) -> void:
 				name = "ice_crack"
 			K.ICE_SHATTERED:
 				name = "ice_shatter"
-			K.PICKUP:
+			K.PICKUP, K.LEVEL_UP, K.PERK_TAKEN:
 				name = "pickup"
 			K.BOSS_STARTED:
 				name = "boss"

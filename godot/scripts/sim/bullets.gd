@@ -41,8 +41,12 @@ func _init(rules: Rules, logger: GLog) -> void:
 
 
 ## Fires one shot of `weapon` from (x, z). Returns how many bullets left the muzzle.
-func fire(x: float, z: float, weapon: Dictionary, damage: int) -> int:
-	var count: int = weapon["bullet_count"]
+## mods: the player's perk modifiers (extra_bullets, range_mult, bullet_speed_mult, pierce_add); {} = none.
+func fire(x: float, z: float, weapon: Dictionary, damage: int, mods := {}) -> int:
+	var extra := int(mods.get("extra_bullets", 0.0))
+	var count: int = int(weapon["bullet_count"]) + extra
+	# A single-shot weapon with Split Shot fans its bullets out a little; spread weapons keep their own fan.
+	var spread: float = weapon["bullet_spread"] if int(weapon["bullet_count"]) > 1 else 0.8 * extra
 	var fired := 0
 	for i in count:
 		var b := _inactive()
@@ -53,7 +57,7 @@ func fire(x: float, z: float, weapon: Dictionary, damage: int) -> int:
 			break
 		var spread_offset := 0.0
 		if count > 1:
-			spread_offset = (float(i) / (count - 1) - 0.5) * weapon["bullet_spread"]
+			spread_offset = (float(i) / (count - 1) - 0.5) * spread
 		b.serial = _next_serial
 		_next_serial += 1
 		b.active = true
@@ -62,12 +66,12 @@ func fire(x: float, z: float, weapon: Dictionary, damage: int) -> int:
 		b.prev_x = x
 		b.prev_z = z
 		b.vx = spread_offset * _rules.t("bullet_spread_speed")
-		b.vz = _rules.t("bullet_speed")
+		b.vz = _rules.t("bullet_speed") * (1.0 + mods.get("bullet_speed_mult", 0.0))
 		b.start_z = z
 		b.damage = damage
-		b.penetration = weapon["penetration"]
+		b.penetration = int(weapon["penetration"]) + int(mods.get("pierce_add", 0.0))
 		b.splash_radius = weapon["splash_radius"]
-		b.max_range = weapon["max_range"]
+		b.max_range = float(weapon["max_range"]) * (1.0 + mods.get("range_mult", 0.0))
 		b.weapon_id = weapon["id"]
 		b.hit.clear()
 		fired += 1

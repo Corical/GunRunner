@@ -25,6 +25,8 @@ enum Kind {
 	BOSS_WRAPPED,     ## wave (boss passed the player and comes round again)
 	BOSS_DEFEATED,    ## wave, x, z, score_gain
 	GAME_OVER,        ## score, distance, kills
+	LEVEL_UP,         ## level, choices (perk ids) - the game waits for a pick
+	PERK_TAKEN,       ## perk, stacks, level
 }
 
 ## Damage sources, for ENEMY_HIT / ENEMY_KILLED / PLAYER_HURT.
