@@ -20,6 +20,7 @@ class Slot:
 	var bar_fill: MeshInstance3D
 	var extra: Node3D      ## ice block for upgrades
 	var label: Label3D     ## upgrades: what the pickup is (rewards.tsv label/color)
+	var or_label: Label3D  ## upgrades: "OR" midway to the partner, shown on the left half of a frozen pair
 	var status := ""       ## "", "burn", "poison": overlay currently applied
 
 
@@ -36,6 +37,8 @@ var build_usec := 0
 var prewarm_ms := 0.0
 
 const LEAN_RADIANS := 0.35  ## ours: full lean at drag top speed
+const LABEL_FADE_IN := 65.0  ## ours: pickup names start to show this many metres ahead of the player
+const LABEL_FULL := 50.0     ## ours: ...and are fully opaque from here
 
 var _player: Node3D
 var _player_body: Node3D
@@ -94,6 +97,11 @@ func setup(catalog: ModelCatalog, sim: Sim) -> void:
 		s.root.add_child(s.extra)
 		s.label = _pickup_label()
 		s.root.add_child(s.label)
+		s.or_label = _pickup_label()
+		s.or_label.text = "OR"
+		s.or_label.font_size = 48
+		s.or_label.position.y = 1.2
+		s.root.add_child(s.or_label)
 		_upgrades.append(s)
 	for i in sim.traps.pool.size():
 		_traps.append(_new_slot(true, _bar_fill_mat))
@@ -284,18 +292,26 @@ func _sync_upgrades(alpha: float) -> void:
 			continue
 		if s.current != u.reward_id:
 			var row: Dictionary = _reward_row(u.reward_id)
-			s.label.text = row["label"]
+			var text: String = row["label"]
+			s.label.text = text.replace(" ", "\n") if text.length() > 8 else text  # FIRE TOWER on two lines
 			s.label.modulate = Color(row["color"])
 		_show_model(s, "reward", u.reward_id)
 		s.root.visible = true
 		s.root.position = WorldView.view_pos(lerpf(u.prev_x, u.x, alpha), lerpf(u.prev_z, u.z, alpha))
 		s.extra.visible = not u.thawed
-		# Near pickups read loudest; far ones shrink and fade so a row of them on the horizon doesn't overlap.
-		var far: float = _sim.rules.t("enemy_spawn_distance") + _sim.rules.t("enemy_spawn_jitter")
-		var near := clampf(inverse_lerp(far, 25.0, u.z - _sim.rules.t("player_z")), 0.0, 1.0)
-		s.label.scale = Vector3.ONE * lerpf(0.5, 1.0, near)
-		s.label.modulate.a = lerpf(0.45, 1.0, near)
+		# Labels appear from LABEL_FADE_IN metres (fully on at LABEL_FULL) and grow as the pickup nears: on the
+		# horizon several pickups overlap into mush, and at 6 m/s 50 m still leaves ~8 s to choose.
+		var ahead: float = u.z - _sim.rules.t("player_z")
+		s.label.visible = ahead < LABEL_FADE_IN
+		s.label.modulate.a = clampf(inverse_lerp(LABEL_FADE_IN, LABEL_FULL, ahead), 0.0, 1.0)
 		s.label.outline_modulate.a = 0.85 * s.label.modulate.a
+		var other = _sim.upgrades.frozen_partner(u)
+		s.or_label.visible = s.label.visible and other != null and not u.thawed and other.x > u.x
+		if s.or_label.visible:
+			# View x is mirrored sim x (WorldView.view_pos): halfway to the partner in view space.
+			s.or_label.position.x = (WorldView.view_pos(other.x, other.z).x - s.root.position.x) / 2.0
+			s.or_label.modulate.a = s.label.modulate.a
+			s.or_label.outline_modulate.a = s.label.outline_modulate.a
 		var reward: Node3D = s.models[u.reward_id]
 		if u.thawed:
 			reward.position.y = 0.3 + sin(_t * 5.0) * 0.25
@@ -390,12 +406,14 @@ func _pickup_label() -> Label3D:
 	var l := Label3D.new()
 	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	l.no_depth_test = true
-	l.fixed_size = true  # same size on screen at any distance: you decide which pickup to go for while it is far
+	# Sized in the world (not fixed on screen): it shrinks with the road, so the two names of a pair keep their gap
+	# at any distance. 0.018 m/px keeps an 8-letter name under ~6 m, inside half the road.
 	l.font_size = 64
-	l.pixel_size = 0.0009
+	l.pixel_size = 0.018
 	l.outline_size = 16
 	l.outline_modulate = Color(0, 0, 0, 0.85)
-	l.position = Vector3(0, 3.4, 0)
+	l.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM  # two-line names grow upward, never down over the ice bar
+	l.position = Vector3(0, 3.0, 0)
 	l.render_priority = 2
 	l.outline_render_priority = 1
 	return l

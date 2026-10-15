@@ -34,6 +34,7 @@ enum Kind {
 	TRAP_TRIGGERED,   ## serial, trap, effect, seconds, x, z (the player touched it)
 	TRAP_EXPIRED,     ## serial, trap (left the road behind the player)
 	CRIT,             ## x, z, amount, enemy (Lucky Shot doubled this hit)
+	UPGRADE_LOST,     ## serial, reward, x, z (its pair partner was freed first: pick one, lose the other)
 }
 
 ## Damage sources, for ENEMY_HIT / ENEMY_KILLED / PLAYER_HURT.

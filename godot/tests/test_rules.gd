@@ -94,6 +94,7 @@ func test_tuning_ranges_rejected() -> void:
 	_expect_error(func(t): _row(t, "tuning", "heal_amount")["value"] = -2.0, "heal_amount = -2")
 	_expect_error(func(t): _row(t, "tuning", "initial_hp")["value"] = 50.0, "initial_hp is above max_hp")
 	eq(_errors_after(func(t): _row(t, "tuning", "player_z")["value"] = -12.0), PackedStringArray(), "positions behind the player may be negative")
+	_expect_error(func(t): _row(t, "tuning", "upgrade_pair_chance")["value"] = 1.5, "upgrade_pair_chance = 1.5, is a chance")
 
 
 func test_every_range_rule_names_a_real_key() -> void:

@@ -13,7 +13,7 @@ const K = Events.Kind
 const HANDLED := [K.FIRED, K.ENEMY_HIT, K.ENEMY_KILLED, K.PLAYER_HURT, K.COMBO_BROKEN, K.ICE_HIT, K.ICE_SHATTERED,
 	K.PICKUP, K.TOWER_DEPLOYED, K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_WRAPPED, K.BOSS_DEFEATED,
 	K.GAME_OVER, K.POOL_EXHAUSTED, K.LEVEL_UP, K.PERK_TAKEN, K.EXPLOSION, K.CRIT, K.TRAP_HIT, K.TRAP_DESTROYED,
-	K.TRAP_TRIGGERED]
+	K.TRAP_TRIGGERED, K.UPGRADE_LOST]
 
 const EMITTERS := 72  ## rocket trails add ~60 short-lived puffs per second
 const LABELS := 40
@@ -121,6 +121,9 @@ func handle(events: Array) -> void:
 				_burst(ev, 0.0, 1.0, Color("#A5F3FC"), 6, 0.35, 4.0)
 			K.ICE_SHATTERED:
 				_burst(ev, 0.0, 1.0, Color("#67E8F9"), 28, 0.7, 7.0)
+			K.UPGRADE_LOST:
+				_burst(ev, 0.0, 1.0, Color("#9CA3AF"), 18, 0.5, 5.0)
+				_text(ev, "LOST", Color("#9CA3AF"), 1.6, 0.9)
 			K.PICKUP:
 				_burst(ev, 0.0, 1.0, Color("#FBBF24"), 24, 0.6, 5.0)
 				_text(ev, _pickup_text(ev), Color("#FDE047"), 2.0, 1.3)

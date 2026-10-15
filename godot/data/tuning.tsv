@@ -41,10 +41,10 @@ bullet_spread_speed	8	Bullet.ts activate velocity
 bullet_hit_radius	1.2	Config.ts BULLET_HIT_RADIUS
 splash_max_victims	5	CollisionSystem.ts MAX_SPLASH
 enemy_hit_player_radius	1.5	Config.ts ENEMY_HIT_PLAYER_RADIUS
-upgrade_spawn_per_second	0.48	ours: Config.ts FROZEN_SPAWN_CHANCE 0.008 per frame x 60 (plan D1)
+upgrade_spawn_per_second	0.36	ours: was 0.48 (Config.ts FROZEN_SPAWN_CHANCE 0.008 x 60, plan D1); pick-one pairs crowded the road at 0.48
 upgrade_ice_hp	8	Config.ts FROZEN_ICE_HP
 upgrade_speed	6	Config.ts FROZEN_SPEED
-upgrade_pool	5	FrozenUpgradeManager.ts POOL_SIZE
+upgrade_pool	8	ours: was 5 (FrozenUpgradeManager.ts POOL_SIZE); pick-one pairs use two slots at once
 upgrade_despawn_z	-15	FrozenUpgrade.ts update
 upgrade_radius	1.2	FrozenUpgrade.ts getCollisionInfo
 pickup_dx	2.0	GameManager.ts step 10
@@ -81,3 +81,4 @@ trap_sway_amplitude	2.5	ours: traps weave this far either side of their line (ro
 trap_sway_speed	1.4	ours: radians per second, about one full weave every 4.5 s
 upgrade_sway_amplitude	1.2	ours: boosters drift gently too (Corne 19:31, side-to-side); 0 = Babylon straight line
 upgrade_sway_speed	1.0	ours: radians per second
+upgrade_pair_chance	0.8	ours: share of drops that come as a pick-one pair (15 Oct: "very the same shit over and over")

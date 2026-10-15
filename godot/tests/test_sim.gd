@@ -714,9 +714,14 @@ func test_reward_roll_matches_weights() -> void:
 
 
 func test_upgrade_rate_per_second_and_none_during_boss() -> void:
-	var s := _quiet({"upgrade_spawn_per_second": 0.48, "upgrade_pool": 400})
+	var s := _quiet({"upgrade_spawn_per_second": 0.48, "upgrade_pool": 400, "upgrade_pair_chance": 0})
 	var spawned := _of(_run(s, 36000), K.UPGRADE_SPAWNED).size()
 	ok(spawned >= 230 and spawned <= 346, "10 sim-minutes: %d spawns, expect 288 +- 58" % spawned)
+	# All pairs: the same drop rate (one reward per drop), so exactly twice the pickups on the road.
+	var p := _quiet({"upgrade_spawn_per_second": 0.48, "upgrade_pool": 400, "upgrade_pair_chance": 1})
+	var halves := _of(_run(p, 36000), K.UPGRADE_SPAWNED)
+	ok(halves.size() >= 460 and halves.size() <= 692, "10 sim-minutes of pairs: %d halves, expect 576 +- 116" % halves.size())
+	eq(halves.size() % 2, 0, "pickups only ever come in twos")
 
 	var b := _quiet({"upgrade_spawn_per_second": 0.48, "boss_steer_speed": 0})
 	b._start_boss()
@@ -765,6 +770,133 @@ func test_ice_stops_even_a_railgun_bullet() -> void:
 	var ev := _run(s, 10)
 	eq(_of(ev, K.ICE_SHATTERED).size(), 1, "15 damage shatters 8 ice hp")
 	ok(not b.active, "bullet stopped by ice despite penetration 4")
+
+
+# ---------- pick-one pairs ----------
+
+## Pairs with no weave and no drift: halves sit exactly where the test puts them.
+func _pair(left := "rocket", right := "heal") -> Array:
+	var s := _quiet({"upgrade_sway_amplitude": 0, "upgrade_speed": 0.01})
+	ok(s.upgrades.spawn_pair(s._emit, [left, right]), "pair spawned")
+	var halves := []
+	for u in s.upgrades.pool:
+		if u.active:
+			halves.append(u)
+	return [s, halves]
+
+
+func test_pair_is_two_different_rewards_mirrored_and_linked() -> void:
+	var p := _pair()
+	var halves: Array = p[1]
+	eq(halves.size(), 2)
+	var a = halves[0]
+	var b = halves[1]
+	eq([a.reward_id, b.reward_id], ["rocket", "heal"])
+	eq(a.x, -b.x, "one each side of the road")
+	ok(a.x < 0.0, "left first")
+	eq(a.z, b.z, "side by side")
+	eq([a.partner, b.partner], [b.serial, a.serial])
+
+
+func test_rolled_pairs_never_offer_the_same_thing_twice() -> void:
+	for seed_value in 40:
+		var s := _quiet({}, seed_value)
+		s.upgrades.spawn_pair(s._emit)
+		var ids := []
+		for u in s.upgrades.pool:
+			if u.active:
+				ids.append(u.reward_id)
+		ok(ids.size() == 2 and ids[0] != ids[1], "seed %d gave %s" % [seed_value, ids])
+
+
+func test_freeing_one_half_loses_the_other() -> void:
+	var p := _pair()
+	var s: Sim = p[0]
+	var a = p[1][0]
+	var b = p[1][1]
+	a.z = 5.0
+	b.z = 5.0
+	_shoot(s, "railgun", a.x, 0.0)
+	var ev := _run(s, 10)
+	eq(_of(ev, K.ICE_SHATTERED).size(), 1)
+	var lost := _of(ev, K.UPGRADE_LOST)
+	eq(lost.size(), 1, "partner lost")
+	if lost.size() == 1:
+		eq(lost[0]["serial"], b.serial)
+	ok(a.active and a.thawed, "the one you freed is yours to take")
+	ok(not b.active, "the other is gone")
+
+
+## Worst order: both halves break on the same step. Only the first may be freed.
+func test_both_halves_shot_on_the_same_step_frees_only_one() -> void:
+	var p := _pair()
+	var s: Sim = p[0]
+	var a = p[1][0]
+	var b = p[1][1]
+	a.z = 5.0
+	b.z = 5.0
+	_shoot(s, "railgun", a.x, 0.0)
+	_shoot(s, "railgun", b.x, 0.0)
+	var ev := _run(s, 10)
+	eq(_of(ev, K.ICE_SHATTERED).size(), 1, "only one shatters")
+	eq(_of(ev, K.UPGRADE_LOST).size(), 1)
+	ok(a.active != b.active, "exactly one half left: a=%s b=%s" % [a.active, b.active])
+
+
+## The partner rolled off the road and its slot now holds a new pickup with a new serial: freeing the old half
+## must not destroy the stranger in that slot.
+func test_freeing_a_half_never_kills_whatever_reused_the_partner_slot() -> void:
+	var p := _pair()
+	var s: Sim = p[0]
+	var a = p[1][0]
+	var b = p[1][1]
+	b.active = false
+	s.upgrades.spawn("armor", s._emit)
+	ok(b.active and b.reward_id == "armor" and b.serial != a.partner, "slot reused by a new pickup")
+	b.z = 40.0
+	a.z = 5.0
+	_shoot(s, "railgun", a.x, 0.0)
+	var ev := _run(s, 10)
+	eq(_of(ev, K.UPGRADE_LOST).size(), 0, "nothing lost")
+	ok(b.active, "the new armour pickup survived")
+
+
+func test_single_pickups_never_lose_anything() -> void:
+	var s := _quiet({"upgrade_sway_amplitude": 0, "upgrade_speed": 0.01})
+	s.upgrades.spawn("heal", s._emit)
+	s.upgrades.spawn("armor", s._emit)
+	var first = s.upgrades.pool[0]
+	first.x = 0.0
+	first.z = 5.0
+	s.upgrades.pool[1].z = 5.0
+	_shoot(s, "railgun", 0.0, 0.0)
+	eq(_of(_run(s, 10), K.UPGRADE_LOST).size(), 0)
+	ok(s.upgrades.pool[1].active, "unpaired neighbour untouched")
+
+
+func test_pair_with_one_free_slot_falls_back_to_a_single() -> void:
+	var s := _quiet()
+	for i in s.upgrades.pool.size() - 1:
+		s.upgrades.spawn("heal", s._emit)
+	ok(s.upgrades.spawn_pair(s._emit), "still spawns something")
+	eq(s.upgrades.active_count(), s.upgrades.pool.size())
+	for u in s.upgrades.pool:
+		eq(u.partner, 0, "no half-pair with a missing partner")
+
+
+func test_pair_halves_weave_in_step() -> void:
+	var s := _quiet({"upgrade_speed": 0.01})
+	s.upgrades.spawn_pair(s._emit, ["rocket", "heal"])
+	var halves := []
+	for u in s.upgrades.pool:
+		if u.active:
+			halves.append(u)
+	var gap: float = halves[1].x - halves[0].x
+	for i in 120:
+		s.step({})
+		ok(is_equal_approx(halves[1].x - halves[0].x, gap), "gap changed at step %d" % i)
+		if halves[1].x - halves[0].x != gap:
+			break
 
 
 # ---------- determinism and structure ----------

@@ -123,7 +123,10 @@ func step(input: Dictionary) -> void:
 	if boss.active:
 		_boss_step(dt)
 	if not boss.active and rng.next_float() < rules.t("upgrade_spawn_per_second") * dt:
-		upgrades.spawn("", _emit)
+		if rng.next_float() < rules.t("upgrade_pair_chance"):
+			upgrades.spawn_pair(_emit)
+		else:
+			upgrades.spawn("", _emit)
 	upgrades.update(dt, _emit)
 	_bullets_vs_ice()
 	if not boss.active and rng.next_float() < rules.t("trap_spawn_per_second") * dt:
@@ -355,6 +358,9 @@ func _bullets_vs_ice() -> void:
 			if shattered:
 				_log.info("upgrades", "shattered", {"serial": u.serial, "reward": u.reward_id})
 				_push_event(Events.Kind.ICE_SHATTERED, {"serial": u.serial, "reward": u.reward_id, "x": u.x, "z": u.z})
+				var other = upgrades.frozen_partner(u)
+				if other != null:
+					upgrades.lose(other, _emit)
 			else:
 				_push_event(Events.Kind.ICE_HIT, {"serial": u.serial, "x": u.x, "z": u.z, "amount": b.damage, "ice_hp": u.ice_hp})
 			break
@@ -529,7 +535,7 @@ func state_hash() -> int:
 				b.max_range, b.weapon_id, b.detonates, b.hit.keys()])
 	for u in upgrades.pool:
 		if u.active:
-			parts.append_array([u.serial, u.reward_id, u.x, u.z, u.ice_hp, u.thawed, u.phase, u.centre_x])
+			parts.append_array([u.serial, u.reward_id, u.x, u.z, u.ice_hp, u.thawed, u.phase, u.centre_x, u.partner])
 	for t in traps.pool:
 		if t.active:
 			parts.append_array([t.serial, t.trap_id, t.x, t.z, t.hp, t.phase, t.centre_x])

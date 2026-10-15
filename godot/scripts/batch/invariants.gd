@@ -40,9 +40,17 @@ func check_step(s: Sim) -> void:
 	for b in s.bullets.pool:
 		if b.active and b.penetration <= 0:
 			_fail(s, "bullet %d active with penetration %d" % [b.serial, b.penetration])
+	var thawed_serials := {}
 	for u in s.upgrades.pool:
 		if u.active and (absf(u.x) > road_half or u.ice_hp < 0):
 			_fail(s, "upgrade %d x=%f ice=%d" % [u.serial, u.x, u.ice_hp])
+		if u.active and u.thawed:
+			thawed_serials[u.serial] = u.partner
+	# Pick one, lose the other: a pair may never have both halves free at once.
+	for serial in thawed_serials:
+		var partner: int = thawed_serials[serial]
+		if partner != 0 and thawed_serials.has(partner):
+			_fail(s, "upgrade pair %d/%d both freed" % [serial, partner])
 	for t in s.traps.pool:
 		if t.active and (absf(t.x) > road_half or t.hp <= 0):
 			_fail(s, "trap %d x=%f hp=%d" % [t.serial, t.x, t.hp])

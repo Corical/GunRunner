@@ -58,7 +58,9 @@ func test_replay_reproduces_the_game_exactly() -> void:
 	eq(r.sim.tick, played.tick)
 	eq(r.sim.state_hash(), played.state_hash(), "identical final state")
 	eq(r.sim.kills, played.kills)
-	ok(played.kills > 10, "the recorded run actually played (%d kills)" % played.kills)
+	# Fixture sanity, not balance: the run must be a real game. Was > 10; pick-one pairs put twice the ice on the
+	# road, which soaks bullets, and this seed now dies at tick 2012 with 8 kills (15 Oct 2026).
+	ok(played.kills >= 5, "the recorded run actually played (%d kills, tick %d, over=%s)" % [played.kills, played.tick, played.over])
 
 
 func test_tampered_seed_is_caught() -> void:

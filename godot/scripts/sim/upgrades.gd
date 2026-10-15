@@ -23,6 +23,7 @@ class Upgrade:
 	var thawed := false
 	var centre_x := 0.0  ## the drift swings around this
 	var phase := 0.0
+	var partner := 0  ## serial of the other half of a pick-one pair (0 = single). Freeing one loses the other.
 
 
 var pool: Array[Upgrade] = []
@@ -50,24 +51,80 @@ func spawn(reward_id: String, emit: Callable) -> bool:
 		_log.info("upgrades", "pool_full", {"pool": pool.size(), "wanted": reward_id if reward_id != "" else "roll"})
 		return false
 	var reward := _roll() if reward_id == "" else _reward_row(reward_id)
-	var amp := _rules.t("upgrade_sway_amplitude")
-	var half := maxf(0.0, _rules.t("road_width") / 2.0 - _rules.t("enemy_road_margin") - amp)
+	var half := _half_lane()
+	_place(u, reward, _rng.range_float(-half, half), _rng.next_float() * TAU,
+		_rules.t("enemy_spawn_distance") + _rng.next_float() * _rules.t("enemy_spawn_jitter"), emit)
+	return true
+
+
+## Pick-one pair: two different rewards side by side, one each side of the road, weaving in step so the gap
+## never closes. Freeing one shatters the other (sim.gd). Falls back to a single when only one slot is free.
+## Rewards forced by a test go in as [left, right]; [] = roll both.
+func spawn_pair(emit: Callable, forced: Array = []) -> bool:
+	var a := _inactive()
+	if a == null:
+		return spawn("", emit)
+	a.active = true  # reserve it so _inactive() returns a different slot
+	var b := _inactive()
+	a.active = false
+	if b == null:
+		return spawn("", emit)
+	var left := _reward_row(forced[0]) if forced.size() == 2 else _roll()
+	var right := _reward_row(forced[1]) if forced.size() == 2 else _roll()
+	for i in 8:  # a pair of the same thing is no choice; bounded so a one-row table cannot hang
+		if right["id"] != left["id"]:
+			break
+		right = _roll()
+	var half := _half_lane()
+	var offset := _rng.range_float(half * 0.8, half)  # wide apart, so their names do not overlap
+	var phase := _rng.next_float() * TAU
+	var z := _rules.t("enemy_spawn_distance") + _rng.next_float() * _rules.t("enemy_spawn_jitter")
+	_place(a, left, -offset, phase, z, emit)
+	_place(b, right, offset, phase, z, emit)
+	a.partner = b.serial
+	b.partner = a.serial
+	return true
+
+
+## Furthest an upgrade's centre may sit from the middle so its weave stays on the road.
+func _half_lane() -> float:
+	return maxf(0.0, _rules.t("road_width") / 2.0 - _rules.t("enemy_road_margin") - _rules.t("upgrade_sway_amplitude"))
+
+
+func _place(u: Upgrade, reward: Dictionary, centre_x: float, phase: float, z: float, emit: Callable) -> void:
 	u.serial = _next_serial
 	_next_serial += 1
 	u.active = true
 	u.reward_id = reward["id"]
 	u.kind = reward["kind"]
-	u.centre_x = _rng.range_float(-half, half)
-	u.phase = _rng.next_float() * TAU
-	u.x = u.centre_x + amp * ExactMath.wave(u.phase)
-	u.z = _rules.t("enemy_spawn_distance") + _rng.next_float() * _rules.t("enemy_spawn_jitter")
+	u.centre_x = centre_x
+	u.phase = phase
+	u.x = u.centre_x + _rules.t("upgrade_sway_amplitude") * ExactMath.wave(u.phase)
+	u.z = z
 	u.prev_x = u.x
 	u.prev_z = u.z
 	u.ice_hp = int(_rules.t("upgrade_ice_hp"))
 	u.thawed = false
+	u.partner = 0
 	_log.info("upgrades", "spawned", {"serial": u.serial, "reward": u.reward_id, "x": u.x, "z": u.z})
 	emit.call(Events.Kind.UPGRADE_SPAWNED, {"serial": u.serial, "reward": u.reward_id, "reward_kind": u.kind, "x": u.x, "z": u.z})
-	return true
+
+
+## The partner of `u` if it is still waiting in its ice, else null.
+func frozen_partner(u: Upgrade) -> Upgrade:
+	if u.partner == 0:
+		return null
+	for o in pool:
+		if o.active and o.serial == u.partner and not o.thawed:
+			return o
+	return null
+
+
+## Partner of a freed pickup: gone, nothing gained.
+func lose(u: Upgrade, emit: Callable) -> void:
+	u.active = false
+	_log.info("upgrades", "lost", {"serial": u.serial, "reward": u.reward_id, "partner": u.partner})
+	emit.call(Events.Kind.UPGRADE_LOST, {"serial": u.serial, "reward": u.reward_id, "x": u.x, "z": u.z})
 
 
 func update(dt: float, emit: Callable) -> void:

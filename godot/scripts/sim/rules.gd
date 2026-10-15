@@ -35,8 +35,10 @@ const TUNING_KEYS := [
 	"boss_speed_full_hp", "boss_speed_bonus_at_zero_hp", "boss_contact_dx", "boss_contact_player_radius",
 	"boss_contact_damage", "boss_pushback", "boss_score_per_wave", "boss_steer_speed",
 	"trap_spawn_per_second", "trap_hp", "trap_pool", "trap_sway_amplitude", "trap_sway_speed", "upgrade_sway_amplitude",
-	"upgrade_sway_speed",
+	"upgrade_sway_speed", "upgrade_pair_chance",
 ]
+## Chances: must lie in 0..1.
+const TUNING_PROBABILITY := ["upgrade_pair_chance"]
 
 ## Range checks for tuning (Fable review #6: xp_growth < 1 made xp_needed() round to 0 and the level-up loop never
 ## ended). Every key must be >= 0 unless listed in TUNING_NEGATIVE_OK; keys here need at least this value.
@@ -205,5 +207,7 @@ func _build(tables: Dictionary) -> void:
 			errors.append("tuning: %s = %s, must be at least %s" % [key, v, TUNING_MIN[key]])
 		elif v < 0.0 and not TUNING_NEGATIVE_OK.has(key):
 			errors.append("tuning: %s = %s, must not be negative" % [key, v])
+		if TUNING_PROBABILITY.has(key) and v > 1.0:
+			errors.append("tuning: %s = %s, is a chance and must be at most 1" % [key, v])
 	if tuning.get("initial_hp", 1.0) > tuning.get("max_hp", 1.0):
 		errors.append("tuning: initial_hp is above max_hp")

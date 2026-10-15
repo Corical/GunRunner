@@ -76,6 +76,14 @@ func test_trap_off_road_or_dead_is_caught() -> void:
 				t.hp = 0, "trap")
 
 
+func test_both_halves_of_a_pair_freed_is_caught() -> void:
+	_expect(func(s):
+		s.upgrades.spawn_pair(s._emit)
+		for u in s.upgrades.pool:
+			if u.active and u.partner != 0:
+				u.thawed = true, "both freed")
+
+
 func test_bad_trap_effect_is_caught() -> void:
 	_expect(func(s): s.player.trap_left["nonsense"] = 3.0, "trap effect nonsense")
 
