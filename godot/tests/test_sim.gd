@@ -171,6 +171,36 @@ func test_piercing_bullet_never_hits_the_same_enemy_twice() -> void:
 	eq(tank.hp, 1000 - 30)
 
 
+## Fable review #3: hits went in pool-slot order. The enemy BEHIND sits in the lower slot here, so the old code
+## gave it the bullet; the one in front must take it.
+func test_bullet_hits_the_enemy_in_front_not_the_lower_pool_slot() -> void:
+	# A fast bullet (6.7 m per step) whose single step passes through both circles - at normal speed it would
+	# reach the front one a step earlier and the order would never matter.
+	var s := _quiet({"bullet_speed": 400})
+	var behind = _place(s, "shielded", 0.0, 13.0)   # slot 0
+	var front = _place(s, "shielded", 0.0, 10.0)    # slot 1
+	behind.hp = 1000
+	front.hp = 1000
+	_shoot(s, "pistol", 0.0, 6.0, 5)
+	_run(s, 1)
+	eq(front.hp, 995, "front enemy takes the hit")
+	eq(behind.hp, 1000, "enemy behind is untouched")
+
+
+func test_splash_hits_nearest_victims_not_lowest_slots() -> void:
+	var s := _quiet({"splash_max_victims": 1})
+	var far = _place(s, "shielded", 2.4, 20.0)   # lower slot, further from the blast
+	var near = _place(s, "shielded", 0.8, 20.0)
+	var target = _place(s, "shielded", 0.0, 20.0)
+	for e in [far, near, target]:
+		e.hp = 1000
+	_shoot(s, "rocket", 0.0, 12.0, 40)
+	_run(s, 30)
+	ok(target.hp < 1000, "rocket hit the target")
+	ok(near.hp < 1000, "nearest neighbour splashed")
+	eq(far.hp, 1000, "only 1 victim allowed, and it must be the nearest")
+
+
 ## The crit number on screen must be the damage actually dealt, and a non-crit must never show one.
 func test_crit_event_matches_damage_dealt_and_only_on_crits() -> void:
 	var s := _quiet()

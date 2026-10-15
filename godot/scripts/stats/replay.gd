@@ -61,6 +61,10 @@ static func replay(path: String, sim_logger: GLog) -> Result:
 			return r
 		match e.get("type"):
 			"in", "set":
+				var bad := _bad_numbers(e, ["t", "move", "target_x", "pick", "spawn_interval"])
+				if bad != "":
+					r.errors.append("line %d: %s is not a number" % [i + 1, bad])
+					return r
 				var t := int(e["t"])
 				if not by_tick.has(t):
 					by_tick[t] = []
@@ -68,8 +72,14 @@ static func replay(path: String, sim_logger: GLog) -> Result:
 			"chk":
 				checks[int(e["t"])] = int(e["hash"])
 			"start_weapon":
+				if not sim.rules.weapons.has(str(e.get("weapon", ""))):
+					r.errors.append("line %d: unknown start weapon %s" % [i + 1, e.get("weapon")])
+					return r
 				sim.player.set_weapon(str(e["weapon"]))
 			"start_tower":
+				if not sim.rules.towers.has(str(e.get("tower", ""))):
+					r.errors.append("line %d: unknown start tower %s" % [i + 1, e.get("tower")])
+					return r
 				sim.towers.deploy(str(e["tower"]), 0.0, func(_k, _f): pass)
 			"end":
 				end = e
@@ -117,6 +127,14 @@ static func replay(path: String, sim_logger: GLog) -> Result:
 
 
 ## Prints the report through `logger` and returns the process exit code.
+## First field among `keys` that is present but not a number, or "" (Fable review #17: float("x") was silently 0).
+static func _bad_numbers(e: Dictionary, keys: Array) -> String:
+	for k in keys:
+		if e.has(k) and typeof(e[k]) != TYPE_FLOAT and typeof(e[k]) != TYPE_INT:
+			return k
+	return ""
+
+
 static func run(path: String, logger: GLog) -> int:
 	var sim_log := GLog.new()
 	sim_log.min_level = GLog.Level.ERROR

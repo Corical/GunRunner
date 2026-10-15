@@ -281,7 +281,8 @@ func _process(delta: float) -> void:
 	_sfx.handle(_frame_events)
 	_haptics.handle(_frame_events)
 	_frame_events.clear()
-	var alpha := _clock.alpha() if state == State.PLAYING else 1.0
+	# A level-up card stops the sim, so interpolating would make everything jitter behind it (Fable #10).
+	var alpha := _clock.alpha() if state == State.PLAYING and _sim.choices.is_empty() else 1.0
 	_world.scroll(_sim.distance - (1.0 - alpha) * _rules.t("game_speed") * FrameClock.STEP)
 	_actors.sync(alpha, view_dt)
 	_actors.flash(_juice.flash_requests, view_dt)

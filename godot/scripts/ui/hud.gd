@@ -144,6 +144,7 @@ func tick(dt: float) -> void:
 		return
 	_vignette_alpha = maxf(0.0, _vignette_alpha - dt / 0.4)
 	_vignette.modulate.a = _vignette_alpha
+	_vignette.visible = _vignette_alpha > 0.0  # a hidden layer costs the phone nothing; a transparent one does
 
 
 func update(s: Sim, speed := 1.0) -> void:

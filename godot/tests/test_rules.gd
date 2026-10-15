@@ -78,6 +78,24 @@ func test_tuning_missing_and_dead_keys() -> void:
 	_expect_error(func(t): t["tuning"].append({"id": "gravity", "value": 9.8, "source": "x"}), "'gravity' is not read by the sim")
 
 
+## Fable review #6: xp_growth 0.5 made xp_needed() round to 0 and the level-up loop never ended.
+func test_tuning_ranges_rejected() -> void:
+	_expect_error(func(t): _row(t, "tuning", "xp_growth")["value"] = 0.5, "xp_growth = 0.5, must be at least 1")
+	_expect_error(func(t): _row(t, "tuning", "burn_tick")["value"] = 0.0, "burn_tick")
+	_expect_error(func(t): _row(t, "tuning", "wave_size_metres")["value"] = 0.0, "wave_size_metres")
+	_expect_error(func(t): _row(t, "tuning", "enemy_pool")["value"] = 0.0, "enemy_pool")
+	_expect_error(func(t): _row(t, "tuning", "heal_amount")["value"] = -2.0, "heal_amount = -2")
+	_expect_error(func(t): _row(t, "tuning", "initial_hp")["value"] = 50.0, "initial_hp is above max_hp")
+	eq(_errors_after(func(t): _row(t, "tuning", "player_z")["value"] = -12.0), PackedStringArray(), "positions behind the player may be negative")
+
+
+func test_every_range_rule_names_a_real_key() -> void:
+	for key in Rules.TUNING_MIN:
+		ok(Rules.TUNING_KEYS.has(key), "TUNING_MIN has unknown key " + key)
+	for key in Rules.TUNING_NEGATIVE_OK:
+		ok(Rules.TUNING_KEYS.has(key), "TUNING_NEGATIVE_OK has unknown key " + key)
+
+
 func test_weapon_sanity() -> void:
 	_expect_error(func(t): _row(t, "weapons", "smg")["fire_rate"] = 0.0, "fire_rate must be > 0")
 	_expect_error(func(t): _row(t, "weapons", "railgun")["penetration"] = 0, "penetration must be >= 1")

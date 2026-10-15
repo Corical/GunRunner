@@ -36,6 +36,19 @@ const TUNING_KEYS := [
 	"upgrade_sway_speed",
 ]
 
+## Range checks for tuning (Fable review #6: xp_growth < 1 made xp_needed() round to 0 and the level-up loop never
+## ended). Every key must be >= 0 unless listed in TUNING_NEGATIVE_OK; keys here need at least this value.
+const TUNING_NEGATIVE_OK := ["player_z", "enemy_despawn_z", "upgrade_despawn_z"]
+const TUNING_MIN := {
+	"game_speed": 0.01, "road_width": 1.0, "initial_hp": 1.0, "max_hp": 1.0, "player_move_speed": 0.01,
+	"enemy_speed": 0.01, "enemy_pool": 1.0, "enemy_radius_per_size": 0.01, "spawn_interval": 0.05,
+	"spawn_interval_min": 0.05, "wave_size_max": 1.0, "wave_size_metres": 1.0, "spawn_tries": 1.0,
+	"burn_tick": 0.05, "poison_tick": 0.05, "bullet_speed": 0.01, "bullet_pool": 1.0, "bullet_hit_radius": 0.01,
+	"upgrade_ice_hp": 1.0, "upgrade_speed": 0.01, "upgrade_pool": 1.0, "upgrade_radius": 0.01, "tower_pool": 1.0,
+	"boss_interval": 1.0, "boss_base_hp": 1.0, "boss_radius": 0.01, "xp_base": 1.0, "xp_growth": 1.0,
+	"trap_hp": 1.0, "trap_pool": 1.0, "frenzy_damage_mult": 1.0, "speed_buff_rate_mult": 0.01,
+}
+
 var errors: PackedStringArray = []
 var weapons := {}        ## id -> row
 var enemies := {}        ## id -> row
@@ -172,3 +185,11 @@ func _build(tables: Dictionary) -> void:
 	for key in TUNING_KEYS:
 		if not tuning.has(key):
 			errors.append("tuning: missing '%s'" % key)
+			continue
+		var v: float = tuning[key]
+		if TUNING_MIN.has(key) and v < TUNING_MIN[key]:
+			errors.append("tuning: %s = %s, must be at least %s" % [key, v, TUNING_MIN[key]])
+		elif v < 0.0 and not TUNING_NEGATIVE_OK.has(key):
+			errors.append("tuning: %s = %s, must not be negative" % [key, v])
+	if tuning.get("initial_hp", 1.0) > tuning.get("max_hp", 1.0):
+		errors.append("tuning: initial_hp is above max_hp")

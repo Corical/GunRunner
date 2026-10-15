@@ -73,6 +73,27 @@ func test_tampered_seed_is_caught() -> void:
 	ok(r.errors.size() == 1 and r.errors[0].begins_with("diverged at tick 600"), "caught at the first checkpoint: %s" % [r.errors])
 
 
+## Fable review #17: a corrupt line must be an error in the report, never a script crash or a silent 0.
+func test_corrupt_lines_are_reported_not_crashed_on() -> void:
+	var path := DIR.path_join("corrupt.jsonl")
+	_record(path, 5, 700)
+	var lines := FileAccess.get_file_as_string(path).strip_edges().split("\n")
+	var cases := {
+		"{\"type\":\"start_weapon\",\"weapon\":\"bazooka\"}": "unknown start weapon",
+		"{\"type\":\"start_tower\",\"tower\":\"lava\"}": "unknown start tower",
+		"{\"type\":\"in\",\"t\":3,\"move\":\"left\"}": "move is not a number",
+	}
+	for bad in cases:
+		var mixed := PackedStringArray([lines[0], bad])
+		mixed.append_array(lines.slice(1))
+		var f := FileAccess.open(path, FileAccess.WRITE)
+		f.store_string("\n".join(mixed))
+		f.close()
+		var r := Replay.replay(path, _quiet_log())
+		ok(not r.ok, "corrupt line accepted: " + bad)
+		ok(r.errors.size() == 1 and r.errors[0].contains(cases[bad]), "%s -> %s" % [bad, r.errors])
+
+
 func test_truncated_run_replays_to_last_checkpoint_with_a_warning() -> void:
 	var path := DIR.path_join("killed.jsonl")
 	var played := _record(path, 7, 1500, false)  # app killed: no end line

@@ -167,7 +167,7 @@ func damage_enemy(e: Enemies.Enemy, amount: int, source: String, weapon := "") -
 
 ## xp needed to go from `lvl` to lvl+1.
 func xp_needed(lvl: int) -> int:
-	return int(round(rules.t("xp_base") * pow(rules.t("xp_growth"), lvl - 1)))
+	return maxi(1, int(round(rules.t("xp_base") * pow(rules.t("xp_growth"), lvl - 1))))  # never 0: that loops forever
 
 
 func _check_level_up() -> void:
@@ -216,16 +216,31 @@ func effective_damage(base: int, weapon_id: String, enemy_id: String) -> int:
 	return maxi(1, int(round(base * rules.multiplier(weapon_id, enemy_id))))
 
 
+var _candidates: Array = []  ## [entry t, serial, enemy] for one bullet; reused to avoid per-bullet allocation
+
+
+static func _nearer(a: Array, b: Array) -> bool:
+	return a[0] < b[0] or (a[0] == b[0] and a[1] < b[1])
+
+
 func _bullets_vs_enemies() -> void:
 	var hit_r := rules.t("bullet_hit_radius")
 	for b in bullets.pool:
 		if not b.active:
 			continue
+		_candidates.clear()
 		for e in enemies.pool:
 			if not e.active or b.hit.has(e.serial):
 				continue
-			if not Collision.swept_hit(b.prev_x, b.prev_z, b.x, b.z, e.prev_x, e.prev_z, e.x, e.z, hit_r + e.radius):
-				continue
+			var at := Collision.swept_entry(b.prev_x, b.prev_z, b.x, b.z, e.prev_x, e.prev_z, e.x, e.z, hit_r + e.radius)
+			if at >= 0.0:
+				_candidates.append([at, e.serial, e])
+		if _candidates.size() > 1:
+			_candidates.sort_custom(_nearer)  # path order; serial breaks ties so replays match
+		for cand in _candidates:
+			var e: Enemies.Enemy = cand[2]
+			if not e.active:
+				continue  # killed by this bullet's own splash a moment ago
 			b.hit[e.serial] = true
 			var hx := e.x
 			var hz := e.z
@@ -247,16 +262,19 @@ func _splash(b: Bullets.Bullet, cx: float, cz: float, centre: Enemies.Enemy) -> 
 	_push_event(Events.Kind.EXPLOSION, {"x": cx, "z": cz, "radius": b.splash_radius, "weapon": b.weapon_id, "impact": centre != null})
 	var r2 := b.splash_radius * b.splash_radius
 	var base := maxi(1, b.damage / 2)
-	var victims := 0
+	# Nearest victims first (Fable review #3: pool-slot order picked who got splashed).
+	var near: Array = []
 	for other in enemies.pool:
-		if victims >= int(rules.t("splash_max_victims")):
-			break
 		if not other.active or other == centre:
 			continue
-		if Collision.dist_sq(cx, cz, other.x, other.z) >= r2:
-			continue
+		var d2 := Collision.dist_sq(cx, cz, other.x, other.z)
+		if d2 < r2:
+			near.append([d2, other.serial, other])
+	near.sort_custom(_nearer)
+	var cap := int(rules.t("splash_max_victims"))
+	for i in mini(cap, near.size()):
+		var other: Enemies.Enemy = near[i][2]
 		damage_enemy(other, effective_damage(base, b.weapon_id, other.type_id), "splash", b.weapon_id)
-		victims += 1
 
 
 func _boss_step(dt: float) -> void:
@@ -426,7 +444,7 @@ func _game_over() -> void:
 
 
 func _push_event(kind: int, fields: Dictionary) -> void:
-	assert(not fields.has("kind"), "event field 'kind' is reserved for the event type: %s" % [fields])
+	assert(not fields.has("kind"), "event field kind is reserved for the event type")  # constant message: no per-event string
 	fields["kind"] = kind
 	events.append(fields)
 
@@ -478,16 +496,17 @@ func state_hash() -> int:
 			parts.append_array([e.serial, e.type_id, e.x, e.z, e.hp, e.target_x, e.lane_timer, e.slow_mult, e.burning, e.burn_timer, e.poison_timer, e.poison_tick_timer])
 	for b in bullets.pool:
 		if b.active:
-			parts.append_array([b.serial, b.x, b.z, b.damage, b.penetration, b.hit.size()])
+			parts.append_array([b.serial, b.x, b.z, b.vx, b.vz, b.start_z, b.damage, b.penetration, b.splash_radius,
+				b.max_range, b.weapon_id, b.detonates, b.hit.keys()])
 	for u in upgrades.pool:
 		if u.active:
-			parts.append_array([u.serial, u.reward_id, u.x, u.z, u.ice_hp, u.thawed, u.phase])
+			parts.append_array([u.serial, u.reward_id, u.x, u.z, u.ice_hp, u.thawed, u.phase, u.centre_x])
 	for t in traps.pool:
 		if t.active:
-			parts.append_array([t.serial, t.trap_id, t.x, t.z, t.hp, t.phase])
+			parts.append_array([t.serial, t.trap_id, t.x, t.z, t.hp, t.phase, t.centre_x])
 	for t in towers.pool:
 		if t.active:
 			parts.append_array([t.serial, t.type_id, t.x, t.time_left])
-	parts.append_array([boss.active, boss.wave, boss.hp, boss.x, boss.z, boss.speed])
-	parts.append_array([xp, level, choices, pending_levels, player.perk_stacks])
+	parts.append_array([boss.active, boss.wave, boss.hp, boss.max_hp, boss.x, boss.z, boss.speed, enemies.manual_interval])
+	parts.append_array([xp, level, choices, pending_levels, player.perk_stacks, player.mods])
 	return hash(parts)
