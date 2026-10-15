@@ -26,9 +26,12 @@ func _level_up(s: Sim) -> void:
 
 func test_xp_curve() -> void:
 	var s := _sim()
-	eq(s.xp_needed(1), 100)
-	eq(s.xp_needed(2), 135)
-	eq(s.xp_needed(5), int(round(100 * pow(1.35, 4))))
+	var base := s.rules.t("xp_base")
+	var growth := s.rules.t("xp_growth")
+	eq(s.xp_needed(1), int(round(base)))
+	eq(s.xp_needed(2), int(round(base * growth)))
+	eq(s.xp_needed(5), int(round(base * pow(growth, 4))))
+	ok(s.xp_needed(10) > s.xp_needed(9), "each level needs more than the last")
 
 
 func test_level_up_pauses_until_a_pick() -> void:
@@ -110,7 +113,7 @@ func test_each_perk_changes_what_it_says() -> void:
 	s.player.set_weapon("railgun")
 	var base_dmg := s.player.shot_damage()
 	s.player.apply_perk(rows["damage"])
-	eq(s.player.shot_damage(), int(ceil(base_dmg * 1.2 - 1e-9)), "damage +20%")
+	eq(s.player.shot_damage(), int(ceil(base_dmg * (1.0 + rows["damage"]["amount"]) - 1e-9)), "damage perk")
 	var hp := s.player.hp
 	var max_hp := s.player.max_hp
 	s.player.apply_perk(rows["vitality"])
@@ -128,7 +131,7 @@ func test_each_perk_changes_what_it_says() -> void:
 	for b in s.bullets.pool:
 		if b.active:
 			eq(b.penetration, 2, "pierce +1")
-			ok(absf(b.max_range - float(w["max_range"]) * 1.2) < 1e-6, "range +20%")
+			ok(absf(b.max_range - float(w["max_range"]) * (1.0 + rows["range"]["amount"])) < 1e-6, "range perk")
 			ok(absf(b.vx) > 0.0, "split shot bullets fan out")
 
 
