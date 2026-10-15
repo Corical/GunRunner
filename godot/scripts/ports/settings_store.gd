@@ -4,7 +4,7 @@ extends RefCounted
 ##   spawn_interval: seconds between enemy waves, 0 = automatic difficulty (default 0)
 ##   haptics: vibration on/off (default on); volume: 0..1 effects (0.8); music: mood name or "Off"; music_volume 0..1
 
-const DEFAULTS := {"speed": 1.0, "spawn_interval": 0.0, "haptics": true, "volume": 0.8, "music": "Retro", "music_volume": 0.6, "hurt_flash": true}
+const DEFAULTS := {"speed": 1.0, "spawn_interval": 0.0, "haptics": true, "volume": 0.8, "music": "Action", "music_volume": 0.6, "hurt_flash": true}
 
 
 func load_settings() -> Dictionary:

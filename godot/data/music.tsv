@@ -3,6 +3,15 @@
 # every row. Licence must be CC0 or CC-BY (credited on the Credits screen); CC-BY-SA and NC are not allowed
 # (test_music.gd enforces it). Every licence was read on the source page before the file was added.
 # role: run = plays during a run in this mood; boss = plays during boss fights in this mood (optional).
+# 15 Oct 2026: "Head in the Sand" dropped ("monotone"). Files re-encoded to Ogg Vorbis q2 (~96 kbps) to keep the APK
+# small. Incompetech: site-wide "Creative Commons: By Attribution 4.0" (incompetech.com/music/royalty-free/licenses).
 id	mood	role	title	artist	licence	source_url	file
 string	string	string	string	string	string	string	string
-retro_run	Retro	run	Head in the Sand (seamless loop)	congusbongus	CC0	https://opengameart.org/content/head-in-the-sand-seamless-loop	res://assets/music/headinthesand.ogg
+action_run	Action	run	Upbeat Forever	Kevin MacLeod (incompetech.com)	CC-BY 4.0	https://incompetech.com/music/royalty-free/mp3-royaltyfree/Upbeat%20Forever.mp3	res://assets/music/upbeat_forever.ogg
+action_boss	Action	boss	Danger Storm	Kevin MacLeod (incompetech.com)	CC-BY 4.0	https://incompetech.com/music/royalty-free/mp3-royaltyfree/Danger%20Storm.mp3	res://assets/music/danger_storm.ogg
+rock_run	Rock	run	Super Power Cool Dude	Kevin MacLeod (incompetech.com)	CC-BY 4.0	https://incompetech.com/music/royalty-free/mp3-royaltyfree/Super%20Power%20Cool%20Dude.mp3	res://assets/music/super_power_cool_dude.ogg
+rock_boss	Rock	boss	Unholy Knight	Kevin MacLeod (incompetech.com)	CC-BY 4.0	https://incompetech.com/music/royalty-free/mp3-royaltyfree/Unholy%20Knight.mp3	res://assets/music/unholy_knight.ogg
+retro_run	Retro	run	As fast as you can	Centurion_of_war	CC0	https://opengameart.org/content/as-fast-as-you-can	res://assets/music/as_fast_as_you_can.ogg
+retro_boss	Retro	boss	Bit Quest	Kevin MacLeod (incompetech.com)	CC-BY 4.0	https://incompetech.com/music/royalty-free/mp3-royaltyfree/Bit%20Quest.mp3	res://assets/music/bit_quest.ogg
+chill_run	Chill	run	Chillwave Nightdrive (remix by glitchart of Bogart VGM, Hitctrl, LSAo)	Bogart VGM, Hitctrl, LSAo, glitchart	CC-BY 4.0	https://opengameart.org/content/chillwave-nightdrive-bogart-vgm-hitctrl-lsao	res://assets/music/chillwave_nightdrive.ogg
+chill_boss	Chill	boss	Fresh Air	Kevin MacLeod (incompetech.com)	CC-BY 4.0	https://incompetech.com/music/royalty-free/mp3-royaltyfree/Fresh%20Air.mp3	res://assets/music/fresh_air.ogg

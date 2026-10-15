@@ -34,7 +34,7 @@ func save_settings(settings: Dictionary) -> void:
 	cfg.set_value("game", "spawn_interval", settings.get("spawn_interval", 0.0))
 	cfg.set_value("game", "haptics", settings.get("haptics", true))
 	cfg.set_value("game", "volume", settings.get("volume", 0.8))
-	cfg.set_value("game", "music", settings.get("music", "Retro"))
+	cfg.set_value("game", "music", settings.get("music", "Action"))
 	cfg.set_value("game", "music_volume", settings.get("music_volume", 0.6))
 	cfg.set_value("game", "hurt_flash", settings.get("hurt_flash", true))
 	var err := cfg.save(path)

@@ -101,6 +101,8 @@ func _refresh() -> void:
 		return
 	if stream is AudioStreamOggVorbis:
 		(stream as AudioStreamOggVorbis).loop = true
+	elif stream is AudioStreamMP3:
+		(stream as AudioStreamMP3).loop = true  # without this an MP3 track plays once and the run goes silent
 	_a.stream = stream
 	_a.volume_db = -80.0
 	_a.play()
