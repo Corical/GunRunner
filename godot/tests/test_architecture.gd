@@ -51,6 +51,18 @@ func test_scanner_allows_legitimate_code() -> void:
 	eq(violations(fine), PackedStringArray())
 
 
+## A script with a parse error prints "SCRIPT ERROR" here, which check.bat fails on; load() also returns null.
+func test_every_script_parses() -> void:
+	var count := 0
+	for dir in ["res://scripts", "res://scripts/sim", "res://scripts/data", "res://scripts/log", "res://tests"]:
+		for f in DirAccess.get_files_at(dir):
+			if not f.ends_with(".gd"):
+				continue
+			count += 1
+			ok(load(dir.path_join(f)) != null, "%s does not load" % dir.path_join(f))
+	ok(count >= 20, "found %d scripts" % count)
+
+
 func test_sim_folder_is_pure() -> void:
 	var files := Array(DirAccess.get_files_at(SIM_DIR)).filter(func(f: String) -> bool: return f.ends_with(".gd"))
 	ok(files.size() >= 1, "sim folder must contain scripts (empty folder would pass vacuously)")

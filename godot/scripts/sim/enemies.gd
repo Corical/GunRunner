@@ -1,0 +1,223 @@
+extends RefCounted
+## Enemy pool, spawner and per-enemy movement/status. Source: src/systems/EnemyManager.ts, src/entities/Enemy.ts.
+## Damage is never applied here directly: burn and poison call the sim's damage function so tower kills
+## score like any other kill (plan D2).
+
+const GLog = preload("res://scripts/log/logger.gd")
+const Rules = preload("res://scripts/sim/rules.gd")
+const Rng = preload("res://scripts/sim/rng.gd")
+const Events = preload("res://scripts/sim/events.gd")
+
+
+class Enemy:
+	extends RefCounted
+	var serial := 0
+	var active := false
+	var type_id := ""
+	var row := {}
+	var x := 0.0
+	var z := 0.0
+	var prev_x := 0.0
+	var prev_z := 0.0
+	var target_x := 0.0
+	var hp := 1
+	var max_hp := 1
+	var radius := 0.5
+	var lane_timer := 0.0
+	## Status effects. slow and burning are set by towers each step and consumed (reset) on the next
+	## enemy update, so they act one step late - Babylon parity, see sim.gd tick order.
+	var slow_mult := 1.0
+	var burning := false
+	var burn_timer := 0.0
+	var poison_timer := 0.0
+	var poison_tick_timer := 0.0
+
+
+var pool: Array[Enemy] = []
+var spawn_timer := 0.0
+var spawn_interval := 0.0
+## > 0 = player chose a spawn interval on the Settings slider; it survives bosses (plan D16).
+var manual_interval := 0.0
+var spawning_paused := false
+var exhausted_count := 0
+
+var _rules: Rules
+var _log: GLog
+var _rng: Rng
+var _next_serial := 1
+
+
+func _init(rules: Rules, rng: Rng, logger: GLog) -> void:
+	_rules = rules
+	_rng = rng
+	_log = logger
+	for i in int(rules.t("enemy_pool")):
+		pool.append(Enemy.new())
+	spawn_interval = rules.t("spawn_interval")
+
+
+func set_manual_interval(seconds: float) -> void:
+	manual_interval = seconds
+	spawn_interval = seconds if seconds > 0.0 else _auto_interval(0.0)
+	_log.info("spawn", "interval_set", {"manual": seconds, "interval": spawn_interval})
+
+
+func pause_spawning() -> void:
+	spawning_paused = true
+
+
+## The spawn timer kept counting during the pause, so the next wave comes immediately (Babylon parity).
+func resume_spawning(distance: float) -> void:
+	spawning_paused = false
+	spawn_interval = manual_interval if manual_interval > 0.0 else _auto_interval(distance)
+
+
+## Spawns, then moves every active enemy. `damage` is the sim's Callable(enemy, amount, source) -> bool (killed).
+## `emit` is the sim's Callable(kind, fields) for ENEMY_SPAWNED / ENEMY_ESCAPED.
+func update(dt: float, distance: float, damage: Callable, emit: Callable) -> void:
+	spawn_timer += dt
+	if not spawning_paused and spawn_timer >= spawn_interval:
+		_spawn_wave(distance, emit)
+		spawn_timer = 0.0
+	for e in pool:
+		if e.active:
+			_update_enemy(e, dt, damage, emit)
+
+
+func _update_enemy(e: Enemy, dt: float, damage: Callable, emit: Callable) -> void:
+	e.prev_x = e.x
+	e.prev_z = e.z
+	var speed := _rules.t("enemy_speed") * float(e.row["speed"]) * e.slow_mult
+	e.slow_mult = 1.0
+	e.z -= speed * dt
+
+	if e.burning:
+		e.burn_timer += dt
+		if e.burn_timer >= _rules.t("burn_tick"):
+			e.burn_timer = 0.0
+			if damage.call(e, 1, "burn"):
+				return
+		e.burning = false
+
+	if e.poison_timer > 0.0:
+		e.poison_timer -= dt
+		e.poison_tick_timer += dt
+		if e.poison_tick_timer >= _rules.t("poison_tick"):
+			e.poison_tick_timer = 0.0
+			if damage.call(e, 1, "poison"):
+				return
+
+	if e.row["switches_lanes"]:
+		e.lane_timer -= dt
+		if e.lane_timer <= 0.0:
+			e.lane_timer = _rules.t("flanker_retarget_min") + _rng.next_float() * _rules.t("flanker_retarget_extra")
+			var half := _half_road()
+			e.target_x = _rng.range_float(-half, half)
+		var dx := e.target_x - e.x
+		if absf(dx) > 0.1:
+			e.x += signf(dx) * minf(absf(dx), _rules.t("flanker_lateral_speed") * dt)
+
+	if e.z < _rules.t("enemy_despawn_z"):
+		e.active = false
+		emit.call(Events.Kind.ENEMY_ESCAPED, {"serial": e.serial, "enemy": e.type_id})
+
+
+func _spawn_wave(distance: float, emit: Callable) -> void:
+	var wave_size := mini(int(_rules.t("wave_size_max")), 1 + int(floor(distance / _rules.t("wave_size_metres"))))
+	var half := _half_road()
+	var gap := _rules.t("spawn_min_gap")
+	var used: Array[float] = []
+	var placed := 0
+	var band := _band_for(distance)
+	for i in wave_size:
+		var e := _inactive()
+		if e == null:
+			exhausted_count += 1
+			_log.warn("spawn", "pool_exhausted", {"pool": pool.size(), "wanted": wave_size, "placed": placed})
+			break
+		var x := 0.0
+		var tries := 0
+		while true:
+			x = _rng.range_float(-half, half)
+			tries += 1
+			if tries >= int(_rules.t("spawn_tries")) or not _too_close(x, used, gap):
+				break
+		used.append(x)
+		var type_id := _roll_type(band)
+		var z := _rules.t("enemy_spawn_distance") + _rng.next_float() * _rules.t("enemy_spawn_jitter")
+		_activate(e, type_id, x, z)
+		placed += 1
+		emit.call(Events.Kind.ENEMY_SPAWNED, {"serial": e.serial, "enemy": type_id, "x": x, "z": z})
+	if manual_interval <= 0.0:
+		spawn_interval = _auto_interval(distance)
+	_log.debug("spawn", "wave", {"distance": distance, "band": band["id"], "size": wave_size, "placed": placed, "next_in": spawn_interval})
+
+
+func _activate(e: Enemy, type_id: String, x: float, z: float) -> void:
+	e.serial = _next_serial
+	_next_serial += 1
+	e.active = true
+	e.type_id = type_id
+	e.row = _rules.enemies[type_id]
+	e.hp = e.row["hp"]
+	e.max_hp = e.hp
+	e.radius = float(e.row["size"]) * _rules.t("enemy_radius_per_size")
+	e.x = x
+	e.z = z
+	e.prev_x = x
+	e.prev_z = z
+	e.target_x = x
+	e.lane_timer = _rules.t("flanker_first_min") + _rng.next_float() * _rules.t("flanker_first_extra")
+	e.slow_mult = 1.0
+	e.burning = false
+	e.burn_timer = 0.0
+	e.poison_timer = 0.0
+	e.poison_tick_timer = 0.0
+
+
+func _band_for(distance: float) -> Dictionary:
+	var chosen: Dictionary = _rules.spawn_bands[0]
+	for band in _rules.spawn_bands:
+		if distance >= band["start"]:
+			chosen = band
+	return chosen
+
+
+func _roll_type(band: Dictionary) -> String:
+	var roll := _rng.range_int(0, 99)
+	var cumulative := 0
+	for pair in band["weights"]:
+		cumulative += pair[1]
+		if roll < cumulative:
+			return pair[0]
+	return band["weights"][0][0]
+
+
+func _auto_interval(distance: float) -> float:
+	return maxf(_rules.t("spawn_interval_min"), _rules.t("spawn_interval") - distance * _rules.t("spawn_interval_decay"))
+
+
+func _half_road() -> float:
+	return _rules.t("road_width") / 2.0 - _rules.t("enemy_road_margin")
+
+
+static func _too_close(x: float, used: Array[float], gap: float) -> bool:
+	for u in used:
+		if absf(u - x) < gap:
+			return true
+	return false
+
+
+func _inactive() -> Enemy:
+	for e in pool:
+		if not e.active:
+			return e
+	return null
+
+
+func active_count() -> int:
+	var n := 0
+	for e in pool:
+		if e.active:
+			n += 1
+	return n
