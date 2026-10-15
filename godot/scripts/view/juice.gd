@@ -12,7 +12,7 @@ const K = Events.Kind
 ## Every event kind this presenter reacts to (test_events checks every kind is handled somewhere).
 const HANDLED := [K.FIRED, K.ENEMY_HIT, K.ENEMY_KILLED, K.PLAYER_HURT, K.COMBO_BROKEN, K.ICE_HIT, K.ICE_SHATTERED,
 	K.PICKUP, K.TOWER_DEPLOYED, K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_WRAPPED, K.BOSS_DEFEATED,
-	K.GAME_OVER, K.POOL_EXHAUSTED, K.LEVEL_UP, K.PERK_TAKEN]
+	K.GAME_OVER, K.POOL_EXHAUSTED, K.LEVEL_UP, K.PERK_TAKEN, K.EXPLOSION]
 
 const EMITTERS := 32
 const LABELS := 40
@@ -142,6 +142,11 @@ func handle(events: Array) -> void:
 				_text(ev, "BOSS DEFEATED! +%d" % ev["score_gain"], Color("#FBBF24"), 5.0, 2.0, true)
 			K.GAME_OVER:
 				shake(1.0, 0.8)
+			K.EXPLOSION:
+				_burst(ev, 0.0, 0.8, Color("#FB923C"), 32, 0.55, 9.0, true)
+				_burst(ev, 0.0, 1.2, Color("#6B7280"), 18, 0.9, 4.0, true)
+				_ring(ev, float(ev["radius"]))
+				shake(0.35, 0.25)
 			K.COMBO_BROKEN, K.POOL_EXHAUSTED, K.LEVEL_UP, K.PERK_TAKEN:
 				pass  # shown by the HUD / level-up cards / logged; no world effect
 
@@ -149,6 +154,7 @@ func handle(events: Array) -> void:
 ## camera_base: where the camera is without shake this frame (the world view's follow camera).
 func update(view_dt: float, camera_base: Transform3D) -> void:
 	_cam_base = camera_base
+	_update_rings(view_dt)
 	_bursts_this_frame = 0
 	_texts_this_frame = 0
 	for i in _labels.size():
@@ -164,6 +170,56 @@ func update(view_dt: float, camera_base: Transform3D) -> void:
 		_labels[i].modulate.a = 1.0 - t * t
 		_labels[i].outline_modulate.a = 1.0 - t * t
 	_update_camera(view_dt)
+
+
+## Shockwave: a flat ring growing to the real blast radius in 0.35 s and fading (pooled, 8 at once).
+const RING_TIME := 0.35
+var _rings: Array[MeshInstance3D] = []
+var _ring_age: Array[float] = []
+var _ring_radius: Array[float] = []
+var _next_ring := 0
+
+
+func _ring(ev: Dictionary, radius: float) -> void:
+	if _rings.is_empty():
+		var torus := TorusMesh.new()
+		torus.inner_radius = 0.85
+		torus.outer_radius = 1.0
+		torus.rings = 24
+		for i in 8:
+			var mi := MeshInstance3D.new()
+			mi.mesh = torus
+			var m := StandardMaterial3D.new()
+			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			m.albedo_color = Color("#FDBA74")
+			mi.material_override = m
+			mi.visible = false
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			add_child(mi)
+			_rings.append(mi)
+			_ring_age.append(RING_TIME)
+			_ring_radius.append(1.0)
+	var i := _next_ring
+	_next_ring = (_next_ring + 1) % _rings.size()
+	_rings[i].position = WorldView.view_pos(float(ev.get("x", 0.0)), float(ev.get("z", 0.0)), 0.3)
+	_rings[i].visible = true
+	_ring_age[i] = 0.0
+	_ring_radius[i] = radius
+
+
+func _update_rings(dt: float) -> void:
+	for i in _rings.size():
+		if not _rings[i].visible:
+			continue
+		_ring_age[i] += dt
+		var t := _ring_age[i] / RING_TIME
+		if t >= 1.0:
+			_rings[i].visible = false
+			continue
+		var r := lerpf(0.3, _ring_radius[i], 1.0 - pow(1.0 - t, 3.0))
+		_rings[i].scale = Vector3(r, 0.4, r)
+		(_rings[i].material_override as StandardMaterial3D).albedo_color.a = 1.0 - t
 
 
 func shake(intensity: float, seconds: float) -> void:

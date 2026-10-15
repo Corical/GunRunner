@@ -113,6 +113,8 @@ func step(input: Dictionary) -> void:
 	enemies.update(dt, distance, _damage, _emit)
 	towers.update(dt, enemies.pool, _emit)
 	_bullets_vs_enemies()
+	for b in bullets.detonations:
+		_splash(b, b.x, b.z, null)  # grenade/rocket reached the end of its range: it explodes there
 	if boss.active:
 		_boss_step(dt)
 	if not boss.active and rng.next_float() < rules.t("upgrade_spawn_per_second") * dt:
@@ -230,7 +232,9 @@ func _bullets_vs_enemies() -> void:
 
 ## Splash centred on the enemy that was hit: up to splash_max_victims others, half damage (min 1),
 ## weapon-vs-enemy table applied (plan D4; Babylon ignored it for splash).
+## centre: the enemy that was hit directly (excluded, it already took the full hit); null for a detonation.
 func _splash(b: Bullets.Bullet, cx: float, cz: float, centre: Enemies.Enemy) -> void:
+	_push_event(Events.Kind.EXPLOSION, {"x": cx, "z": cz, "radius": b.splash_radius, "weapon": b.weapon_id, "impact": centre != null})
 	var r2 := b.splash_radius * b.splash_radius
 	var base := maxi(1, b.damage / 2)
 	var victims := 0

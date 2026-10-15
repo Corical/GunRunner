@@ -27,6 +27,7 @@ enum Kind {
 	GAME_OVER,        ## score, distance, kills
 	LEVEL_UP,         ## level, choices (perk ids) - the game waits for a pick
 	PERK_TAKEN,       ## perk, stacks, level
+	EXPLOSION,        ## x, z, radius, weapon, impact (false = detonated at the end of its range)
 }
 
 ## Damage sources, for ENEMY_HIT / ENEMY_KILLED / PLAYER_HURT.

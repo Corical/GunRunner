@@ -649,6 +649,35 @@ func test_upgrade_rate_per_second_and_none_during_boss() -> void:
 	eq(_of(_run(b, 3600), K.UPGRADE_SPAWNED).size(), 0, "no upgrades during a boss")
 
 
+func test_grenade_explodes_at_the_end_of_its_range() -> void:
+	var s := _quiet()
+	var range_z: float = s.rules.weapons["grenade"]["max_range"]
+	# An enemy 2 units beyond where the grenade's range ends, inside the 4.0 blast, never touched directly.
+	var target = _place(s, "basic", 2.0, range_z + 0.5)
+	s.enemies.pool[0].slow_mult = 0.0
+	_shoot(s, "grenade", 0.0, 0.0)
+	var ev: Array[Dictionary] = []
+	for i in 80:
+		target.z = range_z + 0.5  # hold it still so only the blast can reach it
+		target.prev_z = target.z
+		s.step({})
+		ev.append_array(s.events)
+	var blasts := _of(ev, K.EXPLOSION)
+	eq(blasts.size(), 1, "one explosion")
+	if blasts.size() == 1:
+		eq(blasts[0]["impact"], false, "detonated at range, not on impact")
+	var killed := _of(ev, K.ENEMY_KILLED)
+	eq(killed.size(), 1, "the blast killed the enemy it never touched")
+	if killed.size() == 1:
+		eq(killed[0]["source"], "splash")
+
+
+func test_non_explosive_bullets_just_stop_at_range() -> void:
+	var s := _quiet()
+	_shoot(s, "pistol", 0.0, 0.0)
+	eq(_of(_run(s, 120), K.EXPLOSION).size(), 0)
+
+
 func test_ice_stops_even_a_railgun_bullet() -> void:
 	var s := _quiet()
 	s.upgrades.spawn("heal", s._emit)

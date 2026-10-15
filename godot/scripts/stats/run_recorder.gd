@@ -29,6 +29,11 @@ func _init(file_path: String, seed_value: int, data_fingerprint: int, spawn_inte
 	_write({"type": "header", "schema": SCHEMA, "seed": seed_value, "data": data_fingerprint, "spawn_interval": spawn_interval})
 
 
+## Debug start (--weapon=): the run began with this weapon instead of the pistol. Replay applies it first.
+func start_weapon(id: String) -> void:
+	_write({"type": "start_weapon", "weapon": id})
+
+
 ## Call with the input about to be given to step T+1 (T = sim.tick before the step).
 func input(tick: int, inp: Dictionary) -> void:
 	if inp == _last_input:

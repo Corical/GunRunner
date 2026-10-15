@@ -216,8 +216,25 @@ func _sync_bullets(alpha: float) -> void:
 		if not b.active:
 			continue
 		var size: float = _sim.rules.weapons[b.weapon_id]["bullet_size"]
-		var pos := WorldView.view_pos(lerpf(b.prev_x, b.x, alpha), lerpf(b.prev_z, b.z, alpha), 1.0)
-		mm.set_instance_transform(n, Transform3D(Basis().scaled(Vector3(size, size, size * 2.5)), pos))
+		var z := lerpf(b.prev_z, b.z, alpha)
+		var t := clampf((z - b.start_z) / maxf(1.0, b.max_range), 0.0, 1.0)  # 0 at the muzzle, 1 at max range
+		var y := 1.0
+		var stretch := 2.5
+		var grow := 1.0
+		match b.weapon_id:
+			"grenade":
+				y += 5.0 * 4.0 * t * (1.0 - t)  # lobbed: up and down over its range (view only)
+				stretch = 1.0
+			"laser":
+				stretch = 14.0
+			"rocket":
+				stretch = 3.5
+			"flamethrower":
+				grow = 1.0 + 2.5 * t
+				stretch = 1.2
+		var pos := WorldView.view_pos(lerpf(b.prev_x, b.x, alpha), z, y)
+		var s := size * grow
+		mm.set_instance_transform(n, Transform3D(Basis().scaled(Vector3(s, s, s * stretch)), pos))
 		mm.set_instance_color(n, Color(_sim.rules.weapons[b.weapon_id]["bullet_color"]))
 		n += 1
 	mm.visible_instance_count = n

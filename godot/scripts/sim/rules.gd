@@ -3,7 +3,7 @@ extends RefCounted
 ## Cross-checks every reference between tables. A Rules with errors must not be used to run a game.
 
 const TABLES := {
-	"weapons": ["id", "name", "fire_rate", "damage", "bullet_count", "bullet_spread", "bullet_size", "bullet_color", "max_range", "penetration", "splash_radius"],
+	"weapons": ["id", "name", "fire_rate", "damage", "bullet_count", "bullet_spread", "bullet_size", "bullet_color", "max_range", "penetration", "splash_radius", "detonates"],
 	"enemies": ["id", "name", "hp", "speed", "color", "size", "score", "switches_lanes"],
 	"towers": ["id", "name", "color", "duration", "radius", "damage_per_sec", "slow_multiplier", "poison_duration"],
 	"effectiveness": ["id", "weapon", "enemy", "multiplier"],

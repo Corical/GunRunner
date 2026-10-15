@@ -12,12 +12,12 @@ const Events = preload("res://scripts/sim/events.gd")
 const K = Events.Kind
 
 const HANDLED := [K.FIRED, K.ENEMY_HIT, K.ENEMY_KILLED, K.PLAYER_HURT, K.ICE_HIT, K.ICE_SHATTERED, K.PICKUP,
-	K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_DEFEATED, K.GAME_OVER, K.LEVEL_UP, K.PERK_TAKEN]
+	K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_DEFEATED, K.GAME_OVER, K.LEVEL_UP, K.PERK_TAKEN, K.EXPLOSION]
 
 const RATE := 22050
 const VOICES := 12
 ## Most of one sound per frame; extra requests in the same frame are dropped.
-const PER_FRAME := {"shoot": 1, "hit": 2, "kill": 2, "hurt": 1, "ice_crack": 1, "ice_shatter": 1, "pickup": 1, "boss": 1, "game_over": 1}
+const PER_FRAME := {"shoot": 1, "hit": 2, "kill": 2, "hurt": 1, "ice_crack": 1, "ice_shatter": 1, "pickup": 1, "boss": 1, "game_over": 1, "explode": 2}
 
 var muted := false
 var _clips := {}
@@ -36,6 +36,7 @@ func _ready() -> void:
 	_clips["ice_shatter"] = _tone([3000.0, 2000.0, 1000.0], 0.1, 0.3, "sine")
 	_clips["pickup"] = _tone([523.0, 659.0, 784.0, 1047.0], 0.08, 0.35, "sine")
 	_clips["boss"] = _tone([80.0, 160.0], 0.4, 0.5, "triangle")
+	_clips["explode"] = _mix(_tone([55.0], 0.35, 0.6, "sine"), _noise(0.3, 0.45))
 	_clips["game_over"] = _tone([440.0, 392.0, 349.0, 294.0], 0.15, 0.4, "triangle")
 	for i in VOICES:
 		var p := AudioStreamPlayer.new()
@@ -68,6 +69,8 @@ func handle(events: Array) -> void:
 				name = "ice_shatter"
 			K.PICKUP, K.LEVEL_UP, K.PERK_TAKEN:
 				name = "pickup"
+			K.EXPLOSION:
+				name = "explode"
 			K.BOSS_STARTED:
 				name = "boss"
 			K.GAME_OVER:

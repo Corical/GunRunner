@@ -46,6 +46,7 @@ var _pending_pick := -1  ## card tapped this frame; sent once with the next step
 var _data_fingerprint := 0
 var _seed_base := 0
 var _games := 0
+var _debug_weapon := ""  ## --weapon=grenade: start runs with this weapon (testing weapon feel); recorded in the header
 
 # Telemetry: one line per second of frame time, GPU time and sim steps (find what makes it slow).
 var _tm_frames := 0
@@ -66,6 +67,7 @@ func start(rules: Rules, logger: GLog, args: Dictionary) -> void:
 	_logger = logger
 	_data_fingerprint = RunRecorder.data_fingerprint()
 	_seed_base = int(args.get("seed", Time.get_unix_time_from_system()))
+	_debug_weapon = str(args.get("weapon", ""))
 	_controls = BotControls.new() if args.has("bot") else HumanControls.new()
 	_settings_store = ConfigSettings.new()
 	_settings = _settings_store.load_settings()
@@ -146,6 +148,9 @@ func _start_game() -> void:
 	_sim = _new_sim()
 	var run_seed := _seed_base + _games
 	_recorder = RunRecorder.new("user://runs/run-%d.jsonl" % run_seed, run_seed, _data_fingerprint, float(_settings.get("spawn_interval", 0.0)))
+	if _debug_weapon != "" and _rules.weapons.has(_debug_weapon):
+		_sim.player.set_weapon(_debug_weapon)
+		_recorder.start_weapon(_debug_weapon)
 	_logger.info("play", "recording", {"path": ProjectSettings.globalize_path(_recorder.path)})
 	_games += 1
 	_clock.reset()

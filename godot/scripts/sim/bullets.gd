@@ -23,6 +23,7 @@ class Bullet:
 	var weapon_id := ""
 	## Targets this bullet already hit, kept across steps so a piercing bullet never hits the same one twice.
 	var hit := {}
+	var detonates := false
 
 
 var pool: Array[Bullet] = []
@@ -73,12 +74,19 @@ func fire(x: float, z: float, weapon: Dictionary, damage: int, mods := {}) -> in
 		b.splash_radius = weapon["splash_radius"]
 		b.max_range = float(weapon["max_range"]) * (1.0 + mods.get("range_mult", 0.0))
 		b.weapon_id = weapon["id"]
+		b.detonates = bool(weapon.get("detonates", false))
 		b.hit.clear()
 		fired += 1
 	return fired
 
 
+## Bullets that ran out of range this step and explode (grenade, rocket); the sim splashes them after
+## the bullet-vs-enemy pass. Cleared at the start of every update.
+var detonations: Array[Bullet] = []
+
+
 func update(dt: float) -> void:
+	detonations.clear()
 	var despawn_z := _rules.t("bullet_despawn_z")
 	for b in pool:
 		if not b.active:
@@ -89,6 +97,8 @@ func update(dt: float) -> void:
 		b.z += b.vz * dt
 		if b.z - b.start_z > b.max_range or b.z > despawn_z:
 			b.active = false
+			if b.detonates:
+				detonations.append(b)
 
 
 ## Penetration used up -> bullet gone. Returns true when the bullet is spent.
