@@ -6,6 +6,9 @@ extends "res://scripts/ports/model_catalog.gd"
 const Rules = preload("res://scripts/sim/rules.gd")
 
 var _rules: Rules
+## One mesh per shape+size, shared by every model (Fable #5: ~1,570 identical meshes were built at start).
+## Nothing edits a mesh after it is made, so sharing is safe.
+static var _meshes := {}
 var _materials := {}  ## one material per colour+style, shared by every model (no per-model leaks)
 
 
@@ -214,13 +217,21 @@ func _mat(hex: String, alpha := 1.0, glow := 0.15) -> StandardMaterial3D:
 
 
 static func _box(size: Vector3) -> BoxMesh:
+	var key := "box|%s" % size
+	if _meshes.has(key):
+		return _meshes[key]
 	var m := BoxMesh.new()
 	m.size = size
+	_meshes[key] = m
 	return m
 
 
 static func _sphere(r: float) -> SphereMesh:
+	var key := "sphere|%s" % r
+	if _meshes.has(key):
+		return _meshes[key]
 	var m := SphereMesh.new()
+	_meshes[key] = m
 	m.radius = r
 	m.height = r * 2.0
 	m.radial_segments = 16
@@ -229,7 +240,11 @@ static func _sphere(r: float) -> SphereMesh:
 
 
 static func _cylinder(top: float, bottom: float, height: float) -> CylinderMesh:
+	var key := "cyl|%s|%s|%s" % [top, bottom, height]
+	if _meshes.has(key):
+		return _meshes[key]
 	var m := CylinderMesh.new()
+	_meshes[key] = m
 	m.top_radius = top
 	m.bottom_radius = bottom
 	m.height = height
@@ -238,14 +253,22 @@ static func _cylinder(top: float, bottom: float, height: float) -> CylinderMesh:
 
 
 static func _capsule(r: float, height: float) -> CapsuleMesh:
+	var key := "capsule|%s|%s" % [r, height]
+	if _meshes.has(key):
+		return _meshes[key]
 	var m := CapsuleMesh.new()
+	_meshes[key] = m
 	m.radius = r
 	m.height = height
 	return m
 
 
 static func _torus(inner: float, outer: float) -> TorusMesh:
+	var key := "torus|%s|%s" % [inner, outer]
+	if _meshes.has(key):
+		return _meshes[key]
 	var m := TorusMesh.new()
+	_meshes[key] = m
 	m.inner_radius = inner
 	m.outer_radius = outer
 	return m
