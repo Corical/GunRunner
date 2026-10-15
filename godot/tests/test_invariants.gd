@@ -55,6 +55,36 @@ func test_player_hp_over_max_is_caught() -> void:
 	_expect(func(s): s.player.hp = s.player.max_hp + 3, "player hp")
 
 
+func test_spent_bullet_left_active_is_caught() -> void:
+	_expect(func(s):
+		s.bullets.fire(0.0, 0.0, s.rules.weapons["pistol"], 5)
+		for b in s.bullets.pool:
+			if b.active:
+				b.penetration = 0, "penetration 0")
+
+
+func test_trap_off_road_or_dead_is_caught() -> void:
+	_expect(func(s):
+		s.traps.spawn("jammer", s._emit)
+		for t in s.traps.pool:
+			if t.active:
+				t.x = 50.0, "trap")
+	_expect(func(s):
+		s.traps.spawn("jinx", s._emit)
+		for t in s.traps.pool:
+			if t.active:
+				t.hp = 0, "trap")
+
+
+func test_bad_trap_effect_is_caught() -> void:
+	_expect(func(s): s.player.trap_left["nonsense"] = 3.0, "trap effect nonsense")
+
+
+func test_bad_level_state_is_caught() -> void:
+	_expect(func(s): s.xp = -5, "xp=-5")
+	_expect(func(s): s.choices = PackedStringArray(["a", "b", "c", "d"]), "choices=4")
+
+
 func test_dead_enemy_left_active_is_caught() -> void:
 	_expect(func(s):
 		var e = s.enemies._inactive()

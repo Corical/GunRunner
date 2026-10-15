@@ -35,6 +35,22 @@ func check_step(s: Sim) -> void:
 	for e in s.enemies.pool:
 		if e.active and (e.hp <= 0 or absf(e.x) > enemy_half + 1e-6):
 			_fail(s, "enemy %d %s hp=%d x=%f" % [e.serial, e.type_id, e.hp, e.x])
+	# Fable review #29: bullets, ice, traps, xp and level-ups were never checked.
+	var road_half: float = s.rules.t("road_width") / 2.0
+	for b in s.bullets.pool:
+		if b.active and b.penetration <= 0:
+			_fail(s, "bullet %d active with penetration %d" % [b.serial, b.penetration])
+	for u in s.upgrades.pool:
+		if u.active and (absf(u.x) > road_half or u.ice_hp < 0):
+			_fail(s, "upgrade %d x=%f ice=%d" % [u.serial, u.x, u.ice_hp])
+	for t in s.traps.pool:
+		if t.active and (absf(t.x) > road_half or t.hp <= 0):
+			_fail(s, "trap %d x=%f hp=%d" % [t.serial, t.x, t.hp])
+	for id in p.trap_left:
+		if not s.rules.trap_by_id.has(id) or p.trap_left[id] <= 0.0:
+			_fail(s, "trap effect %s left=%f" % [id, p.trap_left[id]])
+	if s.xp < 0 or s.level < 1 or s.choices.size() > 3 or s.pending_levels < 0:
+		_fail(s, "xp=%d level=%d choices=%d pending=%d" % [s.xp, s.level, s.choices.size(), s.pending_levels])
 	if s.boss.active and (s.boss.hp <= 0 or s.boss.hp > s.boss.max_hp):
 		_fail(s, "boss hp=%d/%d" % [s.boss.hp, s.boss.max_hp])
 	for ev in s.events:
