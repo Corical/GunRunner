@@ -105,6 +105,7 @@ func start(rules: Rules, logger: GLog, args: Dictionary) -> void:
 	_juice = Juice.new()
 	add_child(_juice)
 	_juice.setup(rules, _world.camera)
+	_actors.juice = _juice
 	_sfx = SynthSfx.new()
 	add_child(_sfx)
 	_sfx.set_muted(args.has("mute"))

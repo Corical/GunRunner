@@ -14,7 +14,7 @@ const HANDLED := [K.FIRED, K.ENEMY_HIT, K.ENEMY_KILLED, K.PLAYER_HURT, K.COMBO_B
 	K.PICKUP, K.TOWER_DEPLOYED, K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_WRAPPED, K.BOSS_DEFEATED,
 	K.GAME_OVER, K.POOL_EXHAUSTED, K.LEVEL_UP, K.PERK_TAKEN, K.EXPLOSION]
 
-const EMITTERS := 32
+const EMITTERS := 72  ## rocket trails add ~60 short-lived puffs per second
 const LABELS := 40
 const MAX_BURSTS_PER_FRAME := 8
 const MAX_TEXTS_PER_FRAME := 6
@@ -105,7 +105,7 @@ func handle(events: Array) -> void:
 	for ev in events:
 		match ev["kind"]:
 			K.FIRED:
-				_burst(ev, 0.0, 1.0, Color("#FDE68A"), 3, 0.15, 2.0)
+				_muzzle(ev)
 			K.ENEMY_HIT:
 				flash_requests.append(ev["serial"])
 				_burst(ev, 0.0, 1.0, Color("#FFFFFF"), 6, 0.3, 4.0)
@@ -143,8 +143,8 @@ func handle(events: Array) -> void:
 			K.GAME_OVER:
 				shake(1.0, 0.8)
 			K.EXPLOSION:
-				_burst(ev, 0.0, 0.8, Color("#FB923C"), 32, 0.55, 9.0, true)
-				_burst(ev, 0.0, 1.2, Color("#6B7280"), 18, 0.9, 4.0, true)
+				_emit(WorldView.view_pos(float(ev["x"]), float(ev["z"]), 0.8), Color("#FB923C"), 40, 0.6, 9.0, 3.0, false)
+				_emit(WorldView.view_pos(float(ev["x"]), float(ev["z"]), 1.2), Color(0.45, 0.45, 0.5, 0.8), 18, 1.2, 1.5, 2.5, true)
 				_ring(ev, float(ev["radius"]))
 				shake(0.35, 0.25)
 			K.COMBO_BROKEN, K.POOL_EXHAUSTED, K.LEVEL_UP, K.PERK_TAKEN:
@@ -183,7 +183,7 @@ var _next_ring := 0
 func _ring(ev: Dictionary, radius: float) -> void:
 	if _rings.is_empty():
 		var torus := TorusMesh.new()
-		torus.inner_radius = 0.85
+		torus.inner_radius = 0.7
 		torus.outer_radius = 1.0
 		torus.rings = 24
 		for i in 8:
@@ -192,7 +192,9 @@ func _ring(ev: Dictionary, radius: float) -> void:
 			var m := StandardMaterial3D.new()
 			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			m.albedo_color = Color("#FDBA74")
+			m.albedo_color = Color("#FFE4B5")
+			m.emission_enabled = true
+			m.emission = Color("#FB923C")
 			mi.material_override = m
 			mi.visible = false
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -264,6 +266,11 @@ func _burst(ev: Dictionary, dx: float, y: float, colour: Color, amount: int, lif
 		skipped += 1
 		return
 	_bursts_this_frame += 1
+	_emit(WorldView.view_pos(float(ev.get("x", 0.0)) + dx, float(ev.get("z", 0.0)), y), colour, amount, life, speed, 1.0, false)
+
+
+## size: particle scale multiplier; smoke: rises and drifts slowly instead of flying out and falling.
+func _emit(pos: Vector3, colour: Color, amount: int, life: float, speed: float, size: float, smoke: bool) -> void:
 	var p := _emitters[_next_emitter]
 	_next_emitter = (_next_emitter + 1) % _emitters.size()
 	p.amount = amount
@@ -272,8 +279,42 @@ func _burst(ev: Dictionary, dx: float, y: float, colour: Color, amount: int, lif
 	m.color = colour
 	m.initial_velocity_min = speed * 0.5
 	m.initial_velocity_max = speed
-	p.position = WorldView.view_pos(float(ev.get("x", 0.0)) + dx, float(ev.get("z", 0.0)), y)
+	m.scale_min = 0.6 * size
+	m.scale_max = 1.2 * size
+	m.gravity = Vector3(0, 1.5, 0) if smoke else Vector3(0, -12, 0)
+	m.spread = 60.0 if smoke else 180.0
+	p.position = pos
 	p.restart()
+
+
+## Per-gun muzzle effect: [flash colour, sparks, smoke puffs] (Corne 18:48: "a little smoke coming from the gun").
+const MUZZLE := {
+	"pistol": ["#FDE68A", 4, 0], "smg": ["#FDE68A", 3, 0], "minigun": ["#FEF3C7", 2, 0],
+	"shotgun": ["#FB923C", 14, 5], "laser": ["#93C5FD", 5, 0], "rocket": ["#FB923C", 8, 8],
+	"railgun": ["#C084FC", 16, 10], "flamethrower": ["#000000", 0, 0], "grenade": ["#BEF264", 5, 4],
+}
+
+
+func _muzzle(ev: Dictionary) -> void:
+	var spec: Array = MUZZLE.get(ev["weapon"], ["#FDE68A", 3, 0])
+	var at := WorldView.view_pos(float(ev["x"]), float(ev["z"]) + 1.2, 1.1)
+	if spec[1] > 0:
+		_emit(at, Color(spec[0]), spec[1], 0.15, 3.0, 1.0, false)
+	if spec[2] > 0:
+		_emit(at, Color(0.75, 0.75, 0.78, 0.7), spec[2], 0.9, 0.8, 1.6, true)
+
+
+## Rocket smoke trail: a few slow grey puffs every 0.05 s per rocket (called by the actor view per frame).
+var _trail_last := {}
+
+
+func trail(serial: int, pos: Vector3, now: float) -> void:
+	if now - float(_trail_last.get(serial, -1.0)) < 0.05:
+		return
+	_trail_last[serial] = now
+	if _trail_last.size() > 64:
+		_trail_last.clear()
+	_emit(pos, Color(0.7, 0.7, 0.72, 0.6), 3, 0.8, 0.4, 1.4, true)
 
 
 func _text(ev: Dictionary, text: String, colour: Color, y: float, rise: float, big := false) -> void:

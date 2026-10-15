@@ -25,6 +25,9 @@ var _sim: Sim
 var _catalog: ModelCatalog
 var _t := 0.0
 
+## Effects presenter, for rocket smoke trails (set by play_mode; null in tests).
+var juice: Node3D
+
 ## Telemetry: models built since last read, and the time spent building them.
 var models_built := 0
 var build_usec := 0
@@ -233,6 +236,8 @@ func _sync_bullets(alpha: float) -> void:
 				grow = 1.0 + 2.5 * t
 				stretch = 1.2
 		var pos := WorldView.view_pos(lerpf(b.prev_x, b.x, alpha), z, y)
+		if b.weapon_id == "rocket" and juice != null:
+			juice.trail(b.serial, pos, _t)
 		var s := size * grow
 		mm.set_instance_transform(n, Transform3D(Basis().scaled(Vector3(s, s, s * stretch)), pos))
 		mm.set_instance_color(n, Color(_sim.rules.weapons[b.weapon_id]["bullet_color"]))
