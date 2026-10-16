@@ -11,7 +11,7 @@ const TABLES := {
 	"rewards": ["id", "kind", "weight", "label", "color"],
 	"spawns": ["id", "start"],
 	"tuning": ["id", "value", "source"],
-	"perks": ["id", "name", "desc", "stat", "amount", "max_stacks", "weight"],
+	"perks": ["id", "name", "desc", "stat", "amount", "max_stacks", "weight", "cost_stat", "cost_amount"],
 	"weapon_looks": ["id", "kick_ms", "kick_amp", "muzzle_color", "muzzle_sparks", "muzzle_smoke", "bullet_stretch",
 		"bullet_arc", "bullet_grow", "smoke_trail", "model_length", "model_radius", "model", "model_scale", "model_yaw"],
 	"traps": ["id", "name", "effect", "amount", "seconds", "weight", "label", "color"],
@@ -43,7 +43,7 @@ const TUNING_KEYS := [
 	"chain_arcs_per_level", "bomber_fuse", "bomber_blast_radius", "bomber_blast_damage", "bomber_enemy_damage",
 	"healer_every", "healer_radius", "healer_amount", "split_count", "split_spacing", "shield_hp", "escalation_start", "escalation_every", "escalation_wave_add",
 	"wave_size_cap", "elite_per_tier", "elite_max", "elite_hp_mult", "elite_size_mult", "elite_score_mult", "formation_start",
-	"formation_chance", "formation_chance_per_tier", "formation_chance_max", "formation_gap", "formation_spacing",
+	"formation_chance", "formation_chance_per_tier", "formation_chance_max", "formation_gap", "formation_spacing", "curse_max_hp",
 ]
 ## Chances: must lie in 0..1.
 const TUNING_PROBABILITY := ["upgrade_pair_chance"]
@@ -137,6 +137,8 @@ func _build(tables: Dictionary) -> void:
 		if row["max_stacks"] < 1: errors.append("perk %s: max_stacks must be >= 1" % row["id"])
 		if row["weight"] < 1: errors.append("perk %s: weight must be >= 1" % row["id"])
 		if row["amount"] <= 0.0: errors.append("perk %s: amount must be > 0" % row["id"])
+		if row["cost_stat"] != "-" and not PERK_STATS.has(row["cost_stat"]):
+			errors.append("perk %s: unknown cost_stat '%s'" % [row["id"], row["cost_stat"]])
 	var trap_total := 0
 	for row in tables["traps"]:
 		traps.append(row)

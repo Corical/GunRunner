@@ -117,3 +117,4 @@ formation_chance_per_tier	0.05	ours:
 formation_chance_max	0.4	ours:
 formation_gap	4	ours: metres of the one gap in a wall (you are 1.1 m wide, a touch reaches 1.4 m)
 formation_spacing	2.2	ours: metres between enemies in a wall
+curse_max_hp	2	ours: the price of the cursed boss-loot card (every gun +1 level); offered only above this max HP

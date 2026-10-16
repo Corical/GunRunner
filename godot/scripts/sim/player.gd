@@ -234,15 +234,21 @@ func add_armor(amount: int) -> void:
 ## Takes one stack of a perk (row from perks.tsv). Immediate effects (hp, armour) happen here.
 func apply_perk(row: Dictionary) -> void:
 	var stat: String = row["stat"]
-	mods[stat] += float(row["amount"])
 	perk_stacks[row["id"]] = perk_stacks.get(row["id"], 0) + 1
+	_add_stat(stat, float(row["amount"]))
+	if row.get("cost_stat", "-") != "-":  # the price of a risk perk (Glass Cannon: -2 max HP)
+		_add_stat(row["cost_stat"], float(row["cost_amount"]))
+	_log.info("player", "perk", {"perk": row["id"], "stacks": perk_stacks[row["id"]], "stat": stat, "total": mods[stat]})
+
+
+func _add_stat(stat: String, amount: float) -> void:
+	mods[stat] += amount
 	match stat:
 		"max_hp_add":
-			max_hp += int(row["amount"])
-			hp = mini(max_hp, hp + int(row["amount"]))
+			max_hp = maxi(1, max_hp + int(amount))
+			hp = clampi(hp + maxi(0, int(amount)), 1 if hp > 0 else 0, max_hp)
 		"armor_add":
-			armor += int(row["amount"])
-	_log.info("player", "perk", {"perk": row["id"], "stacks": perk_stacks[row["id"]], "stat": stat, "total": mods[stat]})
+			armor = maxi(0, armor + int(amount))
 
 
 ## The max-HP pickup's cap; Vitality perks raise it.

@@ -305,6 +305,8 @@ func _offer_loot() -> void:
 		maybe.append("perk:" + perks[rng.range_int(0, perks.size() - 1)])
 	if player.hp < player.max_hp:
 		maybe.append("heal")
+	if player.max_hp > int(rules.t("curse_max_hp")) and not climbable.is_empty():
+		maybe.append("curse")  # risk: every gun +1 level, for max HP
 	choices.clear()
 	for id in must:
 		choices.append(id)
@@ -343,6 +345,14 @@ func _take_loot(id: String) -> void:
 					_push_event(Events.Kind.PERK_TAKEN, {"perk": arg, "stacks": player.perk_stacks[arg], "level": level})
 		"heal":
 			player.hp = player.max_hp
+		"curse":
+			for g in player.guns.duplicate():
+				if g.level < int(rules.t("gun_max_level")):
+					var c := player.add_gun(g.id)
+					c.merge({"x": player.x, "z": player.z})
+					_push_event(Events.Kind.GUN_CHANGED, c)
+			player.max_hp = maxi(1, player.max_hp - int(rules.t("curse_max_hp")))
+			player.hp = mini(player.hp, player.max_hp)
 	if not change.is_empty():
 		change.merge({"x": player.x, "z": player.z})
 		_push_event(Events.Kind.GUN_CHANGED, change)
@@ -372,6 +382,8 @@ func choice_card(id: String) -> Dictionary:
 			return {"name": "DOUBLE " + String(row["name"]), "desc": "%s, twice" % row["desc"], "footer": "BOSS LOOT"}
 		"heal":
 			return {"name": "FULL HEAL", "desc": "Back to %d HP" % player.max_hp, "footer": "BOSS LOOT"}
+		"curse":
+			return {"name": "CURSED POWER", "desc": "Every gun +1 level, but -%d max HP" % int(rules.t("curse_max_hp")), "footer": "BOSS LOOT - RISK"}
 	var row := _perk_row(id)
 	var footer := "%d / %d" % [player.perk_stacks.get(id, 0), row.get("max_stacks", 1)]
 	for g in player.guns:  # say which held gun this perk would evolve

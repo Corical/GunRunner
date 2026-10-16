@@ -63,7 +63,7 @@ func decide(s: Sim) -> float:
 
 ## Level-up choice: a fixed preference order (damage and rate first), so bot runs stay deterministic.
 const PERK_PREFERENCE := ["damage", "fire_rate", "multishot", "pierce", "vitality", "crit", "range", "plating",
-	"bullet_speed", "agility", "magnet", "engineer"]
+	"bullet_speed", "agility", "magnet", "engineer", "bulwark", "overclock", "glass_cannon"]
 
 
 ## The full step input: steering, plus a pick that the sim only reads while a level-up choice is open.
@@ -72,7 +72,7 @@ func input(s: Sim) -> Dictionary:
 
 
 ## Boss loot: evolve, then levels, then new guns, double perks, heal.
-const LOOT_PREFERENCE := ["evolve", "level", "gun", "perk", "heal"]
+const LOOT_PREFERENCE := ["evolve", "level", "gun", "perk", "heal", "curse"]
 
 
 func pick(s: Sim) -> int:

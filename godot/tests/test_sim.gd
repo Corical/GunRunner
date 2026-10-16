@@ -1425,6 +1425,51 @@ func test_every_wall_has_one_gap_you_fit_through() -> void:
 		ok(gaps <= 1, "wall %d: one gap, not %d" % [w, gaps])
 
 
+# ---------- risk choices (depth plan item 7) ----------
+
+func test_glass_cannon_trades_max_hp_and_never_takes_the_last_point() -> void:
+	var s := _quiet()
+	s.player.max_hp = 5
+	s.player.hp = 5
+	var gc := _perk(s, "glass_cannon")
+	s.player.apply_perk(gc)
+	eq([s.player.max_hp, s.player.hp], [3, 3], "-2 max HP")
+	ok(absf(s.player.mods["damage_mult"] - 0.3) < 1e-9, "+30% damage")
+	s.player.max_hp = 2
+	s.player.hp = 1
+	s.player.apply_perk(gc)
+	eq([s.player.max_hp, s.player.hp], [1, 1], "never below 1, never kills you")
+
+
+func test_overclock_really_slows_you() -> void:
+	var a := _quiet()
+	var b := _quiet()
+	b.player.apply_perk(_perk(b, "overclock"))
+	_run(a, 30, {"move": 1.0})
+	_run(b, 30, {"move": 1.0})
+	ok(b.player.x < a.player.x - 0.3, "overclocked %.2f m vs %.2f m in half a second" % [b.player.x, a.player.x])
+
+
+func test_cursed_loot_levels_every_gun_for_max_hp_and_only_when_affordable() -> void:
+	var s := _quiet()
+	s.player.add_gun("smg")
+	s.player.add_gun("rocket")
+	for i in 4:
+		s.player.add_gun("rocket")  # rocket at max
+	s.player.max_hp = 6
+	s.player.hp = 6
+	s._take_loot("curse")
+	eq(_ids(s), ["pistol:2", "smg:2", "rocket:5"], "every gun not at max +1")
+	eq([s.player.max_hp, s.player.hp], [4, 4], "-2 max HP")
+	for seed_value in 30:
+		var t := _quiet({}, seed_value)
+		t.player.max_hp = int(t.rules.t("curse_max_hp"))
+		t.player.hp = t.player.max_hp
+		t._start_boss()
+		t._boss_defeated()
+		ok(not Array(t.choices).has("curse"), "seed %d: curse offered at %d max HP" % [seed_value, t.player.max_hp])
+
+
 # ---------- lane switchers ----------
 
 ## 16 Oct: a lane switcher "quickly steps into my lane, I don't even have a chance to shoot it". Inside
