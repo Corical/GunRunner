@@ -15,6 +15,7 @@ var max_hp := 0
 var armor := 0
 var weapon_id := Rules.DEFAULT_WEAPON
 var fire_timer := 0.0
+var damage_carry := 0.0  ## fraction of a damage point owed to the next shot (shot_damage)
 var frenzy_timer := 0.0
 var speed_timer := 0.0
 var trap_left := {}  ## trap id -> seconds its effect still runs (traps.tsv); insertion-ordered, so deterministic
@@ -112,7 +113,12 @@ func shot_damage() -> int:
 	var dmg: float = float(weapon()["damage"]) * (1.0 + mods["damage_mult"])
 	if frenzy_timer > 0.0:
 		dmg *= _rules.t("frenzy_damage_mult")
-	return int(ceil(dmg - 1e-9))
+	# Was ceil: one +8% pick made every 1-damage gun do 2 (2x) and stacks 2-5 did nothing (16 Oct critique).
+	# Whole points per shot, the fraction carried: +8% on a pistol = a 2 every ~12th shot, 1.08 on average.
+	var total := dmg + damage_carry
+	var out := int(floor(total + 1e-9))
+	damage_carry = total - out
+	return out
 
 
 ## Armour absorbs first. Returns {"absorbed": int, "taken": int}.

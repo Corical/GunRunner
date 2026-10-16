@@ -104,6 +104,30 @@ func test_several_levels_at_once_are_queued() -> void:
 	eq(total, 3)
 
 
+## 16 Oct: ceil made one Heavy Rounds pick double every 1-damage gun and stacks 2-5 add nothing to them. Over many
+## shots the average must be base x (1 + bonus) for every stack count and every gun, and each stack must add.
+func test_damage_perk_averages_its_percentage_on_every_gun() -> void:
+	var row: Dictionary = {}
+	for r in _sim().rules.perks:
+		if r["id"] == "damage":
+			row = r
+	for gun in ["pistol", "smg", "shotgun", "railgun", "rocket"]:
+		var last_total := -1
+		for stacks in range(0, int(row["max_stacks"]) + 1):
+			var s := _sim()
+			s.player.set_weapon(gun)
+			for i in stacks:
+				s.player.apply_perk(row)
+			var shots := 1200
+			var total := 0
+			for i in shots:
+				total += s.player.shot_damage()
+			var want: float = float(s.rules.weapons[gun]["damage"]) * (1.0 + row["amount"] * stacks) * shots
+			ok(absf(total - want) <= 1.0, "%s with %d stacks: %d damage over %d shots, want %.1f" % [gun, stacks, total, shots, want])
+			ok(total > last_total, "%s: stack %d adds damage (%d -> %d)" % [gun, stacks, last_total, total])
+			last_total = total
+
+
 func test_each_perk_changes_what_it_says() -> void:
 	var rows := {}
 	var s0 := _sim()
@@ -113,7 +137,7 @@ func test_each_perk_changes_what_it_says() -> void:
 	s.player.set_weapon("railgun")
 	var base_dmg := s.player.shot_damage()
 	s.player.apply_perk(rows["damage"])
-	eq(s.player.shot_damage(), int(ceil(base_dmg * (1.0 + rows["damage"]["amount"]) - 1e-9)), "damage perk")
+	eq(s.player.shot_damage(), int(floor(base_dmg * (1.0 + rows["damage"]["amount"]))), "damage perk, fraction carried")
 	var hp := s.player.hp
 	var max_hp := s.player.max_hp
 	s.player.apply_perk(rows["vitality"])

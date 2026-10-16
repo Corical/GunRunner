@@ -654,7 +654,7 @@ func _steps_per_shot(weapon_id: String, buffed: bool) -> int:
 	return -1
 
 
-func test_frenzy_doubles_shot_damage_rounding_up() -> void:
+func test_frenzy_doubles_shot_damage() -> void:
 	var s := _quiet()
 	s.player.set_weapon("railgun")
 	s.player.start_frenzy(5.0)

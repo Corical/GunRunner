@@ -580,7 +580,7 @@ static func quantize_input(inp: Dictionary, choosing := false) -> Dictionary:
 ## Everything that affects future steps, hashed. Equal hashes = equal games.
 func state_hash() -> int:
 	var parts: Array = [tick, distance, score, kills, combo, over, first_weapon_given, rng.state(),
-		player.x, player.vx, player.hp, player.max_hp, player.armor, player.weapon_id, player.fire_timer,
+		player.x, player.vx, player.hp, player.max_hp, player.armor, player.weapon_id, player.fire_timer, player.damage_carry,
 		player.frenzy_timer, player.speed_timer, player.trap_left,
 		enemies.spawn_timer, enemies.spawn_interval, enemies.spawning_paused]
 	for e in enemies.pool:
