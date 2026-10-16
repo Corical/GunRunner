@@ -31,6 +31,13 @@ func check_step(s: Sim) -> void:
 		_fail(s, "player hp=%d max=%d armor=%d" % [p.hp, p.max_hp, p.armor])
 	if absf(p.x) > half + 1e-6:
 		_fail(s, "player off road x=%f" % p.x)
+	var gun_ids := {}
+	for g in p.guns:
+		if gun_ids.has(g.id) or g.level < 1 or g.level > int(s.rules.t("gun_max_level")):
+			_fail(s, "gun %s lv %d (twice or out of range)" % [g.id, g.level])
+		gun_ids[g.id] = true
+	if p.guns.is_empty() or p.guns.size() > int(s.rules.t("gun_slots")):
+		_fail(s, "%d guns" % p.guns.size())
 	var enemy_half: float = s.rules.t("road_width") / 2.0 - s.rules.t("enemy_road_margin")
 	for e in s.enemies.pool:
 		if e.active and (e.hp <= 0 or absf(e.x) > enemy_half + 1e-6):

@@ -25,8 +25,8 @@ var ticks := 0
 ## Call once after each sim step.
 func step(sim: Object) -> void:
 	ticks = sim.tick
-	var w: String = sim.player.weapon_id
-	ticks_by_weapon[w] = ticks_by_weapon.get(w, 0) + 1
+	for g in sim.player.guns:  # every gun carried counts as held (they all fire)
+		ticks_by_weapon[g.id] = ticks_by_weapon.get(g.id, 0) + 1
 	for ev in sim.events:
 		match ev["kind"]:
 			K.ENEMY_HIT:

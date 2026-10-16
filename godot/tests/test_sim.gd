@@ -958,6 +958,110 @@ func test_enemy_passing_beside_you_misses_and_one_brushing_you_hits() -> void:
 		eq(_of(ev, K.PLAYER_HURT).size(), case[1], "basic enemy passing %.1f m to the side" % case[0])
 
 
+# ---------- gun loadout (plan 2026-10-16-gun-loadout) ----------
+
+func _ids(s: Sim) -> Array:
+	return s.player.guns.map(func(g): return "%s:%d" % [g.id, g.level])
+
+
+func test_a_gun_you_hold_levels_up_and_never_takes_another_slot() -> void:
+	var s := _quiet()
+	var cap := int(s.rules.t("gun_max_level"))
+	eq(_ids(s), ["pistol:1"], "start")
+	var actions: Array = []
+	for i in cap + 2:
+		actions.append(s.player.add_gun("pistol")["action"])
+	eq(_ids(s), ["pistol:%d" % cap], "one slot, capped at %d" % cap)
+	eq(actions.count("levelled"), cap - 1)
+	eq(actions.count("maxed"), 3)
+
+
+## 16 Oct: "accidentally pick up another weapon after you've had the minigun". With every slot full, a new gun
+## replaces the weakest - for every order the guns can arrive in, the levelled minigun survives.
+func test_a_new_gun_never_replaces_a_stronger_one_in_any_order() -> void:
+	var guns := ["smg", "laser", "flamethrower"]
+	var orders := [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]]
+	for order in orders:
+		var s := _quiet()
+		s.player.add_gun("minigun")
+		s.player.add_gun("minigun")
+		s.player.add_gun("minigun")  # lv 3
+		for i in order:
+			var r: Dictionary = s.player.add_gun(guns[i])
+			ok(r["replaced"] != "minigun", "order %s: %s replaced the minigun" % [order, guns[i]])
+		ok(_ids(s).has("minigun:3"), "order %s: minigun kept %s" % [order, _ids(s)])
+		ok(not _ids(s).has("pistol:1"), "order %s: the pistol went first %s" % [order, _ids(s)])
+		eq(s.player.guns.size(), int(s.rules.t("gun_slots")), "order %s: slots full, never more" % [order])
+
+
+func test_replacing_takes_the_weakest_by_power_not_by_slot() -> void:
+	var s := _quiet()
+	s.player.set_weapon("railgun")
+	s.player.add_gun("smg")
+	s.player.add_gun("pistol")
+	var weakest := 0
+	for i in s.player.guns.size():
+		if s.player.gun_power(s.player.guns[i]) < s.player.gun_power(s.player.guns[weakest]):
+			weakest = i
+	var expect: String = s.player.guns[weakest].id
+	var r: Dictionary = s.player.add_gun("rocket")
+	eq(r["replaced"], expect, "weakest by power")
+	eq(r["action"], "replaced")
+
+
+func test_every_gun_fires_at_its_own_rate_from_its_own_muzzle() -> void:
+	var s := _quiet()
+	s.player.fire_timer = 0.0
+	s.player.add_gun("minigun")
+	s.player.add_gun("rocket")
+	var shots := {}
+	var muzzles := {}
+	var seconds := 10
+	for i in 60 * seconds:
+		s.step({})
+		for e in s.events:
+			if e["kind"] == K.FIRED:
+				shots[e["weapon"]] = shots.get(e["weapon"], 0) + 1
+				muzzles[e["weapon"]] = e["x"] - s.player.x
+	for id in ["pistol", "minigun", "rocket"]:
+		var rate: float = s.rules.weapons[id]["fire_rate"]
+		var steps := ceili(60.0 / rate - 1e-9)  # the timer fires on whole steps (weapons.tsv)
+		var want := 60.0 * seconds / steps
+		ok(absf(shots.get(id, 0) - want) <= 2.0, "%s fired %d times in %d s, want ~%.0f" % [id, shots.get(id, 0), seconds, want])
+	eq(muzzles.size(), 3)
+	var xs: Array = muzzles.values()
+	xs.sort()
+	ok(xs[1] - xs[0] > 0.5 and xs[2] - xs[1] > 0.5, "three muzzles apart: %s" % [xs])
+
+
+func test_gun_level_five_doubles_damage() -> void:
+	var s := _quiet()
+	s.player.set_weapon("railgun")
+	var base := s.player.shot_damage()
+	for i in 4:
+		s.player.add_gun("railgun")
+	eq(s.player.guns[0].level, 5)
+	eq(s.player.shot_damage(), base * 2, "lv 5 = 1 + 0.25 x 4")
+
+
+func test_gun_pickup_in_play_says_what_changed_and_the_hash_sees_levels() -> void:
+	var s := _quiet()
+	var before := s.state_hash()
+	s.player.add_gun("pistol")
+	ok(s.state_hash() != before, "a gun level is game state")
+	var s2 := _quiet()
+	var u = s2.upgrades._inactive()
+	s2.upgrades._place(u, s2.upgrades._reward_row("smg"), s2.player.x, 0.0, s2.player.z, s2._emit)
+	u.thawed = true
+	var ev := _run(s2, 2)
+	var changed := _of(ev, K.GUN_CHANGED)
+	eq(changed.size(), 1, "one GUN_CHANGED")
+	if changed.size() == 1:
+		eq([changed[0]["action"], changed[0]["gun"], changed[0]["level"]], ["added", "smg", 1])
+		ok(changed[0].has("x") and changed[0].has("z"), "juice can place its text")
+	eq(_ids(s2), ["pistol:1", "smg:1"])
+
+
 # ---------- lane switchers ----------
 
 ## 16 Oct: a lane switcher "quickly steps into my lane, I don't even have a chance to shoot it". Inside

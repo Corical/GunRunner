@@ -17,6 +17,7 @@ enum Kind {
 	ICE_SHATTERED,    ## serial, reward, x, z
 	UPGRADE_EXPIRED,  ## serial, reward, thawed
 	PICKUP,           ## serial, reward, reward_kind, x, z
+	GUN_CHANGED,      ## action (levelled|maxed|added|replaced), slot, gun, level, replaced, x, z
 	TOWER_DEPLOYED,   ## serial, tower, x, z
 	TOWER_EXPIRED,    ## serial, tower
 	BOSS_STARTED,     ## wave, hp, boss (bosses.tsv id), name

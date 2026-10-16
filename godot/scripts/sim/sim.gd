@@ -108,11 +108,14 @@ func step(input: Dictionary) -> void:
 	player.prev_x = player.x
 	player.move(_axis(input.get("move", 0.0)), _target(input.get("target_x", NAN)), dt)
 	player.update_timers(dt)
-	if player.try_fire():
-		var w := player.weapon()
-		var fired := bullets.fire(player.x, player.z + rules.t("muzzle_z_offset"), w, player.shot_damage(), player.mods)
+	for slot in player.guns.size():
+		if not player.try_fire(slot):
+			continue
+		var w: Dictionary = rules.weapons[player.guns[slot].id]
+		var mx := player.x + gun_offset(slot)
+		var fired := bullets.fire(mx, player.z + rules.t("muzzle_z_offset"), w, player.shot_damage(slot), player.mods)
 		if fired > 0:
-			_push_event(Events.Kind.FIRED, {"weapon": w["id"], "x": player.x, "z": player.z, "bullets": fired})
+			_push_event(Events.Kind.FIRED, {"weapon": w["id"], "x": mx, "z": player.z, "bullets": fired, "slot": slot})
 		if fired < int(w["bullet_count"]):
 			_push_event(Events.Kind.POOL_EXHAUSTED, {"pool": "bullet", "wanted": w["bullet_count"]})
 	bullets.update(dt)
@@ -219,6 +222,14 @@ func _take_perk(id: String) -> void:
 
 
 ## Damage after the weapon-vs-enemy table: max(1, round(base * multiplier)).
+## Sideways offset of gun `slot`'s muzzle: 0, then left, right, further left... (the view draws guns there too).
+func gun_offset(slot: int) -> float:
+	if slot == 0:
+		return 0.0
+	var step: float = rules.t("gun_slot_spacing") * ((slot + 1) / 2)
+	return -step if slot % 2 == 1 else step
+
+
 func effective_damage(base: int, weapon_id: String, enemy_id: String) -> int:
 	return maxi(1, int(round(base * rules.multiplier(weapon_id, enemy_id))))
 
@@ -482,7 +493,9 @@ func _pickups() -> void:
 func _apply_reward(u: Upgrades.Upgrade) -> void:
 	match u.kind:
 		"weapon":
-			player.set_weapon(u.reward_id)
+			var change := player.add_gun(u.reward_id)
+			change.merge({"x": player.x, "z": player.z})
+			_push_event(Events.Kind.GUN_CHANGED, change)
 		"tower":
 			towers.deploy(u.reward_id, player.x, _emit, 1.0 + player.mods["tower_duration_mult"])
 		"heal":
@@ -580,9 +593,11 @@ static func quantize_input(inp: Dictionary, choosing := false) -> Dictionary:
 ## Everything that affects future steps, hashed. Equal hashes = equal games.
 func state_hash() -> int:
 	var parts: Array = [tick, distance, score, kills, combo, over, first_weapon_given, rng.state(),
-		player.x, player.vx, player.hp, player.max_hp, player.armor, player.weapon_id, player.fire_timer, player.damage_carry,
+		player.x, player.vx, player.hp, player.max_hp, player.armor, player.weapon_id,
 		player.frenzy_timer, player.speed_timer, player.trap_left,
 		enemies.spawn_timer, enemies.spawn_interval, enemies.spawning_paused]
+	for g in player.guns:
+		parts.append_array([g.id, g.level, g.fire_timer, g.damage_carry])
 	for e in enemies.pool:
 		if e.active:
 			parts.append_array([e.serial, e.type_id, e.x, e.z, e.hp, e.target_x, e.lane_timer, e.slow_mult, e.burning, e.burn_timer, e.poison_timer, e.poison_tick_timer, e.burn_damage, e.poison_damage])

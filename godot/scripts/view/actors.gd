@@ -37,16 +37,17 @@ var build_usec := 0
 var prewarm_ms := 0.0
 
 const LEAN_RADIANS := 0.35  ## ours: full lean at drag top speed
+const GUN_LEVEL_GROWTH := 0.08  ## ours: a gun model grows this much per level, so levels show
 const LABEL_FADE_IN := 65.0  ## ours: pickup names start to show this many metres ahead of the player
 const LABEL_FULL := 50.0     ## ours: ...and are fully opaque from here
 
 var _player: Node3D
 var _player_body: Node3D
 var _player_model: Node3D
-var _player_weapon: Node3D
+var _player_guns: Array[Node3D] = []  ## slot order; slot 0 in the hands
 var _blob_mesh: QuadMesh
 var _blob_mat: StandardMaterial3D
-var _player_weapon_id := ""
+var _player_weapon_id := ""  ## loadout signature "id:level,..." the guns were built for
 var _enemies: Array[Slot] = []
 var _upgrades: Array[Slot] = []
 var _reward_rows := {}  ## reward id -> rewards.tsv row (label, color), filled on first use
@@ -208,13 +209,26 @@ func _sync_player(alpha: float) -> void:
 	# Lean into sideways speed and bob while running (view only; the sim position is untouched).
 	_player_body.rotation.z = clampf(p.vx / _sim.rules.t("player_drag_max_speed"), -1.0, 1.0) * LEAN_RADIANS
 	_player_body.position.y = absf(sin(_t * 14.0)) * 0.12
-	if p.weapon_id != _player_weapon_id:
-		if _player_weapon != null:
-			_player_weapon.queue_free()
-		_player_weapon = _catalog.make("weapon", p.weapon_id)
-		_player_weapon.position = Vector3(-0.45, 1.0, -0.4)  # in the player's (turned-around) hands
-		_player_model.add_child(_player_weapon)
-		_player_weapon_id = p.weapon_id
+	var loadout := ""
+	for g in p.guns:
+		loadout += "%s:%d," % [g.id, g.level]
+	if loadout != _player_weapon_id:  # rebuilt only when a gun is added, levelled or replaced
+		for n in _player_guns:
+			n.queue_free()
+		_player_guns.clear()
+		for slot in p.guns.size():
+			var g = p.guns[slot]
+			var n := _catalog.make("weapon", g.id)
+			n.scale = Vector3.ONE * (1.0 + GUN_LEVEL_GROWTH * (g.level - 1))
+			if slot == 0:
+				n.position = Vector3(-0.45, 1.0, -0.4)  # in the player's (turned-around) hands
+				_player_model.add_child(n)
+			else:  # floats at the shoulder over its muzzle (sim.gun_offset)
+				var dx := WorldView.view_pos(_sim.gun_offset(slot), 0.0).x - WorldView.view_pos(0.0, 0.0).x
+				n.position = Vector3(dx, 1.5, 0.0)
+				_player.add_child(n)
+			_player_guns.append(n)
+		_player_weapon_id = loadout
 
 
 func _sync_enemies(alpha: float) -> void:

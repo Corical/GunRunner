@@ -11,7 +11,7 @@ const K = Events.Kind
 
 ## Every event kind this presenter reacts to (test_events checks every kind is handled somewhere).
 const HANDLED := [K.FIRED, K.ENEMY_HIT, K.ENEMY_KILLED, K.PLAYER_HURT, K.COMBO_BROKEN, K.ICE_HIT, K.ICE_SHATTERED,
-	K.PICKUP, K.TOWER_DEPLOYED, K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_WRAPPED, K.BOSS_DEFEATED,
+	K.PICKUP, K.GUN_CHANGED, K.TOWER_DEPLOYED, K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_WRAPPED, K.BOSS_DEFEATED,
 	K.GAME_OVER, K.POOL_EXHAUSTED, K.LEVEL_UP, K.PERK_TAKEN, K.EXPLOSION, K.CRIT, K.TRAP_HIT, K.TRAP_DESTROYED,
 	K.TRAP_TRIGGERED, K.UPGRADE_LOST, K.BOSS_SUMMONED, K.BOSS_SHOT]
 
@@ -126,8 +126,11 @@ func handle(events: Array) -> void:
 				_text(ev, "LOST", Color("#9CA3AF"), 1.6, 0.9)
 			K.PICKUP:
 				_burst(ev, 0.0, 1.0, Color("#FBBF24"), 24, 0.6, 5.0)
-				_text(ev, _pickup_text(ev), Color("#FDE047"), 2.0, 1.3)
+				if ev["reward_kind"] != "weapon":  # guns say what happened to your loadout (GUN_CHANGED)
+					_text(ev, _pickup_text(ev), Color("#FDE047"), 2.0, 1.3)
 				zoom(0.92)
+			K.GUN_CHANGED:
+				_text(ev, _gun_text(ev), Color("#FDE047"), 2.0, 1.3, ev["action"] != "added")
 			K.TOWER_DEPLOYED:
 				_burst(ev, 0.0, 1.0, Color(_rules.towers[ev["tower"]]["color"]), 24, 0.6, 5.0)
 			K.BOSS_STARTED:
@@ -352,6 +355,18 @@ func trail(serial: int, pos: Vector3, now: float) -> void:
 	if _trail_last.size() > 64:
 		_trail_last.clear()
 	_emit(pos, Color(0.7, 0.7, 0.72, 0.6), 3, 0.8, 0.4, 1.4, true)
+
+
+func _gun_text(ev: Dictionary) -> String:
+	var gun := String(_rules.weapons[ev["gun"]]["name"]).to_upper()
+	match ev["action"]:
+		"levelled":
+			return "%s LV %d" % [gun, ev["level"]]
+		"maxed":
+			return "%s MAX" % gun
+		"replaced":
+			return "%s REPLACES %s" % [gun, String(_rules.weapons[ev["replaced"]]["name"]).to_upper()]
+	return "+ %s" % gun
 
 
 func _text(ev: Dictionary, text: String, colour: Color, y: float, rise: float, big := false) -> void:

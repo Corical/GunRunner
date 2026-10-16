@@ -46,7 +46,7 @@ static func run(logger: GLog, sim_sink: Object, first_seed: int, runs: int, tick
 		logger.tick = s.tick
 		logger.info("run", "run_end", {
 			"seed": run_seed, "ticks": s.tick, "end": "died" if s.over else "cap", "distance": s.distance,
-			"score": s.score, "kills": s.kills, "bosses_beaten": beaten, "weapon": s.player.weapon_id,
+			"score": s.score, "kills": s.kills, "bosses_beaten": beaten, "weapon": "+".join(s.player.guns.map(func(g): return "%s:%d" % [g.id, g.level])),
 			"hash": s.state_hash(), "warnings": sim_log.counts[GLog.Level.WARN],
 			"invariant_failures": inv.failures.size(),
 		})

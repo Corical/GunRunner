@@ -165,7 +165,13 @@ func update(s: Sim, speed := 1.0) -> void:
 	_distance.text = "%dm" % int(s.distance)
 	_speed.text = "SPEED %.1fx" % speed if absf(speed - 1.0) > 0.01 else ""
 	_level.text = "LV %d  %d/%d XP" % [s.level, s.xp, s.xp_needed(s.level)]
-	_weapon.text = String(s.rules.weapons[s.player.weapon_id]["name"]).to_upper()
+	var loadout := ""  # every gun you carry, with its level: "SMG 2 · ROCKET · PISTOL"
+	for g in s.player.guns:
+		if loadout != "":
+			loadout += "  ·  "
+		loadout += String(s.rules.weapons[g.id]["name"]).to_upper() + (" %d" % g.level if g.level > 1 else "")
+	if _weapon.text != loadout:
+		_weapon.text = loadout
 	_combo.text = "x%d COMBO" % s.combo if s.combo >= 3 else ""
 	var p := s.player
 	var ratio := clampf(float(p.hp) / p.max_hp, 0.0, 1.0)

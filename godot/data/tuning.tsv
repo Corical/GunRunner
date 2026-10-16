@@ -84,3 +84,7 @@ boss_shot_pool	16	ours: Gunner shots in flight at once
 drop_min_gap	20	ours: a new pickup or trap waits until the last one is this far down the road (15 Oct: they stacked)
 first_weapon_seconds	6	ours: a pick-one pair of two weapons arrives this early in every run (15 Oct: 3 of 5 runs died still holding the pistol)
 first_weapon_ice_hp	3	ours: thin ice on that first pair so the pistol frees it (16 Oct: Corne's SMG/grenade passed still frozen)
+gun_slots	3	ours: guns you carry, all firing (16 Oct: "accidentally pick up another weapon after you had the minigun")
+gun_max_level	5	ours: picking up a gun you hold levels it, up to this
+gun_level_damage	0.25	ours: damage per level above 1 (lv 5 = 2x)
+gun_slot_spacing	0.7	ours: metres between muzzles of the guns you carry; the extra guns float there, clear of the body (0.56 m)
