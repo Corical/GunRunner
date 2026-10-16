@@ -44,6 +44,7 @@ const TUNING_KEYS := [
 	"healer_every", "healer_radius", "healer_amount", "split_count", "split_spacing", "shield_hp", "escalation_start", "escalation_every", "escalation_wave_add",
 	"wave_size_cap", "elite_per_tier", "elite_max", "elite_hp_mult", "elite_size_mult", "elite_score_mult", "formation_start",
 	"formation_chance", "formation_chance_per_tier", "formation_chance_max", "formation_gap", "formation_spacing", "curse_max_hp",
+	"enemy_hp_growth_per_100m", "enemy_damage_every_tiers", "armor_max",
 ]
 ## Chances: must lie in 0..1.
 const TUNING_PROBABILITY := ["upgrade_pair_chance"]

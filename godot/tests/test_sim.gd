@@ -396,17 +396,19 @@ func test_boss_starts_once_and_not_again_while_active() -> void:
 	eq(_of(ev, K.BOSS_STARTED).size(), 1, "starts on the next step at 500.1")
 	s.distance = 1200.0
 	eq(_of(_run(s, 10), K.BOSS_STARTED).size(), 0, "no second boss while one is active")
-	eq(s.boss.hp, 70, "wave 1 hp = 50 + 20")
+	eq(s.boss.hp, 240, "wave 1 hp = 200 + 40")
 
 
 func test_boss_hp_grows_per_wave() -> void:
 	var s := _quiet()
 	s.boss.activate(2)
 	eq(s.boss.row["id"], "summoner", "wave 2 is the second boss in bosses.tsv")
-	eq(s.boss.max_hp, 72, "(50 + 20 x 2) x 0.8")
+	eq(s.boss.max_hp, 224, "(200 + 40 x 2) x 0.8")
 	s.boss.activate(5)
 	eq(s.boss.row["id"], "brute", "after the last boss the order starts again")
-	eq(s.boss.max_hp, 150, "...with more hp: (50 + 20 x 5) x 1.0")
+	eq(s.boss.max_hp, 400, "...with more hp: (200 + 40 x 5) x 1.0")
+	s.boss.activate(5, 2.5)
+	eq(s.boss.max_hp, 1000, "the distance growth multiplies the whole thing: 400 x 2.5")
 
 
 # ---------- boss types ----------
@@ -777,7 +779,7 @@ func test_full_tower_slots_still_use_up_the_pickup() -> void:
 # ---------- spawning ----------
 
 func test_enemy_hp_grows_with_distance() -> void:
-	var s := _quiet({"enemy_hp_per_100m": 0.12})
+	var s := _quiet({"enemy_hp_per_100m": 0.12, "enemy_hp_growth_per_100m": 1.0})
 	var cases := [[1, 0.0, 1], [1, 500.0, 2], [4, 0.0, 4], [4, 500.0, 7], [4, 2000.0, 14], [1, 400.0, 2], [3, -50.0, 3]]
 	for c in cases:
 		eq(s.enemies.hp_at(c[0], c[1]), c[2], "base %d at %.0f m" % [c[0], c[1]])
@@ -790,6 +792,122 @@ func test_enemy_hp_grows_with_distance() -> void:
 			eq(e.hp, s.enemies.hp_at(int(e.row["hp"]), 500.0), "spawned %s uses the ramp" % e.type_id)
 			eq(e.max_hp, e.hp, "hp bar full at spawn")
 	ok(spawned[0] > 0, "a wave spawned")
+
+
+func _near(actual: float, expected: float, tolerance: float, note := "") -> void:
+	ok(absf(actual - expected) <= tolerance, "%s: expected %s +- %s, got %s" % [note, expected, tolerance, actual])
+
+
+## 16 Oct: Corne quit an 18 km run "because it might go on forever". The replay held dps/hp at ~10 from 0.5 to 17 km.
+## Past escalation_start hp compounds per WHOLE 100 m; the edges are where an off-by-one would hide.
+func test_enemy_hp_compounds_past_escalation_start_and_only_there() -> void:
+	var s := _quiet()
+	var g: float = s.rules.t("enemy_hp_growth_per_100m")
+	ok(g > 1.0, "growth must be above 1 or it does nothing")
+	for d in [-50.0, 0.0, 999.0, 1000.0, 1099.9]:
+		eq(s.enemies.growth(d), 1.0, "%.1f m: no growth before the first whole 100 m past the start" % d)
+	eq(s.enemies.growth(1100.0), g, "1,100 m: one step")
+	eq(s.enemies.growth(1250.0), g * g, "1,250 m: two whole steps, the half step does not count")
+	var prev := 0.0
+	for i in 3000:  # every 10 m out to 30 km: never shrinks
+		var gr: float = s.enemies.growth(i * 10.0)
+		ok(gr >= prev, "growth fell at %d m" % (i * 10))
+		prev = gr
+	_near(s.enemies.growth(17000.0), pow(g, 160), 1e-6 * pow(g, 160), "17 km = 160 steps (exact maths, same as pow)")
+	var linear := _quiet({"enemy_hp_growth_per_100m": 1.0})
+	ok(s.enemies.hp_at(1, 17000.0) >= 8 * linear.enemies.hp_at(1, 17000.0), "17 km: at least 8x the old straight line, got %d vs %d"
+		% [s.enemies.hp_at(1, 17000.0), linear.enemies.hp_at(1, 17000.0)])
+	var late := _quiet({"escalation_start": 5000.0})
+	eq(late.enemies.growth(4900.0), 1.0, "growth follows escalation_start, not a hard-coded 1,000 m")
+	eq(late.enemies.growth(5100.0), g)
+
+
+func test_boss_hp_takes_the_growth_where_it_starts() -> void:
+	var s := _quiet()
+	s.distance = 6000.0
+	s._start_boss()
+	var flat := int((s.rules.t("boss_base_hp") + s.rules.t("boss_hp_per_wave")) * float(s.boss.row["hp_mult"]))
+	ok(s.boss.max_hp > flat, "a boss at 6 km is tougher than the same boss at 0 m")
+	eq(s.boss.max_hp, int(flat * s.enemies.growth(6000.0)), "x growth(6 km)")
+	var early := _quiet()
+	early._start_boss()
+	eq(early.boss.max_hp, flat, "a boss before escalation_start is unscaled")
+
+
+## Touches did 1 and bomber blasts 2 at every distance, so 61 banked armour meant 61 free touches.
+func test_enemy_hits_grow_every_few_tiers() -> void:
+	var s := _quiet()
+	var every := int(s.rules.t("enemy_damage_every_tiers"))
+	var edge: float = s.rules.t("escalation_start") + s.rules.t("escalation_every") * (every - 1)  # first metre of tier `every`
+	eq(s.enemies.tier(edge - 0.1), every - 1)
+	eq(s.enemies.tier(edge), every)
+	eq(s.enemies.hit_damage(1, 0.0), 1)
+	eq(s.enemies.hit_damage(1, edge - 0.1), 1, "one tier short: still 1")
+	eq(s.enemies.hit_damage(1, edge), 2, "tier %d: +1" % every)
+	eq(s.enemies.hit_damage(2, edge), 3, "a bomber blast gets the same +1")
+	for case in [[edge - 50.0, 1], [edge + 50.0, 2]]:
+		var t := _quiet()
+		t.distance = case[0]
+		_place(t, "basic", t.player.x, t.player.z + 1.4)
+		var hurt := _of(_run(t, 1), K.PLAYER_HURT)
+		eq(hurt.size(), 1, "the touch landed at %.0f m" % case[0])
+		if hurt.size() == 1:
+			eq(hurt[0]["amount"], case[1], "a real touch at %.0f m" % case[0])
+	var b := _quiet({"flanker_lock_distance": 1000.0})
+	b.distance = edge + 50.0
+	_place(b, "bomber", 0.0, b.player.z + 15.0)
+	var blast := _of(_run(b, 120), K.PLAYER_HURT)
+	ok(blast.size() > 0 and blast[0]["amount"] == int(b.rules.t("bomber_blast_damage")) + 1, "a real bomber past the edge: %s" % [blast])
+
+
+## The 18 km run banked 61 armour (14 pickups, Plating which stacks to 99, two Bulwarks).
+func test_armour_never_goes_above_the_cap_by_any_route() -> void:
+	var s := _quiet()
+	var cap := int(s.rules.t("armor_max"))
+	s.player.add_armor(cap + 40)
+	eq(s.player.armor, cap, "one huge pickup")
+	s.player.add_armor(-1000)
+	eq(s.player.armor, 0, "never below zero")
+	var plating: Dictionary = {}
+	var bulwark: Dictionary = {}
+	for row in s.rules.perks:
+		if row["id"] == "plating":
+			plating = row
+		if row["id"] == "bulwark":
+			bulwark = row
+	for i in 99:
+		s.player.apply_perk(plating)
+	eq(s.player.armor, cap, "99 Plating stacks")
+	s.player.armor = cap - 1
+	s.player.apply_perk(bulwark)
+	eq(s.player.armor, cap, "Bulwark at cap - 1 tops up to the cap, not past it")
+	var p := _quiet()
+	var u = p.upgrades.pool[0]
+	u.kind = "armor"
+	for i in 30:
+		p._apply_reward(u)  # the real pickup path
+	eq(p.player.armor, cap, "30 armour pickups stop at the cap")
+	p.player.armor = cap
+	var r := p.player.take_damage(3)
+	eq(r["absorbed"], 3, "capped armour still absorbs")
+
+
+func test_dps_counts_every_gun_and_lasting_perk_but_not_timed_buffs() -> void:
+	var s := _quiet()
+	s.player.set_weapon("pistol")
+	var w: Dictionary = s.rules.weapons["pistol"]
+	var one := float(w["damage"]) * float(w["bullet_count"]) * float(w["fire_rate"])
+	_near(s.player.dps(), one, 1e-6, "one level-1 pistol, no perks")
+	s.player.add_gun("pistol")
+	_near(s.player.dps(), one * s.player.level_mult(2), 1e-6, "levelled to 2")
+	s.player.add_gun("smg")
+	ok(s.player.dps() > one * s.player.level_mult(2), "a second gun adds")
+	var before := s.player.dps()
+	s.player.frenzy_timer = 5.0
+	s.player.speed_timer = 5.0
+	_near(s.player.dps(), before, 1e-6, "frenzy and speed are timed: not counted")
+	s.player.mods["crit_chance"] = 0.5
+	_near(s.player.dps(), before * 1.5, 1e-6, "crit doubles: 50% crit = x1.5")
 
 
 func test_band_boundaries() -> void:

@@ -53,11 +53,13 @@ func _init(rules: Rules, logger: GLog) -> void:
 		shots.append(Shot.new())
 
 
-func activate(new_wave: int) -> void:
+## hp_scale: the enemies' compounding growth at this distance (Enemies.growth), so bosses keep pace with the road.
+func activate(new_wave: int, hp_scale := 1.0) -> void:
 	wave = new_wave
 	row = _rules.bosses[(new_wave - 1) % _rules.bosses.size()]
 	serial = -new_wave  # unique per fight, never collides with enemy serials (> 0) in a bullet's hit set
-	max_hp = maxi(1, int((_rules.t("boss_base_hp") + _rules.t("boss_hp_per_wave") * new_wave) * float(row["hp_mult"])))
+	max_hp = maxi(1, int((_rules.t("boss_base_hp") + _rules.t("boss_hp_per_wave") * new_wave) * float(row["hp_mult"])
+		* hp_scale))
 	hp = max_hp
 	x = 0.0
 	z = _rules.t("boss_spawn_z")

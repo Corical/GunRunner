@@ -160,6 +160,19 @@ func gun_power(g: Gun) -> float:
 	return float(w["damage"]) * float(w["bullet_count"]) * float(w["fire_rate"]) * level_mult(g.level)
 
 
+## Single-target damage per second of the whole loadout with every lasting modifier (perks, levels, crit), timed
+## buffs (frenzy, speed) left out. A yardstick for enemy hp, logged at each boss; splash and chains not counted.
+func dps() -> float:
+	var total := 0.0
+	var rate_mult: float = 1.0 + mods["fire_rate_mult"]
+	for g in guns:
+		var w: Dictionary = _rules.weapons[g.id]
+		var bullets := float(w["bullet_count"]) + int(mods["extra_bullets"])
+		total += float(w["damage"]) * (1.0 + mods["damage_mult"]) * level_mult(g.level) * bullets \
+			* float(w["fire_rate"]) * rate_mult
+	return total * (1.0 + crit_chance())
+
+
 ## Picks up the gun with this id. Returns {action: levelled|maxed|added|replaced, slot, gun, level, replaced}.
 ## (evolve() returns action evolved, replaced = the base gun.)
 func add_gun(id: String) -> Dictionary:
@@ -227,8 +240,9 @@ func heal(amount: int) -> void:
 	hp = mini(max_hp, hp + amount)
 
 
+## Armour is capped at armor_max (the 18 km run of 16 Oct banked 61 free hits).
 func add_armor(amount: int) -> void:
-	armor += amount
+	armor = clampi(armor + amount, 0, int(_rules.t("armor_max")))
 
 
 ## Takes one stack of a perk (row from perks.tsv). Immediate effects (hp, armour) happen here.
@@ -248,7 +262,7 @@ func _add_stat(stat: String, amount: float) -> void:
 			max_hp = maxi(1, max_hp + int(amount))
 			hp = clampi(hp + maxi(0, int(amount)), 1 if hp > 0 else 0, max_hp)
 		"armor_add":
-			armor = maxi(0, armor + int(amount))
+			add_armor(int(amount))
 
 
 ## The max-HP pickup's cap; Vitality perks raise it.

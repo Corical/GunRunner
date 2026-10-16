@@ -60,8 +60,8 @@ speed_buff_rate_mult	1.5	Player.ts tryFire
 tower_z	50	Tower.ts TOWER_Z
 tower_pool	6	TowerManager.ts POOL_SIZE
 boss_interval	500	Config.ts BOSS_INTERVAL_DISTANCE
-boss_base_hp	50	Config.ts BOSS_BASE_HP
-boss_hp_per_wave	20	Config.ts BOSS_HP_SCALE_PER_WAVE
+boss_base_hp	200	ours: was 50 (Config.ts); replay of the 16 Oct 18 km run: every boss died 1-4 s after reaching range
+boss_hp_per_wave	40	ours: was 20 (Config.ts); boss hp is also x enemy_hp_growth_per_100m, like enemies
 boss_spawn_z	75	ours: was 120, follows enemy_spawn_distance
 boss_radius	3	Boss.ts getCollisionRadius
 boss_speed_bonus_at_zero_hp	4	Boss.ts update
@@ -118,3 +118,6 @@ formation_chance_max	0.4	ours:
 formation_gap	4	ours: metres of the one gap in a wall (you are 1.1 m wide, a touch reaches 1.4 m)
 formation_spacing	2.2	ours: metres between enemies in a wall
 curse_max_hp	2	ours: the price of the cursed boss-loot card (every gun +1 level); offered only above this max HP
+enemy_hp_growth_per_100m	1.015	ours: past escalation_start enemy and boss hp also x this per whole 100 m (x1.16/km); the 18 km run held dps/hp at ~10 all the way
+enemy_damage_every_tiers	3	ours: enemy touches and bomber blasts hurt +1 per this many escalation tiers (they were 1 and 2 forever)
+armor_max	15	ours: armour never goes above this (the 18 km run banked 61; Plating stacks to 99)

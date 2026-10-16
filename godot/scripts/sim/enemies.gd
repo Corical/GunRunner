@@ -7,6 +7,7 @@ const GLog = preload("res://scripts/log/logger.gd")
 const Rules = preload("res://scripts/sim/rules.gd")
 const Rng = preload("res://scripts/sim/rng.gd")
 const Events = preload("res://scripts/sim/events.gd")
+const ExactMath = preload("res://scripts/sim/exact_math.gd")
 
 
 class Enemy:
@@ -264,9 +265,21 @@ func _activate(e: Enemy, type_id: String, x: float, z: float, distance := 0.0) -
 
 
 ## Enemies get tougher the further you go (Babylon never raised HP, so any upgraded gun one-shot everything):
-## hp = ceil(base x (1 + enemy_hp_per_100m x distance / 100)).
+## hp = ceil(base x (1 + enemy_hp_per_100m x distance / 100) x growth(distance)).
 func hp_at(base: int, distance: float) -> int:
-	return ceili(base * (1.0 + _rules.t("enemy_hp_per_100m") * maxf(0.0, distance) / 100.0) - 1e-9)
+	return ceili(base * (1.0 + _rules.t("enemy_hp_per_100m") * maxf(0.0, distance) / 100.0) * growth(distance) - 1e-9)
+
+
+## Past escalation_start hp also compounds: x enemy_hp_growth_per_100m per whole 100 m (bosses too). A straight line
+## never caught up with three levelled, evolved guns: the 18 km run of 16 Oct held dps/hp at ~10 from 0.5 to 17 km.
+func growth(distance: float) -> float:
+	var steps := int(floor(maxf(0.0, distance - _rules.t("escalation_start")) / 100.0))
+	return ExactMath.int_power(_rules.t("enemy_hp_growth_per_100m"), steps)
+
+
+## What an enemy touch (base 1) or bomber blast (base 2) does here: +1 per enemy_damage_every_tiers tiers.
+func hit_damage(base: int, distance: float) -> int:
+	return base + int(tier(distance) / int(_rules.t("enemy_damage_every_tiers")))
 
 
 func _band_for(distance: float) -> Dictionary:

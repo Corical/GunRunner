@@ -211,7 +211,7 @@ func _bomber_blast(e: Enemies.Enemy, near_player: bool) -> void:
 	var r := rules.t("bomber_blast_radius")
 	_push_event(Events.Kind.EXPLOSION, {"x": e.x, "z": e.z, "radius": r, "weapon": "bomber", "impact": true})
 	if near_player and Collision.dist_sq(e.x, e.z, player.x, player.z) < r * r:
-		_hurt_player(int(rules.t("bomber_blast_damage")), "enemy", "bomber", e.x)
+		_hurt_player(enemies.hit_damage(int(rules.t("bomber_blast_damage")), distance), "enemy", "bomber", e.x)
 	var near: Array = []
 	for o in enemies.pool:
 		if o.active and o != e and Collision.dist_sq(e.x, e.z, o.x, o.z) < r * r:
@@ -618,7 +618,9 @@ func start_boss_now(id: String) -> bool:
 
 
 func _start_boss() -> void:
-	boss.activate(boss.wave + 1)
+	boss.activate(boss.wave + 1, enemies.growth(distance))
+	_log.info("player", "power", {"wave": boss.wave, "distance": snappedf(distance, 0.1), "dps": snappedf(player.dps(), 0.01),
+		"enemy_hp": enemies.hp_at(1, distance), "boss_hp": boss.hp})
 	enemies.pause_spawning()
 	_push_event(Events.Kind.BOSS_STARTED, {"wave": boss.wave, "hp": boss.hp, "boss": boss.row["id"], "name": boss.row["name"]})
 
@@ -757,7 +759,7 @@ func _enemies_vs_player() -> void:
 			continue
 		e.active = false
 		hits += 1
-		_hurt_player(1, "enemy", e.type_id, e.x)
+		_hurt_player(enemies.hit_damage(1, distance), "enemy", e.type_id, e.x)
 	if hits > 0 and combo > 0:
 		_push_event(Events.Kind.COMBO_BROKEN, {"combo": combo})
 	if hits > 0:
