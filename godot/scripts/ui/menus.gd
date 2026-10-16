@@ -48,6 +48,8 @@ func set_music_options(moods: PackedStringArray, tracks: Array) -> void:
 	lines.append("")
 	lines.append("[b]MODELS[/b]\n[b]Blaster Kit[/b] (weapons) - Kenney  (CC0)\n[url=https://kenney.nl/assets/blaster-kit]https://kenney.nl/assets/blaster-kit[/url]")
 	lines.append("[b]Blocky Characters[/b] (player, enemies, bosses) - Kenney  (CC0)\n[url=https://kenney.nl/assets/blocky-characters]https://kenney.nl/assets/blocky-characters[/url]")
+	lines.append("[b]SOUNDS[/b]\n[b]The Free Firearm Sound Library[/b] (gunshots) - Ben Jaszczak, Brian Nelson, Kevin Heras, Matthew Nanney  (CC0)\n[url=https://opengameart.org/content/the-free-firearm-sound-library]https://opengameart.org/content/the-free-firearm-sound-library[/url]")
+	lines.append("[b]Sci-Fi Sounds[/b] (lasers, rockets, flames, explosions) - Kenney  (CC0)\n[url=https://kenney.nl/assets/sci-fi-sounds]https://kenney.nl/assets/sci-fi-sounds[/url]")
 	lines.append("")
 	lines.append("[b]GAME[/b]\nMade with Godot Engine (MIT licence) - godotengine.org")
 	var text: RichTextLabel = _credits_panel.get_node("Text")

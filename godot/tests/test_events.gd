@@ -49,6 +49,27 @@ func test_every_weapon_has_a_sound_and_a_haptic_kick() -> void:
 	sfx.free()
 
 
+## 16 Oct, Corne: "the sounds for the guns firing does not make any sense". Every droppable gun now fires a
+## recording; every file in assets/sfx replaces a clip the game plays (no orphans), and none drags on.
+func test_guns_fire_recorded_sounds_and_no_sample_is_orphaned() -> void:
+	var rules = load("res://scripts/data/rules_loader.gd").load_rules()
+	var sfx := SynthSfx.new()
+	sfx._ready()
+	for row in rules.rewards:
+		if row["kind"] == "weapon" and row["id"] != "lightning":  # lightning keeps its synth crackle
+			ok(sfx._clips["shot_" + row["id"]] is AudioStreamOggVorbis, "%s still fires a synth blip" % row["id"])
+	for f in DirAccess.get_files_at(SynthSfx.SAMPLE_DIR):
+		if not f.ends_with(".ogg"):
+			continue
+		var name := f.trim_suffix(".ogg")
+		ok(sfx._clips.has(name), "%s is not a clip the game plays" % f)
+		var s = load(SynthSfx.SAMPLE_DIR + f)
+		ok(s is AudioStreamOggVorbis and s.get_length() <= 1.2, "%s: %s, %.2f s" % [f, s, s.get_length() if s else -1.0])
+	for p in sfx._players:
+		p.free()
+	sfx.free()
+
+
 func test_ignored_kinds_are_not_also_handled() -> void:
 	for kind in IGNORED:
 		for presenter in PRESENTERS:

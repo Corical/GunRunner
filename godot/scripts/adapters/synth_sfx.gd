@@ -23,6 +23,7 @@ var _next := 0
 var _last_ms := {}  ## sound name -> last time it started (ms)
 var PROTECTED := {}  ## clips a new sound must not cut off (filled in _ready)
 ## Minimum ms between two starts of the same sound; shot_* default 40. Values are ours, by ear.
+const SAMPLE_DIR := "res://assets/sfx/"
 const MIN_GAP_MS := {"hit": 35, "kill": 45, "ice_crack": 60, "crit": 70, "explode": 80, "trap": 200, "trap_break": 80, "zap": 60}
 var _rng := RandomNumberGenerator.new()
 
@@ -67,6 +68,12 @@ func _ready() -> void:
 	_clips["crit"] = _mix(_sweep(2600.0, 700.0, 0.07, 0.3, "saw"), _noise(0.05, 0.2))
 	_clips["trap"] = _mix(_sweep(420.0, 110.0, 0.35, 0.45, "saw"), _sweep(300.0, 80.0, 0.35, 0.25, "square"))
 	_clips["trap_break"] = _mix(_sweep(500.0, 120.0, 0.12, 0.3, "square"), _noise(0.1, 0.25))
+	# Recorded sound wins where one exists (16 Oct, Corne: "the sounds for the guns firing does not make any
+	# sense"): assets/sfx/<clip>.ogg, cut by tools/cut_sfx.py from CC0 recordings (assets/sfx/LICENSE.txt).
+	for name in _clips.keys():
+		var path: String = SAMPLE_DIR + name + ".ogg"
+		if ResourceLoader.exists(path):
+			_clips[name] = load(path)
 	for long_clip in ["explode", "level", "boss", "game_over", "trap"]:
 		PROTECTED[_clips[long_clip]] = true
 	for i in VOICES:

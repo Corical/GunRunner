@@ -1,0 +1,16 @@
+Sound effects in this folder are short clips cut from two CC0 (public domain) libraries by tools/cut_sfx.py
+(first shot of a recording, mono, pitched, faded, peak-normalised). Both are CC0: no attribution required.
+
+1. The Free Firearm Sound Library
+   https://opengameart.org/content/the-free-firearm-sound-library
+   Licence on the page (read 16 Oct 2026): "CC0" - "Our team holds CC0 NO RIGHTS RESERVED for this library.
+   It may be used without royalty or credit". Recorded by Ben Jaszczak, Brian Nelson, Kevin Heras and
+   Matthew Nanney.
+   Used for: shot_pistol (Walther PPQ), shot_smg / shot_ripper (PPSh), shot_minigun / shot_bullet_storm
+   (AK-47), shot_shotgun (Mossberg), shot_railgun / shot_hand_cannon / shot_annihilator (Savage 10 .300
+   Blackout), shot_grenade / shot_scattergun / shot_cluster (Model 12).
+
+2. Kenney Sci-Fi Sounds 1.0, www.kenney.nl
+   https://kenney.nl/assets/sci-fi-sounds - License.txt in the pack: "Creative Commons Zero, CC0".
+   Used for: shot_laser (laserSmall), shot_prism (laserLarge), shot_rocket / shot_swarm / shot_flamethrower /
+   shot_inferno (thrusterFire), explode (explosionCrunch).
