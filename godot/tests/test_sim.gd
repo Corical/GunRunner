@@ -1035,14 +1035,14 @@ func test_every_gun_fires_at_its_own_rate_from_its_own_muzzle() -> void:
 	ok(xs[1] - xs[0] > 0.5 and xs[2] - xs[1] > 0.5, "three muzzles apart: %s" % [xs])
 
 
-func test_gun_level_five_doubles_damage() -> void:
+func test_gun_level_five_adds_four_level_bonuses() -> void:
 	var s := _quiet()
 	s.player.set_weapon("railgun")
 	var base := s.player.shot_damage()
 	for i in 4:
 		s.player.add_gun("railgun")
 	eq(s.player.guns[0].level, 5)
-	eq(s.player.shot_damage(), base * 2, "lv 5 = 1 + 0.25 x 4")
+	eq(s.player.shot_damage(), int(floor(base * (1.0 + 4.0 * s.rules.t("gun_level_damage")) + 1e-9)), "lv 5 = 1 + 4 x gun_level_damage")
 
 
 func test_gun_pickup_in_play_says_what_changed_and_the_hash_sees_levels() -> void:

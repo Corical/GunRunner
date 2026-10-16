@@ -68,7 +68,7 @@ boss_speed_bonus_at_zero_hp	4	Boss.ts update
 boss_contact_player_radius	1.0	GameManager.ts step 7
 boss_pushback	8	GameManager.ts step 7
 boss_score_per_wave	500	GameManager.ts onBossDefeated
-enemy_hp_per_100m	0.12	ours: enemies +12% hp per 100 m, rounded up (Babylon never raised hp)
+enemy_hp_per_100m	0.24	ours: enemies +24% hp per 100 m, rounded up (16 Oct: was 0.12 - 3 guns + evolutions outscaled it; Babylon never raised hp)
 xp_base	300	ours: was 100; 15 Oct phone run hit level 8 in 40 s and 21 levels in 10.6 min (Corne: "happens too often")
 xp_growth	1.5	ours: was 1.35; each level needs 50% more xp
 trap_spawn_per_second	0.12	ours: about one trap every 8 s; boosters are 0.48
@@ -86,7 +86,7 @@ first_weapon_seconds	6	ours: a pick-one pair of two weapons arrives this early i
 first_weapon_ice_hp	3	ours: thin ice on that first pair so the pistol frees it (16 Oct: Corne's SMG/grenade passed still frozen)
 gun_slots	3	ours: guns you carry, all firing (16 Oct: "accidentally pick up another weapon after you had the minigun")
 gun_max_level	5	ours: picking up a gun you hold levels it, up to this
-gun_level_damage	0.25	ours: damage per level above 1 (lv 5 = 2x)
+gun_level_damage	0.15	ours: damage per level above 1 (lv 5 = 1.6x); was 0.25 - with 3 guns bots hit the 14.4 km cap (16 Oct)
 gun_slot_spacing	0.7	ours: metres between muzzles of the guns you carry; the extra guns float there, clear of the body (0.56 m)
 chain_range	7	ours: metres a lightning arc reaches from the enemy it just hit
 chain_falloff	0.4	ours: damage lost per jump, of the shot's damage (Corne, 16 Oct: 100% -> 60% -> 20%)
@@ -106,8 +106,8 @@ escalation_start	1000	ours: past here difficulty keeps rising (16 Oct critique: 
 escalation_every	800	ours: metres per tier
 escalation_wave_add	1	ours: wave_size_max + this per tier
 wave_size_cap	7	ours: never more enemies in one wave
-elite_per_tier	0.07	ours: chance an enemy is elite, per tier
-elite_max	0.35	ours: elite chance never above this
+elite_per_tier	0.1	ours: chance an enemy is elite, per tier
+elite_max	0.45	ours: elite chance never above this
 elite_hp_mult	3	ours: an elite has this many times the hp
 elite_size_mult	1.35	ours: and is this much bigger (drawn and hit)
 elite_score_mult	2	ours: and is worth this much more
