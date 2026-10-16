@@ -9,9 +9,11 @@
 # shoot_*: fires one slow shot at where you are every shoot_every s (0 = never); you dodge it.
 # The first row was the old single boss (Boss.ts + plan D13). contact_dx = drawn half-width + the player's (16 Oct:
 # 4-6 m hit Corne from 2-3.5 m past the body, so the juggernaut could not be dodged); test_models checks it.
+# hold_z 30/32 -> 20 (16 Oct): shotgun (24 m) and flamer (16 m) could not reach a holding boss at all; at 20 m
+#   a bullet needs ~15.8 m (hold_z - boss_radius - bullet_hit_radius). test_sim checks every gun can.
 id	name	color	hp_mult	speed	steer	contact_dx	contact_damage	hold_z	hold_seconds	strafe	summon_every	summon_count	summon_enemy	shoot_every	shot_speed	shot_damage
 string	string	string	float	float	float	float	int	float	float	float	float	int	string	float	float	int
 brute	BRUTE	#DC2626	1.0	5	3	2.3	3	0	0	0	0	0	basic	0	0	0
-summoner	SUMMONER	#7C3AED	0.8	5	1.5	2.3	3	30	20	0	3.0	3	fast	0	0	0
-gunner	GUNNER	#F59E0B	0.8	5	2	2.3	3	32	20	4.5	0	0	basic	1.6	16	1
+summoner	SUMMONER	#7C3AED	0.8	5	1.5	2.3	3	20	20	0	3.0	3	fast	0	0	0
+gunner	GUNNER	#F59E0B	0.8	5	2	2.3	3	20	20	4.5	0	0	basic	1.6	16	1
 juggernaut	JUGGERNAUT	#475569	1.8	3.5	1.2	2.5	4	0	0	0	0	0	basic	0	0	0

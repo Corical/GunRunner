@@ -1425,6 +1425,18 @@ func test_every_wall_has_one_gap_you_fit_through() -> void:
 		ok(gaps <= 1, "wall %d: one gap, not %d" % [w, gaps])
 
 
+## 16 Oct critique: shotgun (24 m) and flamer (16 m) could never reach a Summoner or Gunner holding at 30-32 m, so
+## with those guns a boss was a 20 s wait. Every gun, evolved ones too, must reach every holding boss unaided.
+func test_every_gun_reaches_every_holding_boss() -> void:
+	var rules := _quiet().rules
+	for b in rules.bosses:
+		if float(b["hold_z"]) <= 0.0:
+			continue
+		var need: float = float(b["hold_z"]) - rules.t("boss_radius") - rules.t("bullet_hit_radius")
+		for id in rules.weapons:
+			ok(float(rules.weapons[id]["max_range"]) >= need, "%s (range %s) cannot reach %s holding at %s m (needs %.1f)" % [id, rules.weapons[id]["max_range"], b["id"], b["hold_z"], need])
+
+
 # ---------- risk choices (depth plan item 7) ----------
 
 func test_glass_cannon_trades_max_hp_and_never_takes_the_last_point() -> void:
