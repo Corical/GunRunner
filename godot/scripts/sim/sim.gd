@@ -185,10 +185,11 @@ func damage_enemy(e: Enemies.Enemy, amount: int, source: String, weapon := "") -
 		_push_event(Events.Kind.ENEMY_HIT, {"serial": e.serial, "enemy": e.type_id, "x": e.x, "z": e.z, "amount": amount, "source": source, "weapon": weapon})
 		return false
 	e.active = false
-	var gain: int = int(e.row["score"]) * maxi(1, combo)
+	var base_score := int(e.row["score"]) * (int(rules.t("elite_score_mult")) if e.elite else 1)
+	var gain: int = base_score * maxi(1, combo)
 	score += gain
 	kills += 1
-	xp += int(e.row["score"])
+	xp += base_score
 	combo += 1
 	_log.debug("score", "kill", {"enemy": e.type_id, "source": source, "gain": gain, "combo": combo})
 	_push_event(Events.Kind.ENEMY_KILLED, {
@@ -822,7 +823,7 @@ func state_hash() -> int:
 		parts.append_array([g.id, g.level, g.fire_timer, g.damage_carry])
 	for e in enemies.pool:
 		if e.active:
-			parts.append_array([e.serial, e.type_id, e.x, e.z, e.hp, e.shield_hp, e.heal_timer, e.target_x, e.lane_timer, e.slow_mult, e.burning, e.burn_timer, e.poison_timer, e.poison_tick_timer, e.burn_damage, e.poison_damage])
+			parts.append_array([e.serial, e.type_id, e.elite, e.x, e.z, e.hp, e.shield_hp, e.heal_timer, e.target_x, e.lane_timer, e.slow_mult, e.burning, e.burn_timer, e.poison_timer, e.poison_tick_timer, e.burn_damage, e.poison_damage])
 	for b in bullets.pool:
 		if b.active:
 			parts.append_array([b.serial, b.x, b.z, b.vx, b.vz, b.start_z, b.damage, b.penetration, b.splash_radius,

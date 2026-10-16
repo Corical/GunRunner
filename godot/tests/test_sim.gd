@@ -800,9 +800,10 @@ func test_band_boundaries() -> void:
 
 
 func test_wave_size_grows_with_distance() -> void:
-	var cases := {0.0: 1, 299.0: 1, 300.0: 2, 600.0: 3, 10000.0: 3}
+	# Escalation (16 Oct): +1 per tier past 1,000 m, capped; walls off here (they are their own test).
+	var cases := {0.0: 1, 299.0: 1, 300.0: 2, 600.0: 3, 999.0: 3, 1000.0: 4, 1800.0: 5, 10000.0: 7}
 	for d in cases:
-		var s := _quiet()
+		var s := _quiet({"formation_chance": 0.0, "formation_chance_per_tier": 0.0})
 		var spawned := [0]  # lambdas capture ints by value; an Array is shared
 		s.enemies._spawn_wave(d, func(kind, _f): if kind == K.ENEMY_SPAWNED: spawned[0] += 1)
 		eq(spawned[0], cases[d], "distance %s" % d)
@@ -815,7 +816,7 @@ func test_spawn_gap_mostly_respected() -> void:
 	for w in 300:
 		for e in s.enemies.pool:
 			e.active = false
-		s.enemies._spawn_wave(1000.0, func(_k, _f): pass)
+		s.enemies._spawn_wave(999.0, func(_k, _f): pass)  # tier 0: waves of 3
 		var xs: Array = []
 		for e in s.enemies.pool:
 			if e.active:
@@ -1355,6 +1356,75 @@ func test_every_enemy_behaviour_is_known() -> void:
 		ok(seen.has(b), "some enemy is a %s" % b)
 
 
+# ---------- escalation (depth plan item 6) ----------
+
+func _wave_at(s: Sim, d: float) -> Array:
+	for e in s.enemies.pool:
+		e.active = false
+	s.enemies._spawn_wave(d, func(_k, _f): pass)
+	return s.enemies.pool.filter(func(e): return e.active)
+
+
+func test_no_elites_or_walls_before_escalation() -> void:
+	var s := _quiet()
+	for w in 300:
+		var wave := _wave_at(s, s.rules.t("escalation_start") - 1.0)
+		ok(wave.size() <= int(s.rules.t("wave_size_max")), "wave %d: %d enemies" % [w, wave.size()])
+		for e in wave:
+			ok(not e.elite, "elite before %d m" % s.rules.t("escalation_start"))
+
+
+func test_elites_come_at_the_tuned_rate_and_are_what_they_say() -> void:
+	var s := _quiet({"formation_chance": 0.0, "formation_chance_per_tier": 0.0})
+	var d := 3000.0
+	var want: float = s.enemies.elite_chance(d)
+	ok(want > 0.0, "elites by %d m" % d)
+	var n := 0
+	var elites := 0
+	for w in 600:
+		for e in _wave_at(s, d):
+			n += 1
+			if e.elite:
+				elites += 1
+				var normal_hp: int = s.enemies.hp_at(int(e.row["hp"]), d)
+				eq(e.hp, int(ceil(normal_hp * s.rules.t("elite_hp_mult"))), "elite hp")
+				ok(absf(e.radius - float(e.row["size"]) * s.rules.t("enemy_radius_per_size") * s.rules.t("elite_size_mult")) < 1e-6, "elite hit radius grows with it")
+	var rate := float(elites) / n
+	ok(absf(rate - want) < 0.03, "elite rate %.3f over %d enemies, tuned %.3f" % [rate, n, want])
+	var t := _quiet()
+	var e = _place(t, "basic", 0.0, 30.0)
+	e.elite = true
+	var before := t.score
+	t.damage_enemy(e, 100, "bullet", "pistol")
+	eq(t.score - before, int(e.row["score"]) * int(t.rules.t("elite_score_mult")), "elite worth double")
+
+
+## Every wall leaves exactly one gap at least formation_gap wide, wide enough to stand in without a touch.
+func test_every_wall_has_one_gap_you_fit_through() -> void:
+	var s := _quiet({"formation_chance": 1.0, "formation_chance_max": 1.0})
+	var reach: float = s.rules.t("enemy_hit_player_radius") + s.rules.t("enemy_radius_per_size") * 1.4  # biggest enemy
+	var half: float = s.rules.t("road_width") / 2.0 - s.rules.t("player_road_margin")
+	for w in 200:
+		var wall := _wave_at(s, 2000.0)
+		ok(wall.size() >= 4, "wall %d: %d enemies" % [w, wall.size()])
+		var xs: Array = wall.map(func(e): return e.x)
+		xs.sort()
+		var safe := 0  # player positions (every 0.1 m) no enemy in the wall can touch
+		var x := -half
+		while x <= half:
+			var clear := true
+			for ex in xs:
+				clear = clear and absf(ex - x) >= reach
+			safe += 1 if clear else 0
+			x += 0.1
+		ok(safe >= 5, "wall %d: somewhere to stand (%d spots) %s" % [w, safe, xs])
+		var gaps := 0
+		for i in range(1, xs.size()):
+			if xs[i] - xs[i - 1] > s.rules.t("formation_spacing") + 0.01:
+				gaps += 1
+		ok(gaps <= 1, "wall %d: one gap, not %d" % [w, gaps])
+
+
 # ---------- lane switchers ----------
 
 ## 16 Oct: a lane switcher "quickly steps into my lane, I don't even have a chance to shoot it". Inside
@@ -1418,8 +1488,8 @@ func test_gun_pair_is_the_first_drop_and_wears_thin_ice() -> void:
 		var s := _sim(seed_value, {"upgrade_spawn_per_second": 10, "trap_spawn_per_second": 10, "upgrade_pool": 40, "trap_pool": 40})
 		var first: Array = []
 		var later_ice: Array = []
-		for i in 60 * 20:
-			s.step({})
+		for i in 60 * 40:  # drop spacing allows ~4 drops per 20 s; traps can take all four (seed 13)
+			s.step({"pick": 0})  # a level-up would otherwise stop the clock
 			for e in s.events:
 				if e["kind"] == K.TRAP_SPAWNED and first.size() < 2:
 					first.append("trap")

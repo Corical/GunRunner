@@ -25,6 +25,7 @@ class Enemy:
 	var radius := 0.5
 	var lane_timer := 0.0
 	var shield_hp := 0       ## shield behaviour: soaks bullet damage first
+	var elite := false       ## tougher, bigger, worth more (escalation)
 	var heal_timer := 0.0    ## healer behaviour: seconds to the next heal
 	## Status effects. slow and burning are set by towers each step and consumed (reset) on the next
 	## enemy update, so they act one step late - Babylon parity, see sim.gd tick order.
@@ -127,8 +128,31 @@ func _update_enemy(e: Enemy, dt: float, damage: Callable, emit: Callable) -> voi
 		emit.call(Events.Kind.ENEMY_ESCAPED, {"serial": e.serial, "enemy": e.type_id})
 
 
+## Escalation tier: 0 until escalation_start, then +1 every escalation_every metres.
+func tier(distance: float) -> int:
+	if distance < _rules.t("escalation_start"):
+		return 0
+	return 1 + int(floor((distance - _rules.t("escalation_start")) / _rules.t("escalation_every")))
+
+
+func elite_chance(distance: float) -> float:
+	return minf(_rules.t("elite_max"), _rules.t("elite_per_tier") * tier(distance))
+
+
+func formation_chance(distance: float) -> float:
+	if distance < _rules.t("formation_start"):
+		return 0.0
+	return minf(_rules.t("formation_chance_max"), _rules.t("formation_chance") + _rules.t("formation_chance_per_tier") * tier(distance))
+
+
 func _spawn_wave(distance: float, emit: Callable) -> void:
-	var wave_size := mini(int(_rules.t("wave_size_max")), 1 + int(floor(distance / _rules.t("wave_size_metres"))))
+	if _rng.next_float() < formation_chance(distance):
+		_spawn_wall(distance, emit)
+		if manual_interval <= 0.0:
+			spawn_interval = _auto_interval(distance)
+		return
+	var cap := mini(int(_rules.t("wave_size_cap")), int(_rules.t("wave_size_max")) + int(_rules.t("escalation_wave_add")) * tier(distance))
+	var wave_size := mini(cap, 1 + int(floor(distance / _rules.t("wave_size_metres"))))
 	var half := _half_road()
 	var gap := _rules.t("spawn_min_gap")
 	var used: Array[float] = []
@@ -153,11 +177,45 @@ func _spawn_wave(distance: float, emit: Callable) -> void:
 		var type_id := _roll_type(band)
 		var z := _rules.t("enemy_spawn_distance") + _rng.next_float() * _rules.t("enemy_spawn_jitter")
 		_activate(e, type_id, x, z, distance)
+		if _rng.next_float() < elite_chance(distance):
+			_make_elite(e)
 		placed += 1
-		emit.call(Events.Kind.ENEMY_SPAWNED, {"serial": e.serial, "enemy": type_id, "x": x, "z": z})
+		emit.call(Events.Kind.ENEMY_SPAWNED, {"serial": e.serial, "enemy": type_id, "x": x, "z": z, "elite": e.elite})
 	if manual_interval <= 0.0:
 		spawn_interval = _auto_interval(distance)
 	_log.debug("spawn", "wave", {"distance": distance, "band": band["id"], "size": wave_size, "placed": placed, "next_in": spawn_interval})
+
+
+## A wall across the road with one gap of formation_gap metres somewhere: find it (16 Oct critique: spawns were
+## independent random dots, nothing to read). One type from the band; as many as the pool allows.
+func _spawn_wall(distance: float, emit: Callable) -> void:
+	var half := _half_road()
+	var gap := _rules.t("formation_gap")
+	var gap_centre := _rng.range_float(-half + gap / 2.0, half - gap / 2.0)
+	var type_id := _roll_type(_band_for(distance))
+	var z := _rules.t("enemy_spawn_distance")
+	var x := -half
+	var placed := 0
+	while x <= half + 1e-6:
+		if absf(x - gap_centre) >= gap / 2.0:
+			var e := _inactive()
+			if e == null:
+				exhausted_count += 1
+				break
+			_activate(e, type_id, x, z, distance)
+			e.target_x = x
+			e.lane_timer = 1e9  # a wall holds its lanes
+			placed += 1
+			emit.call(Events.Kind.ENEMY_SPAWNED, {"serial": e.serial, "enemy": type_id, "x": x, "z": z, "elite": false})
+		x += _rules.t("formation_spacing")
+	_log.debug("spawn", "wall", {"distance": distance, "type": type_id, "gap_x": gap_centre, "placed": placed})
+
+
+func _make_elite(e: Enemy) -> void:
+	e.elite = true
+	e.hp = int(ceil(e.hp * _rules.t("elite_hp_mult")))
+	e.max_hp = e.hp
+	e.radius *= _rules.t("elite_size_mult")
 
 
 ## A boss calls in `count` minions in a row centred on x, spread `spacing` apart, kept on the road. Works while
@@ -194,6 +252,7 @@ func _activate(e: Enemy, type_id: String, x: float, z: float, distance := 0.0) -
 	e.target_x = x
 	e.lane_timer = _rules.t("flanker_first_min") + _rng.next_float() * _rules.t("flanker_first_extra")
 	e.slow_mult = 1.0
+	e.elite = false
 	e.shield_hp = hp_at(int(_rules.t("shield_hp")), distance) if e.row["behaviour"] == "shield" else 0
 	e.heal_timer = _rules.t("healer_every")
 	e.burning = false

@@ -41,7 +41,9 @@ const TUNING_KEYS := [
 	"trap_spawn_per_second", "trap_hp", "trap_pool", "trap_sway_amplitude", "trap_sway_speed", "upgrade_sway_amplitude",
 	"upgrade_sway_speed", "upgrade_pair_chance", "drop_min_gap", "first_weapon_seconds", "first_weapon_ice_hp", "gun_slots", "gun_max_level", "gun_level_damage", "gun_slot_spacing", "chain_range", "chain_falloff", "chain_min",
 	"chain_arcs_per_level", "bomber_fuse", "bomber_blast_radius", "bomber_blast_damage", "bomber_enemy_damage",
-	"healer_every", "healer_radius", "healer_amount", "split_count", "split_spacing", "shield_hp",
+	"healer_every", "healer_radius", "healer_amount", "split_count", "split_spacing", "shield_hp", "escalation_start", "escalation_every", "escalation_wave_add",
+	"wave_size_cap", "elite_per_tier", "elite_max", "elite_hp_mult", "elite_size_mult", "elite_score_mult", "formation_start",
+	"formation_chance", "formation_chance_per_tier", "formation_chance_max", "formation_gap", "formation_spacing",
 ]
 ## Chances: must lie in 0..1.
 const TUNING_PROBABILITY := ["upgrade_pair_chance"]

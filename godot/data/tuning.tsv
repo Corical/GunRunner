@@ -102,3 +102,18 @@ healer_amount	1	ours: hp per heal, up to the enemy's max
 split_count	2	ours: runners a splitter becomes
 split_spacing	1.6	ours: metres between them
 shield_hp	4	ours: shield points at 0 m; grows with distance like enemy hp
+escalation_start	1000	ours: past here difficulty keeps rising (16 Oct critique: it stopped at 1,000 m)
+escalation_every	800	ours: metres per tier
+escalation_wave_add	1	ours: wave_size_max + this per tier
+wave_size_cap	7	ours: never more enemies in one wave
+elite_per_tier	0.07	ours: chance an enemy is elite, per tier
+elite_max	0.35	ours: elite chance never above this
+elite_hp_mult	3	ours: an elite has this many times the hp
+elite_size_mult	1.35	ours: and is this much bigger (drawn and hit)
+elite_score_mult	2	ours: and is worth this much more
+formation_start	1500	ours: walls start here
+formation_chance	0.15	ours: chance a wave is a wall, plus formation_chance_per_tier per tier
+formation_chance_per_tier	0.05	ours:
+formation_chance_max	0.4	ours:
+formation_gap	4	ours: metres of the one gap in a wall (you are 1.1 m wide, a touch reaches 1.4 m)
+formation_spacing	2.2	ours: metres between enemies in a wall

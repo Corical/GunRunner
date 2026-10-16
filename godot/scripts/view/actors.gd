@@ -241,6 +241,7 @@ func _sync_enemies(alpha: float) -> void:
 		_show_model(s, "enemy", e.type_id)
 		s.root.visible = true
 		s.root.position = WorldView.view_pos(lerpf(e.prev_x, e.x, alpha), lerpf(e.prev_z, e.z, alpha))
+		s.root.scale = Vector3.ONE * (_sim.rules.t("elite_size_mult") if e.elite else 1.0)
 		s.models[s.current].position.y = absf(sin(_t * 11.0 + e.serial * 1.7)) * 0.15  # run bob, out of step
 		# Status look (Corne 18:52: "at least look like it's on fire... or poison"): tint + rising flames/bubbles.
 		var status := "burn" if e.burning else ("poison" if e.poison_timer > 0.0 else "")
