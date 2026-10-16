@@ -54,6 +54,59 @@ func test_every_character_loads_animates_and_wears_its_colour_ring() -> void:
 		n.free()
 
 
+func _surface_albedos(n: Node, out: Array) -> void:
+	if n is MeshInstance3D and not ((n as MeshInstance3D).mesh is TorusMesh):  # the ring is a marker
+		var mi := n as MeshInstance3D
+		for i in mi.mesh.get_surface_count():
+			var m := mi.get_surface_override_material(i)
+			out.append(m.albedo_color if m is BaseMaterial3D else null)
+	for c in n.get_children():
+		_surface_albedos(c, out)
+
+
+func _first_override(n: Node) -> Material:
+	if n is MeshInstance3D and (n as MeshInstance3D).get_surface_override_material(0) != null:
+		return (n as MeshInstance3D).get_surface_override_material(0)
+	for c in n.get_children():
+		var m := _first_override(c)
+		if m != null:
+			return m
+	return null
+
+
+## 16 Oct: "different body colours per enemy type". Every enemy and boss body carries its data colour, the player
+## keeps its own, pooled slots of one type share one material, and no two enemy types look the same.
+func test_enemy_and_boss_bodies_wear_their_data_colour() -> void:
+	var rules := Loader.load_rules()
+	var cat := _catalog(rules)
+	var p := cat.make("player", "")
+	var player_albedos: Array = []
+	_surface_albedos(p, player_albedos)
+	p.free()
+	ok(player_albedos.size() > 0 and player_albedos.all(func(a): return a == null), "player is not tinted")
+	var seen := {}
+	var cases: Array = []
+	for id in rules.enemies:
+		cases.append(["enemy", id, rules.enemies[id]["color"]])
+	for b in rules.bosses:
+		cases.append(["boss", b["id"], b["color"]])
+	for c in cases:
+		var n := cat.make(c[0], c[1])
+		var albedos: Array = []
+		_surface_albedos(n, albedos)
+		var want := Color.WHITE.lerp(Color(c[2]), cat.TINT_STRENGTH)
+		ok(albedos.size() > 0, "%s %s has surfaces" % [c[0], c[1]])
+		for a in albedos:
+			ok(a != null and a.is_equal_approx(want), "%s %s tinted %s, got %s" % [c[0], c[1], want, a])
+		var again := cat.make(c[0], c[1])
+		ok(_first_override(n) == _first_override(again), "%s %s: slots share one material" % [c[0], c[1]])
+		again.free()
+		n.free()
+		if c[0] == "enemy":
+			ok(not seen.has(c[2]), "enemy %s shares colour %s with %s" % [c[1], c[2], seen.get(c[2], "")])
+			seen[c[2]] = c[1]
+
+
 ## Sideways half-width of what is drawn (the colour ring at the feet is a marker, not body).
 func _half_width(n: Node, parent := Transform3D.IDENTITY) -> float:
 	var xf := parent

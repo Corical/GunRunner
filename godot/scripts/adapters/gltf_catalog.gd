@@ -7,10 +7,12 @@ const Rules = preload("res://scripts/sim/rules.gd")
 const PrimitiveCatalog = preload("res://scripts/adapters/primitive_catalog.gd")
 
 const ROOT := "res://assets/models/"
+const TINT_STRENGTH := 0.6  ## 0 = model's own colours, 1 = flat data colour; by eye
 
 var _rules: Rules
 var _fallback: PrimitiveCatalog
 var _scenes := {}  ## weapon id -> PackedScene, or null when it failed (so it is reported once)
+var _tinted := {}  ## "character|source material id" -> the shared tinted copy
 
 
 func _init(rules: Rules, fallback: PrimitiveCatalog) -> void:
@@ -78,6 +80,8 @@ func _character(kind: String, id: String, key: String) -> Node3D:
 				colour = b["color"]
 	model.scale = Vector3.ONE * float(look["scale"]) * size
 	model.rotation.y = deg_to_rad(float(look["yaw"]))
+	if kind != "player":
+		_tint(model, key, Color(colour))
 	root.add_child(model)
 	if kind != "player":
 		var ring := MeshInstance3D.new()
@@ -105,6 +109,25 @@ func _character(kind: String, id: String, key: String) -> Node3D:
 	elif player != null:
 		push_error("GltfCatalog: %s has no animation '%s'" % [key, clip])
 	return root
+
+
+## Washes the body in its data colour, texture detail kept (16 Oct: "different body colours per enemy type" - the
+## ring at the feet alone was not enough). One tinted copy per (character, source material), shared by every slot.
+func _tint(n: Node, key: String, colour: Color) -> void:
+	if n is MeshInstance3D:
+		var mi := n as MeshInstance3D
+		for i in mi.mesh.get_surface_count():
+			var src := mi.get_active_material(i)
+			if not (src is BaseMaterial3D):
+				continue
+			var cache_key := "%s|%d" % [key, src.get_instance_id()]
+			if not _tinted.has(cache_key):
+				var m := (src as BaseMaterial3D).duplicate() as BaseMaterial3D
+				m.albedo_color = Color.WHITE.lerp(colour, TINT_STRENGTH)
+				_tinted[cache_key] = m
+			mi.set_surface_override_material(i, _tinted[cache_key])
+	for c in n.get_children():
+		_tint(c, key, colour)
 
 
 func _find_player(n: Node) -> AnimationPlayer:
