@@ -225,7 +225,7 @@ func _sync_player(alpha: float) -> void:
 				_player_model.add_child(n)
 			else:  # floats at the shoulder over its muzzle (sim.gun_offset)
 				var dx := WorldView.view_pos(_sim.gun_offset(slot), 0.0).x - WorldView.view_pos(0.0, 0.0).x
-				n.position = Vector3(dx, 1.5, 0.0)
+				n.position = Vector3(dx * 1.4, 2.3, 0.0)  # above head height: the camera sits behind you
 				_player.add_child(n)
 			_player_guns.append(n)
 		_player_weapon_id = loadout
