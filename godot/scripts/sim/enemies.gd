@@ -24,6 +24,8 @@ class Enemy:
 	var max_hp := 1
 	var radius := 0.5
 	var lane_timer := 0.0
+	var shield_hp := 0       ## shield behaviour: soaks bullet damage first
+	var heal_timer := 0.0    ## healer behaviour: seconds to the next heal
 	## Status effects. slow and burning are set by towers each step and consumed (reset) on the next
 	## enemy update, so they act one step late - Babylon parity, see sim.gd tick order.
 	var slow_mult := 1.0
@@ -192,6 +194,8 @@ func _activate(e: Enemy, type_id: String, x: float, z: float, distance := 0.0) -
 	e.target_x = x
 	e.lane_timer = _rules.t("flanker_first_min") + _rng.next_float() * _rules.t("flanker_first_extra")
 	e.slow_mult = 1.0
+	e.shield_hp = hp_at(int(_rules.t("shield_hp")), distance) if e.row["behaviour"] == "shield" else 0
+	e.heal_timer = _rules.t("healer_every")
 	e.burning = false
 	e.burn_timer = 0.0
 	e.poison_timer = 0.0

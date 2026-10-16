@@ -17,6 +17,9 @@ enum Kind {
 	ICE_SHATTERED,    ## serial, reward, x, z
 	UPGRADE_EXPIRED,  ## serial, reward, thawed
 	PICKUP,           ## serial, reward, reward_kind, x, z
+	SHIELD_HIT,       ## serial, x, z, shield_hp (left), broken
+	ENEMY_HEALED,     ## serial (the healer), x, z, radius, count (enemies healed)
+	ENEMY_SPLIT,      ## x, z, count (runners it became)
 	CHAIN_ARC,        ## x, z (from), x2, z2 (to), jump (1 = first arc), amount
 	GUN_CHANGED,      ## action (levelled|maxed|added|replaced|evolved), slot, gun, level, replaced, x, z
 	LOOT_OFFERED,     ## wave, choices (boss loot cards; the sim waits for a pick)

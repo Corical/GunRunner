@@ -92,3 +92,13 @@ chain_range	7	ours: metres a lightning arc reaches from the enemy it just hit
 chain_falloff	0.4	ours: damage lost per jump, of the shot's damage (Corne, 16 Oct: 100% -> 60% -> 20%)
 chain_min	0.2	ours: an arc never does less than this share
 chain_arcs_per_level	1	ours: each gun level above 1 adds this many arcs
+bomber_fuse	3.5	ours: a bomber this close to you (metres, any direction) blows up - wider than a touch (1.4 m)
+bomber_blast_radius	3.5	ours: what its blast reaches
+bomber_blast_damage	2	ours: to you if you are inside it
+bomber_enemy_damage	3	ours: to every enemy inside it (shoot it in a crowd)
+healer_every	2	ours: seconds between heals
+healer_radius	6	ours: metres a heal reaches
+healer_amount	1	ours: hp per heal, up to the enemy's max
+split_count	2	ours: runners a splitter becomes
+split_spacing	1.6	ours: metres between them
+shield_hp	4	ours: shield points at 0 m; grows with distance like enemy hp

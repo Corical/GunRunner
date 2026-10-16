@@ -252,6 +252,55 @@ func _sync_enemies(alpha: float) -> void:
 		if status != "" and juice != null:
 			juice.status_puff(e.serial, s.root.position + Vector3(0, float(e.row["size"]) * 1.2, 0), status, _t)
 		_set_bar(s, float(e.hp) / e.max_hp, e.max_hp > 1, float(e.row["size"]) * 1.4 + 1.0)
+		_sync_tell(s, e)
+
+
+## What an enemy is about to do, readable at a glance: a shield plate in front while its shield holds; a red
+## fuse light over a bomber that blinks faster as it closes on you.
+func _sync_tell(s: Slot, e) -> void:
+	var behaviour: String = e.row["behaviour"]
+	if behaviour != "shield" and behaviour != "bomber":
+		if s.extra != null:
+			s.extra.visible = false
+		return
+	if s.extra == null or String(s.extra.name) != behaviour:
+		if s.extra != null:
+			s.extra.queue_free()
+		s.extra = _tell_node(behaviour)
+		s.root.add_child(s.extra)
+	var size := float(e.row["size"])
+	if behaviour == "shield":
+		s.extra.visible = e.shield_hp > 0
+		var toward_player := WorldView.view_pos(0.0, -1.0).z - WorldView.view_pos(0.0, 0.0).z
+		s.extra.position = Vector3(0, size * 1.0, toward_player * size * 0.8)
+		s.extra.scale = Vector3(size * 1.6, size * 1.6, 0.15)
+	else:
+		var gap: float = maxf(0.0, e.z - _sim.player.z)
+		var hz := clampf(18.0 / maxf(gap, 1.0), 1.5, 12.0)  # blinks faster as it closes
+		s.extra.visible = gap < 30.0 and fmod(_t * hz, 1.0) < 0.5
+		s.extra.position = Vector3(0, size * 2.4, 0)
+
+
+func _tell_node(behaviour: String) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.name = behaviour
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	if behaviour == "shield":
+		var box := BoxMesh.new()
+		box.size = Vector3.ONE
+		mi.mesh = box
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.albedo_color = Color(0.45, 0.7, 1.0, 0.45)
+	else:
+		var ball := SphereMesh.new()
+		ball.radius = 0.25
+		ball.height = 0.5
+		mi.mesh = ball
+		m.albedo_color = Color("#FF2D2D")
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
 
 
 ## Telemetry for "invisible enemies" (Corne 17:50): sim enemies active vs enemy models actually shown,

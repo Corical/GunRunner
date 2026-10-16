@@ -4,7 +4,7 @@ extends RefCounted
 
 const TABLES := {
 	"weapons": ["id", "name", "fire_rate", "damage", "bullet_count", "bullet_spread", "bullet_size", "bullet_color", "max_range", "penetration", "splash_radius", "detonates", "chain_arcs"],
-	"enemies": ["id", "name", "hp", "speed", "color", "size", "score", "switches_lanes"],
+	"enemies": ["id", "name", "hp", "speed", "color", "size", "score", "switches_lanes", "behaviour"],
 	"towers": ["id", "name", "color", "duration", "radius", "burn_damage", "slow_multiplier", "poison_duration", "poison_damage"],
 	"effectiveness": ["id", "weapon", "enemy", "multiplier"],
 	"evolutions": ["id", "base", "perk"],
@@ -40,7 +40,8 @@ const TUNING_KEYS := [
 	"boss_shot_radius", "boss_shot_pool",
 	"trap_spawn_per_second", "trap_hp", "trap_pool", "trap_sway_amplitude", "trap_sway_speed", "upgrade_sway_amplitude",
 	"upgrade_sway_speed", "upgrade_pair_chance", "drop_min_gap", "first_weapon_seconds", "first_weapon_ice_hp", "gun_slots", "gun_max_level", "gun_level_damage", "gun_slot_spacing", "chain_range", "chain_falloff", "chain_min",
-	"chain_arcs_per_level",
+	"chain_arcs_per_level", "bomber_fuse", "bomber_blast_radius", "bomber_blast_damage", "bomber_enemy_damage",
+	"healer_every", "healer_radius", "healer_amount", "split_count", "split_spacing", "shield_hp",
 ]
 ## Chances: must lie in 0..1.
 const TUNING_PROBABILITY := ["upgrade_pair_chance"]
@@ -175,6 +176,9 @@ func _build(tables: Dictionary) -> void:
 		if row["burn_damage"] < 0 or row["poison_damage"] < 0: errors.append("tower %s: damage must not be negative" % row["id"])
 		if row["poison_duration"] > 0.0 and row["poison_damage"] < 1: errors.append("tower %s: poisons for %ss but poison_damage is 0" % [row["id"], row["poison_duration"]])
 
+	for id in enemies:
+		if not enemies[id]["behaviour"] in ["-", "bomber", "healer", "splitter", "shield"]:
+			errors.append("enemy %s: unknown behaviour '%s'" % [id, enemies[id]["behaviour"]])
 	for row in tables["evolutions"]:
 		if not weapons.has(row["id"]): errors.append("evolution %s: not in weapons.tsv" % row["id"])
 		if not weapons.has(row["base"]): errors.append("evolution %s: unknown base gun '%s'" % [row["id"], row["base"]])

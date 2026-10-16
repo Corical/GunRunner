@@ -195,7 +195,7 @@ func test_railgun_pierces_exactly_four() -> void:
 
 func test_piercing_bullet_never_hits_the_same_enemy_twice() -> void:
 	var s := _quiet()
-	var tank = _place(s, "shielded", 0.0, 10.0)
+	var tank = _place(s, "armored", 0.0, 10.0)
 	tank.hp = 1000
 	_shoot(s, "railgun", 0.0, 0.0)
 	var hits := _of(_run(s, 40), K.ENEMY_HIT)
@@ -209,8 +209,8 @@ func test_bullet_hits_the_enemy_in_front_not_the_lower_pool_slot() -> void:
 	# A fast bullet (6.7 m per step) whose single step passes through both circles - at normal speed it would
 	# reach the front one a step earlier and the order would never matter.
 	var s := _quiet({"bullet_speed": 400})
-	var behind = _place(s, "shielded", 0.0, 13.0)   # slot 0
-	var front = _place(s, "shielded", 0.0, 10.0)    # slot 1
+	var behind = _place(s, "armored", 0.0, 13.0)   # slot 0
+	var front = _place(s, "armored", 0.0, 10.0)    # slot 1
 	behind.hp = 1000
 	front.hp = 1000
 	_shoot(s, "pistol", 0.0, 6.0, 5)
@@ -221,9 +221,9 @@ func test_bullet_hits_the_enemy_in_front_not_the_lower_pool_slot() -> void:
 
 func test_splash_hits_nearest_victims_not_lowest_slots() -> void:
 	var s := _quiet({"splash_max_victims": 1})
-	var far = _place(s, "shielded", 2.4, 20.0)   # lower slot, further from the blast
-	var near = _place(s, "shielded", 0.8, 20.0)
-	var target = _place(s, "shielded", 0.0, 20.0)
+	var far = _place(s, "armored", 2.4, 20.0)   # lower slot, further from the blast
+	var near = _place(s, "armored", 0.8, 20.0)
+	var target = _place(s, "armored", 0.0, 20.0)
 	for e in [far, near, target]:
 		e.hp = 1000
 	_shoot(s, "rocket", 0.0, 12.0, 40)
@@ -237,7 +237,7 @@ func test_splash_hits_nearest_victims_not_lowest_slots() -> void:
 func test_crit_event_matches_damage_dealt_and_only_on_crits() -> void:
 	var s := _quiet()
 	s.player.mods["crit_chance"] = 1.0
-	var tank = _place(s, "shielded", 0.0, 10.0)
+	var tank = _place(s, "armored", 0.0, 10.0)
 	tank.hp = 1000
 	_shoot(s, "pistol", 0.0, 0.0, 7)
 	var evs := _run(s, 40)
@@ -248,7 +248,7 @@ func test_crit_event_matches_damage_dealt_and_only_on_crits() -> void:
 
 	var s2 := _quiet()
 	s2.player.mods["crit_chance"] = 0.0
-	var t2 = _place(s2, "shielded", 0.0, 10.0)
+	var t2 = _place(s2, "armored", 0.0, 10.0)
 	t2.hp = 1000
 	_shoot(s2, "pistol", 0.0, 0.0, 7)
 	eq(_of(_run(s2, 40), K.CRIT).size(), 0, "no crit chance, no crit pop")
@@ -1259,6 +1259,100 @@ func test_perk_card_says_which_held_gun_it_evolves() -> void:
 	ok(String(s.choice_card("magnet")["footer"]).contains("EVOLVES LIGHTNING"), s.choice_card("magnet")["footer"])
 	ok(not String(s.choice_card("damage")["footer"]).contains("EVOLVES"), "damage evolves nothing held")
 	ok(String(s.choice_card("evolve:lightning")["name"]).to_upper().contains("TEMPEST"), s.choice_card("evolve:lightning")["name"])
+
+
+# ---------- enemy behaviours (depth plan item 4) ----------
+
+func _bomber_run(side: float) -> Array:
+	var s := _quiet({"flanker_lock_distance": 1000.0})  # it runs straight at the spot it was placed
+	var b = _place(s, "bomber", side, s.player.z + 15.0)
+	var ev := _run(s, 120)
+	return [s, ev, b]
+
+
+func test_bomber_blast_is_wider_than_a_touch() -> void:
+	var fuse: float = _quiet().rules.t("bomber_fuse")
+	for case in [[0.0, true], [2.0, true], [fuse + 1.0, false]]:
+		var r := _bomber_run(case[0])
+		var hurt := _of(r[1], K.PLAYER_HURT)
+		eq(hurt.size() > 0, case[1], "bomber passing %.1f m to the side" % case[0])
+		if case[1] and hurt.size() > 0:
+			eq(hurt[0]["amount"], int(r[0].rules.t("bomber_blast_damage")))
+		eq(_of(r[1], K.EXPLOSION).size(), 1 if case[0] < fuse else 0, "%.1f m: it blows up only inside the fuse" % case[0])
+
+
+func test_shooting_a_bomber_in_a_crowd_blasts_the_crowd_and_sets_off_bombers() -> void:
+	var s := _quiet()
+	var bomb = _place(s, "bomber", 0.0, 30.0)
+	var other_bomb = _place(s, "bomber", 2.5, 30.0)
+	var tank = _place(s, "armored", -0.5, 30.0)  # inside both blasts
+	tank.hp = 100
+	var far = _place(s, "armored", 0.0, 40.0)
+	far.hp = 100
+	ok(s.damage_enemy(bomb, 5, "bullet", "pistol"), "killed")
+	ok(not other_bomb.active, "the bomber beside it went off too")
+	eq(tank.hp, 100 - 2 * int(s.rules.t("bomber_enemy_damage")), "the tank took both blasts")
+	eq(far.hp, 100, "10 m away: untouched")
+	eq(s.player.hp, s.player.max_hp, "you were 38 m away")
+
+
+func test_healer_heals_inside_its_radius_only_and_never_above_max() -> void:
+	var s := _quiet({"enemy_speed": 0.0})  # held still: speeds differ, so they would drift into reach
+	var healer = _place(s, "healer", 0.0, 60.0)
+	var near = _place(s, "armored", 3.0, 60.0)
+	var far = _place(s, "armored", 0.0, 60.0 + s.rules.t("healer_radius") + 1.0)
+	var full = _place(s, "armored", -2.0, 60.0)
+	near.hp = 1
+	far.hp = 1
+	var ev := _run(s, int(60 * (s.rules.t("healer_every") * 3 + 0.1)))
+	eq(near.hp, mini(near.max_hp, 1 + 3 * int(s.rules.t("healer_amount"))), "three heals")
+	eq(far.hp, 1, "out of reach")
+	eq(full.hp, full.max_hp, "a full enemy stays full")
+	ok(_of(ev, K.ENEMY_HEALED).size() >= 1, "you can see it heal")
+	ok(healer.active, "healer alive")
+
+
+func test_splitter_becomes_runners_that_do_not_split_again() -> void:
+	var s := _quiet()
+	var sp = _place(s, "splitter", 1.0, 40.0)
+	s.damage_enemy(sp, 100, "bullet", "pistol")
+	var runners := []
+	for e in s.enemies.pool:
+		if e.active:
+			runners.append(e)
+	eq(runners.size(), int(s.rules.t("split_count")))
+	for r in runners:
+		eq(r.type_id, "basic")
+		ok(absf(r.z - 40.0) < 0.01, "they appear where it died")
+	s.damage_enemy(runners[0], 100, "bullet", "pistol")
+	var left := 0
+	for e in s.enemies.pool:
+		left += 1 if e.active else 0
+	eq(left, int(s.rules.t("split_count")) - 1, "a runner just dies")
+
+
+func test_shield_soaks_bullets_but_not_splash_chain_or_burn() -> void:
+	for source in ["bullet", "splash", "chain", "burn"]:
+		var s := _quiet()
+		var e = _place(s, "shielded", 0.0, 40.0)
+		e.hp = 50
+		e.max_hp = 50
+		var shield: int = e.shield_hp
+		ok(shield >= int(s.rules.t("shield_hp")), "it has a shield (%d)" % shield)
+		s.damage_enemy(e, 3, source, "pistol")
+		if source == "bullet":
+			eq([e.hp, e.shield_hp], [50 - maxi(0, 3 - shield), maxi(0, shield - 3)], "bullet: shield first")
+		else:
+			eq([e.hp, e.shield_hp], [47, shield], "%s goes round the shield" % source)
+
+
+func test_every_enemy_behaviour_is_known() -> void:
+	var rules := _quiet().rules
+	var seen := {}
+	for id in rules.enemies:
+		seen[rules.enemies[id]["behaviour"]] = true
+	for b in ["bomber", "healer", "splitter", "shield"]:
+		ok(seen.has(b), "some enemy is a %s" % b)
 
 
 # ---------- lane switchers ----------

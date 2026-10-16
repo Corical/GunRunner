@@ -11,7 +11,7 @@ const K = Events.Kind
 
 ## Every event kind this presenter reacts to (test_events checks every kind is handled somewhere).
 const HANDLED := [K.FIRED, K.ENEMY_HIT, K.ENEMY_KILLED, K.PLAYER_HURT, K.COMBO_BROKEN, K.ICE_HIT, K.ICE_SHATTERED,
-	K.PICKUP, K.GUN_CHANGED, K.CHAIN_ARC, K.LOOT_TAKEN, K.TOWER_DEPLOYED, K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_WRAPPED, K.BOSS_DEFEATED,
+	K.PICKUP, K.GUN_CHANGED, K.CHAIN_ARC, K.LOOT_TAKEN, K.SHIELD_HIT, K.ENEMY_HEALED, K.ENEMY_SPLIT, K.TOWER_DEPLOYED, K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_WRAPPED, K.BOSS_DEFEATED,
 	K.GAME_OVER, K.POOL_EXHAUSTED, K.LEVEL_UP, K.PERK_TAKEN, K.EXPLOSION, K.CRIT, K.TRAP_HIT, K.TRAP_DESTROYED,
 	K.TRAP_TRIGGERED, K.UPGRADE_LOST, K.BOSS_SUMMONED, K.BOSS_SHOT]
 
@@ -132,6 +132,15 @@ func handle(events: Array) -> void:
 			K.CHAIN_ARC:
 				_bolt(ev)
 				_burst({"x": ev["x2"], "z": ev["z2"]}, 0.0, 1.0, Color("#A5F3FC"), 8, 0.25, 5.0)
+			K.SHIELD_HIT:
+				_burst(ev, 0.0, 1.2, Color("#93C5FD"), 5 if not ev["broken"] else 30, 0.3, 5.0)
+				if ev["broken"]:
+					_text(ev, "SHIELD DOWN", Color("#93C5FD"), 1.8, 1.0)
+			K.ENEMY_HEALED:
+				_burst(ev, 0.0, 1.0, Color("#4ADE80"), 16, 0.5, float(ev["radius"]))
+				_text(ev, "+HEAL", Color("#4ADE80"), 2.2, 0.9)
+			K.ENEMY_SPLIT:
+				_burst(ev, 0.0, 1.0, Color("#F472B6"), 20, 0.4, 5.0)
 			K.LOOT_TAKEN:
 				_burst(ev, 0.0, 1.2, Color("#FDE047"), 40, 0.8, 7.0)
 				if String(ev["loot"]) == "heal" or String(ev["loot"]).begins_with("perk:"):

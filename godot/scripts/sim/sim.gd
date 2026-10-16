@@ -135,6 +135,7 @@ func step(input: Dictionary) -> void:
 			_push_event(Events.Kind.POOL_EXHAUSTED, {"pool": "bullet", "wanted": w["bullet_count"]})
 	bullets.update(dt)
 	enemies.update(dt, distance, _damage, _emit)
+	_healers(dt)
 	towers.update(dt, enemies.pool, _emit)
 	_bullets_vs_enemies()
 	for b in bullets.detonations:
@@ -172,6 +173,13 @@ func damage_enemy(e: Enemies.Enemy, amount: int, source: String, weapon := "") -
 		return false
 	if weapon == "":
 		weapon = "fire" if source == "burn" else ("poison" if source == "poison" else source)
+	if e.shield_hp > 0 and source == "bullet":  # the shield soaks bullets; splash, chain and burns go round it
+		var soaked := mini(e.shield_hp, amount)
+		e.shield_hp -= soaked
+		amount -= soaked
+		_push_event(Events.Kind.SHIELD_HIT, {"serial": e.serial, "x": e.x, "z": e.z, "shield_hp": e.shield_hp, "broken": e.shield_hp == 0})
+		if amount <= 0:
+			return false
 	e.hp -= amount
 	if e.hp > 0:
 		_push_event(Events.Kind.ENEMY_HIT, {"serial": e.serial, "enemy": e.type_id, "x": e.x, "z": e.z, "amount": amount, "source": source, "weapon": weapon})
@@ -187,7 +195,48 @@ func damage_enemy(e: Enemies.Enemy, amount: int, source: String, weapon := "") -
 		"serial": e.serial, "enemy": e.type_id, "x": e.x, "z": e.z, "amount": amount, "source": source,
 		"weapon": weapon, "score_gain": gain, "combo": combo,
 	})
+	match e.row["behaviour"]:
+		"splitter":
+			var n := enemies.summon("basic", int(rules.t("split_count")), e.x, e.z, rules.t("split_spacing"), distance, _emit)
+			_push_event(Events.Kind.ENEMY_SPLIT, {"x": e.x, "z": e.z, "count": n})
+		"bomber":
+			_bomber_blast(e, false)
 	return true
+
+
+## A bomber goes off: every enemy inside bomber_blast_radius takes bomber_enemy_damage (bombers set each other off);
+## near_player: it blew up at you (fuse), so you take bomber_blast_damage if you are inside the blast too.
+func _bomber_blast(e: Enemies.Enemy, near_player: bool) -> void:
+	var r := rules.t("bomber_blast_radius")
+	_push_event(Events.Kind.EXPLOSION, {"x": e.x, "z": e.z, "radius": r, "weapon": "bomber", "impact": true})
+	if near_player and Collision.dist_sq(e.x, e.z, player.x, player.z) < r * r:
+		_hurt_player(int(rules.t("bomber_blast_damage")), "enemy", "bomber", e.x)
+	var near: Array = []
+	for o in enemies.pool:
+		if o.active and o != e and Collision.dist_sq(e.x, e.z, o.x, o.z) < r * r:
+			near.append([Collision.dist_sq(e.x, e.z, o.x, o.z), o.serial, o])
+	near.sort_custom(_nearer)
+	for n in near:
+		damage_enemy(n[2], int(rules.t("bomber_enemy_damage")), "splash", "bomber")
+
+
+## Healers heal every enemy within healer_radius by healer_amount every healer_every seconds.
+func _healers(dt: float) -> void:
+	for h in enemies.pool:
+		if not h.active or h.row["behaviour"] != "healer":
+			continue
+		h.heal_timer -= dt
+		if h.heal_timer > 0.0:
+			continue
+		h.heal_timer += rules.t("healer_every")
+		var r := rules.t("healer_radius")
+		var healed := 0
+		for o in enemies.pool:
+			if o.active and o.hp < o.max_hp and Collision.dist_sq(h.x, h.z, o.x, o.z) < r * r:
+				o.hp = mini(o.max_hp, o.hp + int(rules.t("healer_amount")))
+				healed += 1
+		if healed > 0:
+			_push_event(Events.Kind.ENEMY_HEALED, {"serial": h.serial, "x": h.x, "z": h.z, "radius": r, "count": healed})
 
 
 ## xp needed to go from `lvl` to lvl+1.
@@ -682,7 +731,13 @@ func _apply_reward(u: Upgrades.Upgrade) -> void:
 func _enemies_vs_player() -> void:
 	var reach_z := player.z + rules.t("enemy_hit_player_radius")
 	var hits := 0
+	var fuse := rules.t("bomber_fuse")
 	for e in enemies.pool:
+		if e.active and e.row["behaviour"] == "bomber" and Collision.dist_sq(e.x, e.z, player.x, player.z) < fuse * fuse:
+			e.active = false  # it blows up beside you: step out of the blast
+			hits += 1
+			_bomber_blast(e, true)
+			continue
 		if not e.active or e.z > reach_z + e.radius:  # same reach + body as sideways (it was the bare reach)
 			continue
 		if absf(e.x - player.x) >= rules.t("enemy_hit_player_radius") + e.radius:
@@ -767,7 +822,7 @@ func state_hash() -> int:
 		parts.append_array([g.id, g.level, g.fire_timer, g.damage_carry])
 	for e in enemies.pool:
 		if e.active:
-			parts.append_array([e.serial, e.type_id, e.x, e.z, e.hp, e.target_x, e.lane_timer, e.slow_mult, e.burning, e.burn_timer, e.poison_timer, e.poison_tick_timer, e.burn_damage, e.poison_damage])
+			parts.append_array([e.serial, e.type_id, e.x, e.z, e.hp, e.shield_hp, e.heal_timer, e.target_x, e.lane_timer, e.slow_mult, e.burning, e.burn_timer, e.poison_timer, e.poison_tick_timer, e.burn_damage, e.poison_damage])
 	for b in bullets.pool:
 		if b.active:
 			parts.append_array([b.serial, b.x, b.z, b.vx, b.vz, b.start_z, b.damage, b.penetration, b.splash_radius,
