@@ -11,7 +11,7 @@ const K = Events.Kind
 
 ## Every event kind this presenter reacts to (test_events checks every kind is handled somewhere).
 const HANDLED := [K.FIRED, K.ENEMY_HIT, K.ENEMY_KILLED, K.PLAYER_HURT, K.COMBO_BROKEN, K.ICE_HIT, K.ICE_SHATTERED,
-	K.PICKUP, K.GUN_CHANGED, K.TOWER_DEPLOYED, K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_WRAPPED, K.BOSS_DEFEATED,
+	K.PICKUP, K.GUN_CHANGED, K.CHAIN_ARC, K.TOWER_DEPLOYED, K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_WRAPPED, K.BOSS_DEFEATED,
 	K.GAME_OVER, K.POOL_EXHAUSTED, K.LEVEL_UP, K.PERK_TAKEN, K.EXPLOSION, K.CRIT, K.TRAP_HIT, K.TRAP_DESTROYED,
 	K.TRAP_TRIGGERED, K.UPGRADE_LOST, K.BOSS_SUMMONED, K.BOSS_SHOT]
 
@@ -129,6 +129,9 @@ func handle(events: Array) -> void:
 				if ev["reward_kind"] != "weapon":  # guns say what happened to your loadout (GUN_CHANGED)
 					_text(ev, _pickup_text(ev), Color("#FDE047"), 2.0, 1.3)
 				zoom(0.92)
+			K.CHAIN_ARC:
+				_bolt(ev)
+				_burst({"x": ev["x2"], "z": ev["z2"]}, 0.0, 1.0, Color("#A5F3FC"), 8, 0.25, 5.0)
 			K.GUN_CHANGED:
 				_text(ev, _gun_text(ev), Color("#FDE047"), 2.0, 1.3, ev["action"] != "added")
 			K.TOWER_DEPLOYED:
@@ -183,6 +186,7 @@ func handle(events: Array) -> void:
 func update(view_dt: float, camera_base: Transform3D) -> void:
 	_cam_base = camera_base
 	_update_rings(view_dt)
+	_update_bolts(view_dt)
 	_bursts_this_frame = 0
 	_texts_this_frame = 0
 	for i in _labels.size():
@@ -236,6 +240,64 @@ func _ring(ev: Dictionary, radius: float) -> void:
 	_rings[i].visible = true
 	_ring_age[i] = 0.0
 	_ring_radius[i] = radius
+
+
+const BOLT_TIME := 0.18
+const BOLT_KINKS := 3  ## segments per arc, joined at jittered points so it looks like lightning
+var _bolts: Array[MeshInstance3D] = []
+var _bolt_age: Array[float] = []
+var _next_bolt := 0
+
+
+## A jagged, glowing line from (x, z) to (x2, z2), gone in BOLT_TIME.
+func _bolt(ev: Dictionary) -> void:
+	if _bolts.is_empty():
+		var box := BoxMesh.new()
+		box.size = Vector3(1, 1, 1)
+		for i in 36:
+			var mi := MeshInstance3D.new()
+			mi.mesh = box
+			var m := StandardMaterial3D.new()
+			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			m.albedo_color = Color("#E0FFFF")
+			mi.material_override = m
+			mi.visible = false
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			add_child(mi)
+			_bolts.append(mi)
+			_bolt_age.append(BOLT_TIME)
+	var a := WorldView.view_pos(float(ev["x"]), float(ev["z"]), 1.1)
+	var b := WorldView.view_pos(float(ev["x2"]), float(ev["z2"]), 1.1)
+	var points: Array[Vector3] = [a]
+	for k in range(1, BOLT_KINKS):
+		points.append(a.lerp(b, float(k) / BOLT_KINKS) + Vector3(_rng.randf_range(-0.5, 0.5), _rng.randf_range(-0.3, 0.5), 0))
+	points.append(b)
+	for k in BOLT_KINKS:
+		var p0 := points[k]
+		var p1 := points[k + 1]
+		var length := p0.distance_to(p1)
+		if length < 0.01:
+			continue
+		var i := _next_bolt
+		_next_bolt = (_next_bolt + 1) % _bolts.size()
+		var mi := _bolts[i]
+		mi.visible = true
+		mi.look_at_from_position((p0 + p1) * 0.5, p1, Vector3.UP if absf((p1 - p0).normalized().y) < 0.99 else Vector3.RIGHT)
+		mi.scale = Vector3(0.09, 0.09, length)
+		_bolt_age[i] = 0.0
+
+
+func _update_bolts(dt: float) -> void:
+	for i in _bolts.size():
+		if not _bolts[i].visible:
+			continue
+		_bolt_age[i] += dt
+		var t := _bolt_age[i] / BOLT_TIME
+		if t >= 1.0:
+			_bolts[i].visible = false
+			continue
+		(_bolts[i].material_override as StandardMaterial3D).albedo_color.a = 1.0 - t * t
 
 
 func _update_rings(dt: float) -> void:

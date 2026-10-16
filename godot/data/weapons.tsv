@@ -12,14 +12,18 @@
 # grenade bullet_spread 3.0 -> 1.0 (15 Oct): the outer grenades flew off the road and exploded on the grass.
 # detonates: 1 = explodes (splash) when it reaches max_range without hitting anything (grenade, rocket).
 # max_range: units travelled before despawn. penetration: targets a bullet passes through (1 = stops on first).
-id	name	fire_rate	damage	bullet_count	bullet_spread	bullet_size	bullet_color	max_range	penetration	splash_radius	detonates
-string	string	float	int	int	float	float	string	float	int	float	bool
-pistol	Pistol	3	1	1	0	0.2	#FBBF24	55	1	0	0
-smg	SMG	6	1	1	0.3	0.15	#FCD34D	50	1	0	0
-shotgun	Shotgun	2	2	5	2.0	0.18	#F97316	24	1	0	0
-laser	Laser	7	1	1	0	0.1	#60A5FA	65	1	0	0
-rocket	Rocket	1.5	8	1	0	0.35	#EF4444	60	1	3.0	1
-minigun	Minigun	14	1	1	0.5	0.1	#FDE68A	45	1	0	0
-railgun	Railgun	0.8	15	1	0	0.25	#C084FC	80	4	0	0
-flamethrower	Flamethrower	8	1	3	1.5	0.2	#FB923C	16	1	2.0	0
-grenade	Grenade	1.2	5	3	1.0	0.4	#84CC16	40	1	4.0	1
+# chain_arcs: after a direct hit the shot arcs on to this many more enemies, nearest first, within
+#   chain_range of the last one; each jump does less (tuning chain_falloff / chain_min); each gun level
+#   adds chain_arcs_per_level arcs (16 Oct, Corne: 100% -> 60% -> 20%, levels add arcs).
+id	name	fire_rate	damage	bullet_count	bullet_spread	bullet_size	bullet_color	max_range	penetration	splash_radius	detonates	chain_arcs
+string	string	float	int	int	float	float	string	float	int	float	bool	int
+pistol	Pistol	3	1	1	0	0.2	#FBBF24	55	1	0	0	0
+smg	SMG	6	1	1	0.3	0.15	#FCD34D	50	1	0	0	0
+shotgun	Shotgun	2	2	5	2.0	0.18	#F97316	24	1	0	0	0
+laser	Laser	7	1	1	0	0.1	#60A5FA	65	1	0	0	0
+rocket	Rocket	1.5	8	1	0	0.35	#EF4444	60	1	3.0	1	0
+minigun	Minigun	14	1	1	0.5	0.1	#FDE68A	45	1	0	0	0
+railgun	Railgun	0.8	15	1	0	0.25	#C084FC	80	4	0	0	0
+flamethrower	Flamethrower	8	1	3	1.5	0.2	#FB923C	16	1	2.0	0	0
+grenade	Grenade	1.2	5	3	1.0	0.4	#84CC16	40	1	4.0	1	0
+lightning	Lightning	2	4	1	0	0.15	#67E8F9	45	1	0	0	2

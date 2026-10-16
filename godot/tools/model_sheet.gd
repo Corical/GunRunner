@@ -2,6 +2,7 @@ extends SceneTree
 ## Renders every weapon as it appears inside a frozen pickup, in a row, and saves a PNG - to check real models'
 ## size and facing without playing to them. Run windowed (needs a renderer):
 ##   godot --path godot --resolution 1800x600 --script res://tools/model_sheet.gd -- --out=C:/path/sheet.png [--stand-ins]
+## --files=kenney_blaster/blaster-c.glb,... renders those glTF files instead (picking a model for a new weapon).
 
 const Loader = preload("res://scripts/data/rules_loader.gd")
 const PrimitiveCatalog = preload("res://scripts/adapters/primitive_catalog.gd")
@@ -13,10 +14,13 @@ var _frames := 0
 
 func _init() -> void:
 	var stand_ins := false
+	var files: Array = []
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--out="):
 			_out = a.trim_prefix("--out=")
 		stand_ins = stand_ins or a == "--stand-ins"
+		if a.begins_with("--files="):
+			files = a.trim_prefix("--files=").split(",")
 	var rules := Loader.load_rules()
 	var cat = PrimitiveCatalog.new(rules) if stand_ins else GltfCatalog.new(rules, PrimitiveCatalog.new(rules))
 	var world := Node3D.new()
@@ -31,9 +35,15 @@ func _init() -> void:
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-50, 30, 0)
 	world.add_child(sun)
-	var ids: Array = rules.weapons.keys()
+	var ids: Array = files if not files.is_empty() else rules.weapons.keys()
 	for i in ids.size():
-		var m: Node3D = cat.make("reward", ids[i])
+		var m: Node3D
+		if files.is_empty():
+			m = cat.make("reward", ids[i])
+		else:
+			m = (load("res://assets/models/" + ids[i]) as PackedScene).instantiate()
+			m.scale = Vector3.ONE * 5.0
+			m.rotation_degrees = Vector3(0, 35, 0)
 		m.position = Vector3((i - (ids.size() - 1) / 2.0) * 2.6, 0, 0)
 		world.add_child(m)
 		var l := Label3D.new()

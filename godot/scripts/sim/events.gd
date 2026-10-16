@@ -17,6 +17,7 @@ enum Kind {
 	ICE_SHATTERED,    ## serial, reward, x, z
 	UPGRADE_EXPIRED,  ## serial, reward, thawed
 	PICKUP,           ## serial, reward, reward_kind, x, z
+	CHAIN_ARC,        ## x, z (from), x2, z2 (to), jump (1 = first arc), amount
 	GUN_CHANGED,      ## action (levelled|maxed|added|replaced), slot, gun, level, replaced, x, z
 	TOWER_DEPLOYED,   ## serial, tower, x, z
 	TOWER_EXPIRED,    ## serial, tower
@@ -41,7 +42,7 @@ enum Kind {
 }
 
 ## Damage sources, for ENEMY_HIT / ENEMY_KILLED / PLAYER_HURT.
-const SOURCES := ["bullet", "splash", "burn", "poison", "enemy", "boss"]
+const SOURCES := ["bullet", "splash", "chain", "burn", "poison", "enemy", "boss"]
 
 
 static func kind_name(kind: int) -> String:

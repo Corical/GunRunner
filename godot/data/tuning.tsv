@@ -88,3 +88,7 @@ gun_slots	3	ours: guns you carry, all firing (16 Oct: "accidentally pick up anot
 gun_max_level	5	ours: picking up a gun you hold levels it, up to this
 gun_level_damage	0.25	ours: damage per level above 1 (lv 5 = 2x)
 gun_slot_spacing	0.7	ours: metres between muzzles of the guns you carry; the extra guns float there, clear of the body (0.56 m)
+chain_range	7	ours: metres a lightning arc reaches from the enemy it just hit
+chain_falloff	0.4	ours: damage lost per jump, of the shot's damage (Corne, 16 Oct: 100% -> 60% -> 20%)
+chain_min	0.2	ours: an arc never does less than this share
+chain_arcs_per_level	1	ours: each gun level above 1 adds this many arcs

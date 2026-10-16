@@ -112,6 +112,9 @@ func step(input: Dictionary) -> void:
 		if not player.try_fire(slot):
 			continue
 		var w: Dictionary = rules.weapons[player.guns[slot].id]
+		if int(w["chain_arcs"]) > 0 and player.guns[slot].level > 1:  # levels add arcs
+			w = w.duplicate()
+			w["chain_arcs"] = int(w["chain_arcs"]) + int(rules.t("chain_arcs_per_level")) * (player.guns[slot].level - 1)
 		var mx := player.x + gun_offset(slot)
 		var fired := bullets.fire(mx, player.z + rules.t("muzzle_z_offset"), w, player.shot_damage(slot), player.mods)
 		if fired > 0:
@@ -284,10 +287,41 @@ func _bullets_vs_enemies() -> void:
 				dmg *= 2
 				_push_event(Events.Kind.CRIT, {"x": e.x, "z": e.z, "amount": dmg, "enemy": e.type_id})
 			damage_enemy(e, dmg, "bullet", b.weapon_id)
+			if b.chain_arcs > 0:
+				_chain(b, e, hx, hz)
 			if b.splash_radius > 0.0:
 				_splash(b, hx, hz, e)
 			if bullets.spend(b):
 				break
+
+
+## Lightning: from the enemy just hit, arc to the nearest enemy not yet struck within chain_range, up to
+## b.chain_arcs times. Jump n does max(chain_min, 1 - chain_falloff x n) of the shot's damage (16 Oct, Corne:
+## 100% -> 60% -> 20%). first: the enemy hit directly (it may already be dead); hx/hz: where it was.
+func _chain(b: Bullets.Bullet, first: Enemies.Enemy, hx: float, hz: float) -> void:
+	var struck := {first.serial: true}
+	var fx := hx
+	var fz := hz
+	var r2 := rules.t("chain_range") * rules.t("chain_range")
+	for jump in range(1, b.chain_arcs + 1):
+		var best: Enemies.Enemy = null
+		var best_d2 := INF
+		for o in enemies.pool:
+			if not o.active or struck.has(o.serial):
+				continue
+			var d2 := Collision.dist_sq(fx, fz, o.x, o.z)
+			if d2 < r2 and (d2 < best_d2 or (d2 == best_d2 and o.serial < best.serial)):
+				best = o
+				best_d2 = d2
+		if best == null:
+			return
+		struck[best.serial] = true
+		var share := maxf(rules.t("chain_min"), 1.0 - rules.t("chain_falloff") * jump)
+		var dmg := effective_damage(maxi(1, int(round(b.damage * share))), b.weapon_id, best.type_id)
+		_push_event(Events.Kind.CHAIN_ARC, {"x": fx, "z": fz, "x2": best.x, "z2": best.z, "jump": jump, "amount": dmg})
+		fx = best.x
+		fz = best.z
+		damage_enemy(best, dmg, "chain", b.weapon_id)
 
 
 ## Splash centred on the enemy that was hit: up to splash_max_victims others, half damage (min 1),

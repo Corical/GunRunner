@@ -1,6 +1,7 @@
 #schema 1
 # Source: src/systems/FrozenUpgradeManager.ts REWARD_WEIGHTS (cumulative thresholds converted to weights).
 # Integer weights out of 100, rolled in row order. kind: weapon | tower | heal | armor | maxhp | frenzy | speed.
+# 16 Oct: lightning (4) added; fire and poison towers 6 -> 4 to keep 100 (bots: fire tower 1 kill in 40 runs).
 # For weapon/tower rows, id must exist in weapons.tsv / towers.tsv.
 # 15 Oct 2026: weapons cut from 50 to 33 of 100 ("too easy to pick up weapons"); buffs took the rest.
 # label / color: the name floating above the frozen pickup (15 Oct 2026: "how the fuck do you know what weapon is coming").
@@ -11,6 +12,7 @@ shotgun	weapon	5	SHOTGUN	#F97316
 laser	weapon	5	LASER	#60A5FA
 minigun	weapon	4	MINIGUN	#FDE68A
 flamethrower	weapon	4	FLAMER	#FB923C
+lightning	weapon	4	LIGHTNING	#67E8F9
 grenade	weapon	4	GRENADES	#84CC16
 heal	heal	13	+HEALTH	#22C55E
 armor	armor	9	+ARMOUR	#60A5FA
@@ -18,7 +20,7 @@ maxhp	maxhp	9	+MAX HP	#F472B6
 frenzy	frenzy	9	FRENZY	#EF4444
 speed	speed	9	SPEED	#FBBF24
 freeze	tower	6	FREEZE TOWER	#67E8F9
-fire	tower	6	FIRE TOWER	#F97316
-poison	tower	6	POISON TOWER	#22C55E
+fire	tower	4	FIRE TOWER	#F97316
+poison	tower	4	POISON TOWER	#22C55E
 rocket	weapon	3	ROCKETS	#EF4444
 railgun	weapon	3	RAILGUN	#C084FC

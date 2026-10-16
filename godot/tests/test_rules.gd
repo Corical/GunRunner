@@ -37,10 +37,10 @@ func _row(tables: Dictionary, table: String, id: String) -> Dictionary:
 func test_real_data_loads_clean() -> void:
 	var rules := Loader.load_rules()
 	eq(rules.errors, PackedStringArray())
-	eq(rules.weapons.size(), 9)
+	eq(rules.weapons.size(), 10)
 	eq(rules.enemies.size(), 7)
 	eq(rules.towers.size(), 3)
-	eq(rules.rewards.size(), 16)
+	eq(rules.rewards.size(), 17)
 	eq(rules.spawn_bands.size(), 4)
 	eq(rules.multiplier("railgun", "armored"), 2.0)
 	eq(rules.multiplier("pistol", "armored"), 1.0, "missing pair defaults to 1")

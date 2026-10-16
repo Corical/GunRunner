@@ -3,7 +3,7 @@ extends RefCounted
 ## Cross-checks every reference between tables. A Rules with errors must not be used to run a game.
 
 const TABLES := {
-	"weapons": ["id", "name", "fire_rate", "damage", "bullet_count", "bullet_spread", "bullet_size", "bullet_color", "max_range", "penetration", "splash_radius", "detonates"],
+	"weapons": ["id", "name", "fire_rate", "damage", "bullet_count", "bullet_spread", "bullet_size", "bullet_color", "max_range", "penetration", "splash_radius", "detonates", "chain_arcs"],
 	"enemies": ["id", "name", "hp", "speed", "color", "size", "score", "switches_lanes"],
 	"towers": ["id", "name", "color", "duration", "radius", "burn_damage", "slow_multiplier", "poison_duration", "poison_damage"],
 	"effectiveness": ["id", "weapon", "enemy", "multiplier"],
@@ -38,7 +38,8 @@ const TUNING_KEYS := [
 	"boss_speed_bonus_at_zero_hp", "boss_contact_player_radius", "boss_pushback", "boss_score_per_wave",
 	"boss_shot_radius", "boss_shot_pool",
 	"trap_spawn_per_second", "trap_hp", "trap_pool", "trap_sway_amplitude", "trap_sway_speed", "upgrade_sway_amplitude",
-	"upgrade_sway_speed", "upgrade_pair_chance", "drop_min_gap", "first_weapon_seconds", "first_weapon_ice_hp", "gun_slots", "gun_max_level", "gun_level_damage", "gun_slot_spacing",
+	"upgrade_sway_speed", "upgrade_pair_chance", "drop_min_gap", "first_weapon_seconds", "first_weapon_ice_hp", "gun_slots", "gun_max_level", "gun_level_damage", "gun_slot_spacing", "chain_range", "chain_falloff", "chain_min",
+	"chain_arcs_per_level",
 ]
 ## Chances: must lie in 0..1.
 const TUNING_PROBABILITY := ["upgrade_pair_chance"]

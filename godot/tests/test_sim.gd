@@ -1062,6 +1062,85 @@ func test_gun_pickup_in_play_says_what_changed_and_the_hash_sees_levels() -> voi
 	eq(_ids(s2), ["pistol:1", "smg:1"])
 
 
+# ---------- lightning (Corne, 16 Oct: 100% -> 60% -> 20%, levels add arcs) ----------
+
+## A column of tough enemies 4 m apart, one lightning bolt of `damage` with `arcs` arcs into the first.
+## Returns [serials in column order, hit amounts by serial, chain hits by serial].
+func _bolt_column(count: int, damage: int, arcs: int, gap := 4.0) -> Array:
+	var s := _quiet()
+	var serials: Array = []
+	for i in count:
+		var e = _place(s, "armored", 0.0, 20.0 + gap * i)
+		e.hp = 100000
+		serials.append(e.serial)
+	var b = _shoot(s, "lightning", 0.0, 0.0, damage)
+	b.chain_arcs = arcs
+	var hits := {}
+	var chains := {}
+	for ev in _run(s, 60):
+		if ev["kind"] == K.ENEMY_HIT:
+			hits[ev["serial"]] = hits.get(ev["serial"], 0) + ev["amount"]
+			if ev["source"] == "chain":
+				chains[ev["serial"]] = chains.get(ev["serial"], 0) + 1
+	return [serials, hits, chains]
+
+
+func test_lightning_arcs_100_60_20_and_no_further_at_level_1() -> void:
+	var r := _bolt_column(5, 10, 2)
+	var amounts: Array = r[0].map(func(serial): return r[1].get(serial, 0))
+	eq(amounts, [10, 6, 2, 0, 0], "direct hit, then 60%, then 20%, then nothing")
+
+
+func test_each_lightning_level_adds_an_arc_at_the_floor() -> void:
+	var r := _bolt_column(6, 10, 4)
+	var amounts: Array = r[0].map(func(serial): return r[1].get(serial, 0))
+	eq(amounts, [10, 6, 2, 2, 2, 0], "arcs 3 and 4 stay at chain_min (20%)")
+	var s := _quiet()
+	s.player.set_weapon("lightning")
+	s.player.add_gun("lightning")
+	s.player.add_gun("lightning")  # lv 3
+	s.player.fire_timer = 1000.0
+	s.step({})
+	var arcs := []
+	for b in s.bullets.pool:
+		if b.active:
+			arcs.append(b.chain_arcs)
+	eq(arcs, [2 + 2 * int(s.rules.t("chain_arcs_per_level"))], "a lv 3 gun fires bolts with more arcs")
+
+
+func test_lightning_never_strikes_one_enemy_twice() -> void:
+	var r := _bolt_column(2, 10, 6)
+	eq(r[2].values(), [1], "two enemies, six arcs: one chain hit only")
+	eq(r[1][r[0][0]], 10, "the first one only took its direct hit")
+
+
+func test_lightning_reach_ends_at_chain_range() -> void:
+	var reach: float = _quiet().rules.t("chain_range")
+	var inside := _bolt_column(2, 10, 2, reach - 0.5)
+	eq(inside[2].size(), 1, "arcs %.1f m" % (reach - 0.5))
+	var outside := _bolt_column(2, 10, 2, reach + 0.5)
+	eq(outside[2].size(), 0, "not %.1f m" % (reach + 0.5))
+
+
+func test_lightning_alone_on_the_road_and_ties_go_to_the_lower_serial() -> void:
+	var lone := _bolt_column(1, 10, 3)
+	eq(lone[2].size(), 0, "no one to arc to, no crash")
+	var s := _quiet()
+	var first = _place(s, "armored", 0.0, 20.0)
+	first.hp = 100000
+	var left = _place(s, "armored", -3.0, 20.0)
+	left.hp = 100000
+	var right = _place(s, "armored", 3.0, 20.0)
+	right.hp = 100000
+	var b = _shoot(s, "lightning", 0.0, 0.0, 10)
+	b.chain_arcs = 1
+	var chained := []
+	for ev in _run(s, 60):
+		if ev["kind"] == K.ENEMY_HIT and ev["source"] == "chain":
+			chained.append(ev["serial"])
+	eq(chained, [mini(left.serial, right.serial)], "equal distance: lower serial, so replays match")
+
+
 # ---------- lane switchers ----------
 
 ## 16 Oct: a lane switcher "quickly steps into my lane, I don't even have a chance to shoot it". Inside

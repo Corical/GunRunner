@@ -24,6 +24,7 @@ class Bullet:
 	## Targets this bullet already hit, kept across steps so a piercing bullet never hits the same one twice.
 	var hit := {}
 	var detonates := false
+	var chain_arcs := 0  ## enemies a direct hit arcs on to (lightning)
 
 
 var pool: Array[Bullet] = []
@@ -75,6 +76,7 @@ func fire(x: float, z: float, weapon: Dictionary, damage: int, mods := {}) -> in
 		b.max_range = float(weapon["max_range"]) * (1.0 + mods.get("range_mult", 0.0))
 		b.weapon_id = weapon["id"]
 		b.detonates = bool(weapon.get("detonates", false))
+		b.chain_arcs = int(weapon.get("chain_arcs", 0))
 		b.hit.clear()
 		fired += 1
 	return fired

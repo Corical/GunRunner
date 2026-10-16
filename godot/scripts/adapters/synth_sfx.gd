@@ -9,7 +9,7 @@ const K = Events.Kind
 
 const HANDLED := [K.FIRED, K.ENEMY_HIT, K.ENEMY_KILLED, K.PLAYER_HURT, K.ICE_HIT, K.ICE_SHATTERED, K.PICKUP,
 	K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_DEFEATED, K.GAME_OVER, K.LEVEL_UP, K.PERK_TAKEN, K.EXPLOSION, K.CRIT,
-	K.TRAP_HIT, K.TRAP_DESTROYED, K.TRAP_TRIGGERED, K.UPGRADE_LOST, K.BOSS_SUMMONED, K.BOSS_SHOT]
+	K.TRAP_HIT, K.TRAP_DESTROYED, K.TRAP_TRIGGERED, K.UPGRADE_LOST, K.BOSS_SUMMONED, K.BOSS_SHOT, K.CHAIN_ARC]
 
 const RATE := 22050
 const VOICES := 14
@@ -23,7 +23,7 @@ var _next := 0
 var _last_ms := {}  ## sound name -> last time it started (ms)
 var PROTECTED := {}  ## clips a new sound must not cut off (filled in _ready)
 ## Minimum ms between two starts of the same sound; shot_* default 40. Values are ours, by ear.
-const MIN_GAP_MS := {"hit": 35, "kill": 45, "ice_crack": 60, "crit": 70, "explode": 80, "trap": 200, "trap_break": 80}
+const MIN_GAP_MS := {"hit": 35, "kill": 45, "ice_crack": 60, "crit": 70, "explode": 80, "trap": 200, "trap_break": 80, "zap": 60}
 var _rng := RandomNumberGenerator.new()
 
 
@@ -40,6 +40,8 @@ func _ready() -> void:
 	_clips["shot_flamethrower"] = _noise(0.09, 0.12)
 	_clips["shot_grenade"] = _mix(_sweep(260.0, 140.0, 0.09, 0.4, "sine"), _noise(0.04, 0.15))
 	# Feedback: warm, round, short.
+	_clips["shot_lightning"] = _mix(_buzz_zzz(0.09, 0.22), _sweep(1800.0, 900.0, 0.07, 0.15, "saw"))
+	_clips["zap"] = _mix(_buzz_zzz(0.06, 0.16), _noise(0.04, 0.1))
 	_clips["hit"] = _mix(_sweep(240.0, 150.0, 0.06, 0.3, "sine"), _noise(0.03, 0.1))
 	_clips["kill"] = _tone([523.0, 784.0], 0.05, 0.28, "sine")
 	_clips["hurt"] = _mix(_sweep(160.0, 70.0, 0.2, 0.55, "triangle"), _noise(0.08, 0.2))
@@ -111,6 +113,8 @@ func handle(events: Array) -> void:
 				name = "crit"
 			K.EXPLOSION:
 				name = "explode"
+			K.CHAIN_ARC:
+				name = "zap"
 			K.BOSS_STARTED, K.BOSS_SUMMONED:
 				name = "boss"
 			K.BOSS_SHOT:
