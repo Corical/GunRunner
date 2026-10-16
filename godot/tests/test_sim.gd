@@ -303,7 +303,7 @@ func test_boss_cannot_be_dodged_forever_from_the_road_edge() -> void:
 	s.player.max_hp = 1000000
 	s.enemies.pause_spawning()
 	s._start_boss()
-	var ev := _run(s, 60 * 120, {"move": 1.0})
+	var ev := _run(s, 60 * 120, {"move": 1.0, "pick": 0})  # pick: take the first boss-loot card
 	ok(s.player.x > 6.9, "player held at the right edge")
 	var defeated := _of(ev, K.BOSS_DEFEATED)
 	ok(defeated.size() >= 1 and defeated[0]["wave"] == 1, "pistol from the edge kills wave 1 within 2 minutes: %s" % [defeated])
@@ -383,7 +383,7 @@ func test_boss_killed_by_first_of_several_bullets_in_one_step() -> void:
 	var ev := _run(s, 1)
 	eq(_of(ev, K.BOSS_DEFEATED).size(), 1)
 	eq(_of(ev, K.BOSS_HIT).size(), 1, "no hits on a dead boss")
-	eq(_of(ev, K.UPGRADE_SPAWNED).size(), 1, "guaranteed drop, once")
+	eq(_of(ev, K.LOOT_OFFERED).size(), 1, "boss loot, once")
 	eq(s.score - score_before, 500)
 	eq(s.kills, 0, "boss is not counted as a kill (Babylon parity)")
 
@@ -1139,6 +1139,126 @@ func test_lightning_alone_on_the_road_and_ties_go_to_the_lower_serial() -> void:
 		if ev["kind"] == K.ENEMY_HIT and ev["source"] == "chain":
 			chained.append(ev["serial"])
 	eq(chained, [mini(left.serial, right.serial)], "equal distance: lower serial, so replays match")
+
+
+# ---------- evolutions + boss loot (depth plan items 3 and 5) ----------
+
+func _perk(s: Sim, id: String) -> Dictionary:
+	for row in s.rules.perks:
+		if row["id"] == id:
+			return row
+	return {}
+
+
+## Lightning at max level plus a Magnet stack, boss beaten: evolve is offered, taking it gives Tempest.
+func _ready_to_evolve(seed_value := 1) -> Sim:
+	var s := _quiet({}, seed_value)
+	s.player.set_weapon("lightning")
+	for i in int(s.rules.t("gun_max_level")) - 1:
+		s.player.add_gun("lightning")
+	s.player.apply_perk(_perk(s, "magnet"))
+	return s
+
+
+func test_a_maxed_gun_with_its_perk_is_always_offered_its_evolution() -> void:
+	for seed_value in 20:
+		var s := _ready_to_evolve(seed_value)
+		s._start_boss()
+		s._boss_defeated()
+		eq(s.choice_kind, "loot", "seed %d" % seed_value)
+		ok(Array(s.choices).has("evolve:lightning"), "seed %d: %s" % [seed_value, s.choices])
+		eq(s.choices.size(), 3, "seed %d: three cards %s" % [seed_value, s.choices])
+		var tick := s.tick
+		_run(s, 30)
+		eq(s.tick, tick, "the game waits for the pick")
+		s.step({"pick": Array(s.choices).find("evolve:lightning")})
+		eq(_ids(s), ["tempest:5"], "seed %d: evolved, level kept" % seed_value)
+		ok(s.choices.is_empty(), "closed")
+
+
+func test_no_evolve_card_without_the_perk_or_below_max_level() -> void:
+	for case in [["no perk", false, 0], ["lv 4", true, 1]]:
+		for seed_value in 10:
+			var s := _quiet({}, seed_value)
+			s.player.set_weapon("lightning")
+			for i in int(s.rules.t("gun_max_level")) - 1 - case[2]:
+				s.player.add_gun("lightning")
+			if case[1]:
+				s.player.apply_perk(_perk(s, "magnet"))
+			s._start_boss()
+			s._boss_defeated()
+			for c in s.choices:
+				ok(not c.begins_with("evolve:"), "%s seed %d: %s" % [case[0], seed_value, s.choices])
+
+
+func test_evolved_gun_counts_as_its_base_for_pickups_and_loot() -> void:
+	var s := _ready_to_evolve()
+	s.player.evolve(0)
+	var r := s.player.add_gun("lightning")
+	eq(r["action"], "maxed", "the base gun is already held, as Tempest")
+	eq(_ids(s), ["tempest:5"], "no second slot for it")
+	for seed_value in 30:
+		var t := _ready_to_evolve(seed_value)
+		t.player.evolve(0)
+		t.player.add_gun("smg")
+		t._start_boss()
+		t._boss_defeated()
+		for c in t.choices:
+			ok(c != "gun:lightning" and c != "gun:smg", "seed %d offers a gun already held: %s" % [seed_value, t.choices])
+
+
+func test_boss_loot_waits_for_an_open_level_up_then_follows() -> void:
+	var s := _quiet()
+	s.xp = s.xp_needed(s.level)
+	s._check_level_up()
+	eq(s.choice_kind, "level")
+	var perks := s.choices.duplicate()
+	s._start_boss()
+	s._boss_defeated()
+	eq(s.choices, perks, "level-up still showing")
+	eq(s.pending_loot, 1)
+	s.step({"pick": 0})
+	eq(s.choice_kind, "loot", "loot follows the level-up")
+	eq(s.pending_loot, 0)
+
+
+func test_every_loot_card_does_what_it_says() -> void:
+	var s := _quiet()
+	s.player.hp = 3
+	s.player.max_hp = 8
+	s._take_loot("heal")
+	eq(s.player.hp, 8, "full heal")
+	s._take_loot("gun:rocket")
+	eq(_ids(s), ["pistol:1", "rocket:1"], "new gun")
+	s._take_loot("level:rocket")
+	eq(_ids(s), ["pistol:1", "rocket:2"], "+1 level")
+	s._take_loot("perk:damage")
+	eq(s.player.perk_stacks["damage"], 2, "double perk")
+	s._take_loot("perk:multishot")  # max 1 stack: never past the cap
+	eq(s.player.perk_stacks["multishot"], 1, "capped at max_stacks")
+	var before := s.state_hash()
+	s.choice_kind = "loot"
+	ok(s.state_hash() != before, "an open loot choice is game state")
+
+
+func test_evolved_guns_keep_their_base_strengths_and_every_one_is_reachable() -> void:
+	var rules := _quiet().rules
+	eq(rules.multiplier("scattergun", "basic"), rules.multiplier("shotgun", "basic"), "inherits shotgun vs runner")
+	var bases := {}
+	for row in rules.rewards:
+		if row["kind"] == "weapon":
+			bases[row["id"]] = true
+	bases["pistol"] = true
+	for base in bases:
+		ok(rules.evolution_of.has(base), "%s has no evolution" % base)
+
+
+func test_perk_card_says_which_held_gun_it_evolves() -> void:
+	var s := _quiet()
+	s.player.add_gun("lightning")
+	ok(String(s.choice_card("magnet")["footer"]).contains("EVOLVES LIGHTNING"), s.choice_card("magnet")["footer"])
+	ok(not String(s.choice_card("damage")["footer"]).contains("EVOLVES"), "damage evolves nothing held")
+	ok(String(s.choice_card("evolve:lightning")["name"]).to_upper().contains("TEMPEST"), s.choice_card("evolve:lightning")["name"])
 
 
 # ---------- lane switchers ----------

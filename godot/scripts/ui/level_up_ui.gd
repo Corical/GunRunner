@@ -38,8 +38,10 @@ func build(rules: Rules) -> void:
 	col.add_child(_row)
 
 
-## Shows the cards for these choices (perk ids); hides when empty. Safe to call every frame.
-func show_choices(choices: PackedStringArray, level: int, stacks: Dictionary) -> void:
+## Shows the sim's open choice (level-up perks or boss loot); hides when there is none or `open` is false.
+## Safe to call every frame: rebuilds only when the choices change.
+func show_choices(sim: Object, open := true) -> void:
+	var choices: PackedStringArray = sim.choices if open else PackedStringArray()
 	if choices == _shown_for:
 		return
 	_shown_for = choices.duplicate()
@@ -48,9 +50,10 @@ func show_choices(choices: PackedStringArray, level: int, stacks: Dictionary) ->
 		c.queue_free()
 	if choices.is_empty():
 		return
-	_title.text = "LEVEL %d - PICK ONE" % level
+	var loot: bool = sim.choice_kind == "loot"
+	_title.text = "BOSS LOOT - PICK ONE" if loot else "LEVEL %d - PICK ONE" % sim.level
 	for i in choices.size():
-		var row := _row_for(choices[i])
+		var row: Dictionary = sim.choice_card(choices[i])
 		var card := Button.new()
 		card.custom_minimum_size = Vector2(300, 220)
 		card.focus_mode = Control.FOCUS_NONE
@@ -80,8 +83,9 @@ func show_choices(choices: PackedStringArray, level: int, stacks: Dictionary) ->
 		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		desc.custom_minimum_size = Vector2(260, 0)
 		col.add_child(desc)
-		var have: int = stacks.get(row["id"], 0)
-		var stack_text := UiKit.label("%d / %d   [%d]" % [have, row["max_stacks"], i + 1], 18, Color(1, 1, 1, 0.6))
+		var stack_text := UiKit.label("%s   [%d]" % [row["footer"], i + 1], 18, Color(1, 1, 1, 0.6))
+		stack_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		stack_text.custom_minimum_size = Vector2(260, 0)
 		stack_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		col.add_child(stack_text)
 		card.pressed.connect(func(): picked.emit(i))
@@ -91,9 +95,3 @@ func show_choices(choices: PackedStringArray, level: int, stacks: Dictionary) ->
 func is_open() -> bool:
 	return _root.visible
 
-
-func _row_for(id: String) -> Dictionary:
-	for row in _rules.perks:
-		if row["id"] == id:
-			return row
-	return {"id": id, "name": id, "desc": "", "max_stacks": 1}

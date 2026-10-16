@@ -20,3 +20,13 @@ railgun	45	0.9	#C084FC	16	10	2.5	0	0	0	1.4	0.09	kenney_blaster/blaster-f.glb	1.2
 flamethrower	0	0	#000000	0	0	1.2	0	2.5	0	1.2	0.09	kenney_blaster/blaster-b.glb	2.2	0
 grenade	22	0.45	#BEF264	5	4	1.0	5.0	0	0	1.2	0.18	kenney_blaster/blaster-g.glb	1.6	0
 lightning	14	0.3	#A5F3FC	6	0	3	0	0	0	0.9	0.1	kenney_blaster/blaster-i.glb	1.6	0
+hand_cannon	12	0.25	#FDE68A	4	0	2.5	0	0	0	0.7	0.09	kenney_blaster/blaster-a.glb	1.69	0
+ripper	6	0.15	#FDE68A	3	0	2.5	0	0	0	1.0	0.09	kenney_blaster/blaster-j.glb	1.95	0
+scattergun	30	0.6	#FB923C	14	5	2.5	0	0	0	1.4	0.09	kenney_blaster/blaster-l.glb	2.34	0
+prism	8	0.18	#93C5FD	5	0	14	0	0	0	1.0	0.09	kenney_blaster/blaster-r.glb	2.08	0
+swarm	35	0.65	#FB923C	8	8	3.5	0	0	1	1.2	0.18	kenney_blaster/blaster-h.glb	2.47	0
+bullet_storm	0	0	#FEF3C7	2	0	2.5	0	0	0	1.2	0.18	kenney_blaster/blaster-o.glb	2.6	0
+annihilator	45	0.9	#C084FC	16	10	2.5	0	0	0	1.4	0.09	kenney_blaster/blaster-f.glb	1.56	0
+inferno	0	0	#000000	0	0	1.2	0	2.5	0	1.2	0.09	kenney_blaster/blaster-b.glb	2.86	0
+cluster	22	0.45	#BEF264	5	4	1.0	5.0	0	0	1.2	0.18	kenney_blaster/blaster-g.glb	2.08	0
+tempest	14	0.3	#A5F3FC	6	0	3	0	0	0	0.9	0.1	kenney_blaster/blaster-i.glb	2.08	0

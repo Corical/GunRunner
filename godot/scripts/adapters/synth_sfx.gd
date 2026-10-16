@@ -9,7 +9,7 @@ const K = Events.Kind
 
 const HANDLED := [K.FIRED, K.ENEMY_HIT, K.ENEMY_KILLED, K.PLAYER_HURT, K.ICE_HIT, K.ICE_SHATTERED, K.PICKUP,
 	K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_DEFEATED, K.GAME_OVER, K.LEVEL_UP, K.PERK_TAKEN, K.EXPLOSION, K.CRIT,
-	K.TRAP_HIT, K.TRAP_DESTROYED, K.TRAP_TRIGGERED, K.UPGRADE_LOST, K.BOSS_SUMMONED, K.BOSS_SHOT, K.CHAIN_ARC]
+	K.TRAP_HIT, K.TRAP_DESTROYED, K.TRAP_TRIGGERED, K.UPGRADE_LOST, K.BOSS_SUMMONED, K.BOSS_SHOT, K.CHAIN_ARC, K.LOOT_OFFERED]
 
 const RATE := 22050
 const VOICES := 14
@@ -40,6 +40,17 @@ func _ready() -> void:
 	_clips["shot_flamethrower"] = _noise(0.09, 0.12)
 	_clips["shot_grenade"] = _mix(_sweep(260.0, 140.0, 0.09, 0.4, "sine"), _noise(0.04, 0.15))
 	# Feedback: warm, round, short.
+	# Evolved guns: their base sound, heavier (a lower, longer sweep under it).
+	_clips["shot_hand_cannon"] = _mix(_sweep(500.0, 160.0, 0.12, 0.4, "sine"), _noise(0.06, 0.25))
+	_clips["shot_ripper"] = _mix(_sweep(1100.0, 600.0, 0.045, 0.24, "saw"), _noise(0.025, 0.1))
+	_clips["shot_scattergun"] = _mix(_noise(0.22, 0.55), _sweep(160.0, 60.0, 0.2, 0.4, "sine"))
+	_clips["shot_prism"] = _mix(_sweep(2600.0, 700.0, 0.14, 0.2, "sine"), _sweep(1300.0, 350.0, 0.14, 0.12, "triangle"))
+	_clips["shot_swarm"] = _mix(_noise(0.32, 0.35), _sweep(180.0, 60.0, 0.3, 0.4, "triangle"))
+	_clips["shot_bullet_storm"] = _mix(_sweep(1400.0, 900.0, 0.025, 0.14, "saw"), _noise(0.02, 0.08))
+	_clips["shot_annihilator"] = _mix(_sweep(200.0, 3000.0, 0.14, 0.3, "saw"), _sweep(3000.0, 90.0, 0.3, 0.45, "sine"))
+	_clips["shot_inferno"] = _noise(0.12, 0.16)
+	_clips["shot_cluster"] = _mix(_sweep(220.0, 110.0, 0.11, 0.45, "sine"), _noise(0.05, 0.2))
+	_clips["shot_tempest"] = _mix(_buzz_zzz(0.12, 0.26), _sweep(2200.0, 700.0, 0.09, 0.18, "saw"))
 	_clips["shot_lightning"] = _mix(_buzz_zzz(0.09, 0.22), _sweep(1800.0, 900.0, 0.07, 0.15, "saw"))
 	_clips["zap"] = _mix(_buzz_zzz(0.06, 0.16), _noise(0.04, 0.1))
 	_clips["hit"] = _mix(_sweep(240.0, 150.0, 0.06, 0.3, "sine"), _noise(0.03, 0.1))
@@ -101,7 +112,7 @@ func handle(events: Array) -> void:
 				name = "buff" if ev.get("reward_kind", "") in ["frenzy", "speed", "armor", "heal", "maxhp"] else "pickup"
 			K.PERK_TAKEN:
 				name = "buff"
-			K.LEVEL_UP:
+			K.LEVEL_UP, K.LOOT_OFFERED:
 				name = "level"
 			K.TRAP_HIT:
 				name = "hit"

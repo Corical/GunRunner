@@ -37,7 +37,7 @@ func _row(tables: Dictionary, table: String, id: String) -> Dictionary:
 func test_real_data_loads_clean() -> void:
 	var rules := Loader.load_rules()
 	eq(rules.errors, PackedStringArray())
-	eq(rules.weapons.size(), 10)
+	eq(rules.weapons.size(), 20)  # 10 droppable + 10 evolved
 	eq(rules.enemies.size(), 7)
 	eq(rules.towers.size(), 3)
 	eq(rules.rewards.size(), 17)

@@ -71,11 +71,17 @@ func input(s: Sim) -> Dictionary:
 	return {"move": decide(s), "pick": pick(s)}
 
 
+## Boss loot: evolve, then levels, then new guns, double perks, heal.
+const LOOT_PREFERENCE := ["evolve", "level", "gun", "perk", "heal"]
+
+
 func pick(s: Sim) -> int:
 	var best := 0
 	var best_rank := 999
 	for i in s.choices.size():
 		var rank := PERK_PREFERENCE.find(s.choices[i])
+		if s.choice_kind == "loot":
+			rank = LOOT_PREFERENCE.find(s.choices[i].get_slice(":", 0))
 		if rank >= 0 and rank < best_rank:
 			best_rank = rank
 			best = i

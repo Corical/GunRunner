@@ -161,9 +161,10 @@ func gun_power(g: Gun) -> float:
 
 
 ## Picks up the gun with this id. Returns {action: levelled|maxed|added|replaced, slot, gun, level, replaced}.
+## (evolve() returns action evolved, replaced = the base gun.)
 func add_gun(id: String) -> Dictionary:
 	for i in guns.size():
-		if guns[i].id == id:
+		if guns[i].id == id or _rules.base_of.get(guns[i].id, "") == id:  # its evolved form counts as holding it
 			weapon_id = id
 			if guns[i].level >= int(_rules.t("gun_max_level")):
 				return _gun_result("maxed", i, "")
@@ -181,6 +182,24 @@ func add_gun(id: String) -> Dictionary:
 	guns[weakest] = _new_gun(id)
 	weapon_id = id
 	return _gun_result("replaced", weakest, old)
+
+
+## Guns that may evolve now: at gun_max_level, with a stack of their perk. Slot order.
+func evolvable() -> Array[int]:
+	var out: Array[int] = []
+	for i in guns.size():
+		var row: Dictionary = _rules.evolution_of.get(guns[i].id, {})
+		if not row.is_empty() and guns[i].level >= int(_rules.t("gun_max_level")) and perk_stacks.get(row["perk"], 0) > 0:
+			out.append(i)
+	return out
+
+
+func evolve(slot: int) -> Dictionary:
+	var row: Dictionary = _rules.evolution_of[guns[slot].id]
+	var old := guns[slot].id
+	guns[slot].id = row["id"]
+	weapon_id = row["id"]
+	return _gun_result("evolved", slot, old)
 
 
 func _gun_result(action: String, slot: int, replaced: String) -> Dictionary:

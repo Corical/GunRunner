@@ -295,7 +295,7 @@ func _process(delta: float) -> void:
 	_hud.tick(delta)
 	if _demo_fx:
 		_hud.flash_hurt(0.6)
-	_level_ui.show_choices(_sim.choices if state == State.PLAYING else PackedStringArray(), _sim.level, _sim.player.perk_stacks)
+	_level_ui.show_choices(_sim, state == State.PLAYING)
 
 
 ## Android sends the app to the background (home button, call) or closes it without a game over: finish the

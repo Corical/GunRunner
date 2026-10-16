@@ -1,0 +1,16 @@
+#schema 1
+# A gun at gun_max_level plus at least one stack of its perk can evolve into a stronger gun with new behaviour
+# (16 Oct depth plan item 3; Vampire Survivors / Survivor.io). Offered as a boss-loot card (sim._offer_loot).
+# id = the evolved weapon (weapons.tsv row, never a drop in rewards.tsv); base = the gun it grows from.
+id	base	perk
+string	string	string
+hand_cannon	pistol	crit
+ripper	smg	pierce
+scattergun	shotgun	multishot
+prism	laser	fire_rate
+swarm	rocket	bullet_speed
+bullet_storm	minigun	agility
+annihilator	railgun	damage
+inferno	flamethrower	range
+cluster	grenade	engineer
+tempest	lightning	magnet

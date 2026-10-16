@@ -11,7 +11,7 @@ const K = Events.Kind
 
 ## Every event kind this presenter reacts to (test_events checks every kind is handled somewhere).
 const HANDLED := [K.FIRED, K.ENEMY_HIT, K.ENEMY_KILLED, K.PLAYER_HURT, K.COMBO_BROKEN, K.ICE_HIT, K.ICE_SHATTERED,
-	K.PICKUP, K.GUN_CHANGED, K.CHAIN_ARC, K.TOWER_DEPLOYED, K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_WRAPPED, K.BOSS_DEFEATED,
+	K.PICKUP, K.GUN_CHANGED, K.CHAIN_ARC, K.LOOT_TAKEN, K.TOWER_DEPLOYED, K.BOSS_STARTED, K.BOSS_HIT, K.BOSS_CONTACT, K.BOSS_WRAPPED, K.BOSS_DEFEATED,
 	K.GAME_OVER, K.POOL_EXHAUSTED, K.LEVEL_UP, K.PERK_TAKEN, K.EXPLOSION, K.CRIT, K.TRAP_HIT, K.TRAP_DESTROYED,
 	K.TRAP_TRIGGERED, K.UPGRADE_LOST, K.BOSS_SUMMONED, K.BOSS_SHOT]
 
@@ -132,6 +132,10 @@ func handle(events: Array) -> void:
 			K.CHAIN_ARC:
 				_bolt(ev)
 				_burst({"x": ev["x2"], "z": ev["z2"]}, 0.0, 1.0, Color("#A5F3FC"), 8, 0.25, 5.0)
+			K.LOOT_TAKEN:
+				_burst(ev, 0.0, 1.2, Color("#FDE047"), 40, 0.8, 7.0)
+				if String(ev["loot"]) == "heal" or String(ev["loot"]).begins_with("perk:"):
+					_text(ev, "BOSS LOOT!", Color("#FDE047"), 2.0, 1.3, true)
 			K.GUN_CHANGED:
 				_text(ev, _gun_text(ev), Color("#FDE047"), 2.0, 1.3, ev["action"] != "added")
 			K.TOWER_DEPLOYED:
@@ -419,13 +423,23 @@ func trail(serial: int, pos: Vector3, now: float) -> void:
 	_emit(pos, Color(0.7, 0.7, 0.72, 0.6), 3, 0.8, 0.4, 1.4, true)
 
 
+func _perk_name(id: String) -> String:
+	for row in _rules.perks:
+		if row["id"] == id:
+			return String(row["name"]).to_upper()
+	return id.to_upper()
+
+
 func _gun_text(ev: Dictionary) -> String:
 	var gun := String(_rules.weapons[ev["gun"]]["name"]).to_upper()
 	match ev["action"]:
 		"levelled":
 			return "%s LV %d" % [gun, ev["level"]]
 		"maxed":
-			return "%s MAX" % gun
+			var evo: Dictionary = _rules.evolution_of.get(ev["gun"], {})
+			return "%s MAX" % gun if evo.is_empty() else "%s MAX - EVOLVES WITH %s" % [gun, _perk_name(evo["perk"])]
+		"evolved":
+			return "EVOLVED: %s!" % gun
 		"replaced":
 			return "%s REPLACES %s" % [gun, String(_rules.weapons[ev["replaced"]]["name"]).to_upper()]
 	return "+ %s" % gun

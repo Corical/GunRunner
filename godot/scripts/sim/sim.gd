@@ -47,6 +47,9 @@ var xp := 0
 var level := 1
 var choices: PackedStringArray = []
 var pending_levels := 0
+## "level" = the cards are perks; "loot" = boss loot (evolve:/level:/gun:/perk:/heal). pending_loot waits its turn.
+var choice_kind := "level"
+var pending_loot := 0
 var events: Array[Dictionary] = []
 
 var rules: Rules
@@ -95,8 +98,17 @@ func step(input: Dictionary) -> void:
 		if i < 0 or i >= choices.size():
 			_log.warn("levels", "bad_pick", {"pick": i, "choices": choices.size()})
 			return
-		_take_perk(choices[i])
+		if choice_kind == "loot":
+			_take_loot(choices[i])
+		else:
+			_take_perk(choices[i])
 		choices.clear()
+		choice_kind = "level"
+		if pending_loot > 0:
+			pending_loot -= 1
+			_offer_loot()
+			if not choices.is_empty():
+				return
 		if pending_levels > 0:
 			pending_levels -= 1
 			_offer_perks()
@@ -213,6 +225,124 @@ func _offer_perks() -> void:
 				break
 	_log.info("levels", "level_up", {"level": level, "choices": ",".join(choices)})
 	_push_event(Events.Kind.LEVEL_UP, {"level": level, "choices": choices.duplicate()})
+
+
+## Boss loot, pick one of three: evolve (always offered when a gun can), +1 level to a gun you hold, a gun you do
+## not hold, a double perk, a full heal. Rolled with the sim rng; offers nothing it cannot give.
+func _offer_loot() -> void:
+	var must: Array[String] = []
+	var maybe: Array[String] = []
+	var can := player.evolvable()
+	if not can.is_empty():
+		must.append("evolve:" + player.guns[can[0]].id)
+	var climbable: Array[String] = []
+	for g in player.guns:
+		if g.level < int(rules.t("gun_max_level")):
+			climbable.append(g.id)
+	if not climbable.is_empty():
+		maybe.append("level:" + climbable[rng.range_int(0, climbable.size() - 1)])
+	var new_guns: Array[String] = []
+	for row in rules.rewards:
+		if row["kind"] == "weapon" and not _holds_gun(row["id"]):
+			new_guns.append(row["id"])
+	if not new_guns.is_empty():
+		maybe.append("gun:" + new_guns[rng.range_int(0, new_guns.size() - 1)])
+	var perks: Array[String] = []
+	for row in rules.perks:
+		if player.perk_stacks.get(row["id"], 0) < int(row["max_stacks"]):
+			perks.append(row["id"])
+	if not perks.is_empty():
+		maybe.append("perk:" + perks[rng.range_int(0, perks.size() - 1)])
+	if player.hp < player.max_hp:
+		maybe.append("heal")
+	choices.clear()
+	for id in must:
+		choices.append(id)
+	while choices.size() < 3 and not maybe.is_empty():
+		choices.append(maybe.pop_at(rng.range_int(0, maybe.size() - 1)))
+	if choices.is_empty():
+		return
+	choice_kind = "loot"
+	_log.info("loot", "offered", {"wave": boss.wave, "choices": ",".join(choices)})
+	_push_event(Events.Kind.LOOT_OFFERED, {"wave": boss.wave, "choices": choices.duplicate()})
+
+
+func _holds_gun(id: String) -> bool:
+	for g in player.guns:
+		if g.id == id or rules.base_of.get(g.id, "") == id:
+			return true
+	return false
+
+
+func _take_loot(id: String) -> void:
+	var what := id.get_slice(":", 0)
+	var arg := id.get_slice(":", 1)
+	var change := {}
+	match what:
+		"evolve":
+			for i in player.guns.size():
+				if player.guns[i].id == arg:
+					change = player.evolve(i)
+		"level", "gun":
+			change = player.add_gun(arg)
+		"perk":
+			for row in rules.perks:
+				if row["id"] == arg:
+					for n in mini(2, int(row["max_stacks"]) - player.perk_stacks.get(arg, 0)):
+						player.apply_perk(row)
+					_push_event(Events.Kind.PERK_TAKEN, {"perk": arg, "stacks": player.perk_stacks[arg], "level": level})
+		"heal":
+			player.hp = player.max_hp
+	if not change.is_empty():
+		change.merge({"x": player.x, "z": player.z})
+		_push_event(Events.Kind.GUN_CHANGED, change)
+	_log.info("loot", "taken", {"loot": id})
+	_push_event(Events.Kind.LOOT_TAKEN, {"loot": id, "x": player.x, "z": player.z})
+
+
+## What a choice card says: {name, desc, footer}. Perk ids for level-ups; loot ids for boss loot.
+func choice_card(id: String) -> Dictionary:
+	var what := id.get_slice(":", 0)
+	var arg := id.get_slice(":", 1)
+	match what:
+		"evolve":
+			var into: String = rules.evolution_of[arg]["id"]
+			return {"name": "EVOLVE: " + String(rules.weapons[into]["name"]),
+				"desc": "%s becomes %s" % [rules.weapons[arg]["name"], rules.weapons[into]["name"]], "footer": "BOSS LOOT"}
+		"level":
+			var lv := 1
+			for g in player.guns:
+				if g.id == arg:
+					lv = g.level
+			return {"name": "%s LV %d" % [rules.weapons[arg]["name"], lv + 1], "desc": "+25%% damage%s" % _evolve_hint(arg, lv + 1), "footer": "BOSS LOOT"}
+		"gun":
+			return {"name": "NEW: " + String(rules.weapons[arg]["name"]), "desc": "Carry it alongside your guns", "footer": "BOSS LOOT"}
+		"perk":
+			var row := _perk_row(arg)
+			return {"name": "DOUBLE " + String(row["name"]), "desc": "%s, twice" % row["desc"], "footer": "BOSS LOOT"}
+		"heal":
+			return {"name": "FULL HEAL", "desc": "Back to %d HP" % player.max_hp, "footer": "BOSS LOOT"}
+	var row := _perk_row(id)
+	var footer := "%d / %d" % [player.perk_stacks.get(id, 0), row.get("max_stacks", 1)]
+	for g in player.guns:  # say which held gun this perk would evolve
+		var evo: Dictionary = rules.evolution_of.get(g.id, {})
+		if not evo.is_empty() and evo["perk"] == id:
+			footer += "  -  EVOLVES %s AT LV %d" % [String(rules.weapons[g.id]["name"]).to_upper(), int(rules.t("gun_max_level"))]
+	return {"name": row.get("name", id), "desc": row.get("desc", ""), "footer": footer}
+
+
+func _evolve_hint(gun: String, new_level: int) -> String:
+	var evo: Dictionary = rules.evolution_of.get(gun, {})
+	if evo.is_empty() or new_level < int(rules.t("gun_max_level")):
+		return ""
+	return " - evolves with %s" % _perk_row(evo["perk"]).get("name", evo["perk"])
+
+
+func _perk_row(id: String) -> Dictionary:
+	for row in rules.perks:
+		if row["id"] == id:
+			return row
+	return {}
 
 
 func _take_perk(id: String) -> void:
@@ -437,7 +567,10 @@ func _boss_defeated() -> void:
 	enemies.resume_spawning(distance)
 	_log.info("boss", "defeated", {"wave": boss.wave, "score_gain": gain, "distance": distance})
 	_push_event(Events.Kind.BOSS_DEFEATED, {"wave": boss.wave, "x": boss.x, "z": boss.z, "score_gain": gain})
-	upgrades.spawn("", _emit)
+	if choices.is_empty():  # the boss's reward: pick one of three (was one random drop)
+		_offer_loot()
+	else:
+		pending_loot += 1
 
 
 ## Ice stops any bullet, whatever its penetration (Babylon parity, plan D6).
@@ -653,5 +786,5 @@ func state_hash() -> int:
 	for sh in boss.shots:
 		if sh.active:
 			parts.append_array([sh.x, sh.z, sh.vx, sh.vz, sh.damage])
-	parts.append_array([xp, level, choices, pending_levels, player.perk_stacks, player.mods])
+	parts.append_array([xp, level, choices, pending_levels, choice_kind, pending_loot, player.perk_stacks, player.mods])
 	return hash(parts)

@@ -7,6 +7,7 @@ const TABLES := {
 	"enemies": ["id", "name", "hp", "speed", "color", "size", "score", "switches_lanes"],
 	"towers": ["id", "name", "color", "duration", "radius", "burn_damage", "slow_multiplier", "poison_duration", "poison_damage"],
 	"effectiveness": ["id", "weapon", "enemy", "multiplier"],
+	"evolutions": ["id", "base", "perk"],
 	"rewards": ["id", "kind", "weight", "label", "color"],
 	"spawns": ["id", "start"],
 	"tuning": ["id", "value", "source"],
@@ -63,6 +64,8 @@ var enemies := {}        ## id -> row
 var enemy_ids: PackedStringArray = []   ## table order (stable iteration)
 var towers := {}         ## id -> row
 var effectiveness := {}  ## "weapon|enemy" -> multiplier
+var evolution_of := {}   ## base gun id -> evolutions.tsv row
+var base_of := {}        ## evolved gun id -> the base gun id
 var rewards: Array[Dictionary] = []     ## rows in roll order
 var spawn_bands: Array[Dictionary] = [] ## {id, start, weights: Array of [enemy_id, weight]} ascending by start
 var tuning := {}         ## id -> float
@@ -99,7 +102,10 @@ func t(key: String) -> float:
 
 
 func multiplier(weapon_id: String, enemy_id: String) -> float:
-	return effectiveness.get(weapon_id + "|" + enemy_id, 1.0)
+	var key := weapon_id + "|" + enemy_id
+	if not effectiveness.has(key) and base_of.has(weapon_id):  # an evolved gun keeps its base's strengths
+		key = base_of[weapon_id] + "|" + enemy_id
+	return effectiveness.get(key, 1.0)
 
 
 static func from_tables(tables: Dictionary) -> Object:
@@ -169,6 +175,18 @@ func _build(tables: Dictionary) -> void:
 		if row["burn_damage"] < 0 or row["poison_damage"] < 0: errors.append("tower %s: damage must not be negative" % row["id"])
 		if row["poison_duration"] > 0.0 and row["poison_damage"] < 1: errors.append("tower %s: poisons for %ss but poison_damage is 0" % [row["id"], row["poison_duration"]])
 
+	for row in tables["evolutions"]:
+		if not weapons.has(row["id"]): errors.append("evolution %s: not in weapons.tsv" % row["id"])
+		if not weapons.has(row["base"]): errors.append("evolution %s: unknown base gun '%s'" % [row["id"], row["base"]])
+		if evolution_of.has(row["base"]): errors.append("evolution %s: %s already evolves" % [row["id"], row["base"]])
+		var perk_known := false
+		for p in tables["perks"]:
+			perk_known = perk_known or p["id"] == row["perk"]
+		if not perk_known: errors.append("evolution %s: unknown perk '%s'" % [row["id"], row["perk"]])
+		for r in tables["rewards"]:
+			if r["id"] == row["id"]: errors.append("evolution %s: evolved guns are earned, never dropped" % row["id"])
+		evolution_of[row["base"]] = row
+		base_of[row["id"]] = row["base"]
 	for row in tables["effectiveness"]:
 		if not weapons.has(row["weapon"]): errors.append("effectiveness %s: unknown weapon '%s'" % [row["id"], row["weapon"]])
 		if not enemies.has(row["enemy"]): errors.append("effectiveness %s: unknown enemy '%s'" % [row["id"], row["enemy"]])

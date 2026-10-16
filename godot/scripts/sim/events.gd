@@ -18,7 +18,9 @@ enum Kind {
 	UPGRADE_EXPIRED,  ## serial, reward, thawed
 	PICKUP,           ## serial, reward, reward_kind, x, z
 	CHAIN_ARC,        ## x, z (from), x2, z2 (to), jump (1 = first arc), amount
-	GUN_CHANGED,      ## action (levelled|maxed|added|replaced), slot, gun, level, replaced, x, z
+	GUN_CHANGED,      ## action (levelled|maxed|added|replaced|evolved), slot, gun, level, replaced, x, z
+	LOOT_OFFERED,     ## wave, choices (boss loot cards; the sim waits for a pick)
+	LOOT_TAKEN,       ## loot (the card id), x, z
 	TOWER_DEPLOYED,   ## serial, tower, x, z
 	TOWER_EXPIRED,    ## serial, tower
 	BOSS_STARTED,     ## wave, hp, boss (bosses.tsv id), name
